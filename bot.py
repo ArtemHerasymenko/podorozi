@@ -1,7 +1,7 @@
 import asyncio
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, Text
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -34,7 +34,7 @@ class PassengerStates(StatesGroup):
     time = State()
 
 # =============================
-# Кнопки меню (з text=)
+# Кнопки меню
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Я водій")],
@@ -69,26 +69,29 @@ async def start(message: types.Message, state: FSMContext):
     await message.answer("Привіт! Оберіть вашу роль:", reply_markup=role_menu)
 
 # =============================
-# Вибір ролі та головне меню
-@dp.message()
-async def role_choice(message: types.Message, state: FSMContext):
-    text = message.text
+# Вибір ролі та меню кнопок
+@dp.message(Text(equals="🚗 Я водій"))
+async def choose_driver(message: types.Message):
+    await message.answer("Ви обрали роль водія", reply_markup=driver_menu)
 
-    if text == "🚗 Я водій":
-        await message.answer("Ви обрали роль водія", reply_markup=driver_menu)
-    elif text == "👤 Я пасажир":
-        await message.answer("Ви обрали роль пасажира", reply_markup=passenger_menu)
-    elif text == "⬅️ Назад":
-        await state.clear()
-        await message.answer("Привіт! Оберіть вашу роль:", reply_markup=role_menu)
-    elif text == "🚗 Створити поїздку":
-        await message.answer("Введіть місто відправлення:")
-        await state.set_state(DriverStates.from_city)
-    elif text == "🔎 Знайти поїздку":
-        await message.answer("Введіть місто відправлення:")
-        await state.set_state(PassengerStates.from_city)
-    else:
-        await message.answer("Будь ласка, оберіть дію з меню!")
+@dp.message(Text(equals="👤 Я пасажир"))
+async def choose_passenger(message: types.Message):
+    await message.answer("Ви обрали роль пасажира", reply_markup=passenger_menu)
+
+@dp.message(Text(equals="⬅️ Назад"))
+async def go_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Привіт! Оберіть вашу роль:", reply_markup=role_menu)
+
+@dp.message(Text(equals="🚗 Створити поїздку"))
+async def create_trip_driver(message: types.Message, state: FSMContext):
+    await message.answer("Введіть місто відправлення:")
+    await state.set_state(DriverStates.from_city)
+
+@dp.message(Text(equals="🔎 Знайти поїздку"))
+async def search_trip_passenger(message: types.Message, state: FSMContext):
+    await message.answer("Введіть місто відправлення:")
+    await state.set_state(PassengerStates.from_city)
 
 # =============================
 # FSM для водія
