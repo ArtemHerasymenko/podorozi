@@ -34,29 +34,29 @@ class PassengerStates(StatesGroup):
     time = State()
 
 # =============================
-# Кнопки меню
+# Кнопки меню (з text=)
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("🚗 Я водій")],
-        [KeyboardButton("👤 Я пасажир")]
+        [KeyboardButton(text="🚗 Я водій")],
+        [KeyboardButton(text="👤 Я пасажир")]
     ],
     resize_keyboard=True
 )
 
 driver_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("🚗 Створити поїздку")],
-        [KeyboardButton("📋 Мої поїздки")],
-        [KeyboardButton("⬅️ Назад")]
+        [KeyboardButton(text="🚗 Створити поїздку")],
+        [KeyboardButton(text="📋 Мої поїздки")],
+        [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
 )
 
 passenger_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("🔎 Знайти поїздку")],
-        [KeyboardButton("📋 Мої бронювання")],
-        [KeyboardButton("⬅️ Назад")]
+        [KeyboardButton(text="🔎 Знайти поїздку")],
+        [KeyboardButton(text="📋 Мої бронювання")],
+        [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
 )
