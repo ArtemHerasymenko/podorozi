@@ -25,7 +25,7 @@ class DriverStates(StatesGroup):
     from_points = State()
     to_city = State()
     to_points = State()
-    day = State()  # новий стан для дня
+    day = State()  # день поїздки
     time = State()
     price = State()
     seats = State()
@@ -64,14 +64,28 @@ passenger_menu = ReplyKeyboardMarkup(
 )
 
 # =============================
-# Кнопки для вибору дня
+# Мапа днів тижня українською
+UKRAINIAN_WEEKDAYS = {
+    "Monday": "понеділок",
+    "Tuesday": "вівторок",
+    "Wednesday": "середа",
+    "Thursday": "четвер",
+    "Friday": "п’ятниця",
+    "Saturday": "субота",
+    "Sunday": "неділя"
+}
+
+# =============================
+# Кнопки для вибору дня українською з датою
 def day_menu():
     today = datetime.now()
     tomorrow = today + timedelta(days=1)
+    today_str = today.strftime("%d-%m-%Y")
+    tomorrow_str = tomorrow.strftime("%d-%m-%Y")
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=f"Сьогодні ({today.strftime('%A')})")],
-            [KeyboardButton(text=f"Завтра ({tomorrow.strftime('%A')})")],
+            [KeyboardButton(text=f"Сьогодні ({UKRAINIAN_WEEKDAYS[today.strftime('%A')]}, {today_str})")],
+            [KeyboardButton(text=f"Завтра ({UKRAINIAN_WEEKDAYS[tomorrow.strftime('%A')]}, {tomorrow_str})")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
@@ -133,7 +147,6 @@ async def driver_to_city(message: types.Message, state: FSMContext):
 @dp.message(DriverStates.to_points)
 async def driver_to_points(message: types.Message, state: FSMContext):
     await state.update_data(to_points=message.text)
-    # запит на день поїздки
     await message.answer("Оберіть день поїздки:", reply_markup=day_menu())
     await state.set_state(DriverStates.day)
 
