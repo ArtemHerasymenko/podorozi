@@ -1,0 +1,24 @@
+import asyncio
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+
+TOKEN = os.getenv("8740043529:AAH2q-JecDEHpphWJlram1W68P_EcwTbvhk")
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    await message.answer(
+        "🚗 Вітаємо у сервісі локальних попуток!\n\n"
+        "Скоро тут можна буде:\n"
+        "🚗 Створювати поїздки\n"
+        "🔎 Шукати водіїв"
+    )
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
