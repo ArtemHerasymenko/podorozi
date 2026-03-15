@@ -2,20 +2,23 @@ import asyncio
 import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+# =============================
 # TOKEN з Environment Variables (Railway)
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Створюємо бота та FSM
+# =============================
+# Ініціалізація бота та FSM
 bot = Bot(token=TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# ---------- СТАНИ ----------
+# =============================
+# СТАНИ FSM
 class DriverStates(StatesGroup):
     from_city = State()
     from_points = State()
@@ -30,7 +33,8 @@ class PassengerStates(StatesGroup):
     to_city = State()
     time = State()
 
-# ---------- Головне меню ----------
+# =============================
+# Кнопки меню
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("🚗 Я водій")],
@@ -57,13 +61,15 @@ passenger_menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# ---------- /start ----------
+# =============================
+# /start
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("Привіт! Оберіть вашу роль:", reply_markup=role_menu)
 
-# ---------- Вибір ролі ----------
+# =============================
+# Вибір ролі та головне меню
 @dp.message()
 async def role_choice(message: types.Message, state: FSMContext):
     text = message.text
@@ -84,7 +90,8 @@ async def role_choice(message: types.Message, state: FSMContext):
     else:
         await message.answer("Будь ласка, оберіть дію з меню!")
 
-# ---------- FSM для водія ----------
+# =============================
+# FSM для водія
 @dp.message(DriverStates.from_city)
 async def driver_from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
@@ -136,7 +143,8 @@ async def driver_seats(message: types.Message, state: FSMContext):
     )
     await state.clear()
 
-# ---------- FSM для пасажира ----------
+# =============================
+# FSM для пасажира
 @dp.message(PassengerStates.from_city)
 async def passenger_from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
@@ -162,7 +170,8 @@ async def passenger_time(message: types.Message, state: FSMContext):
     )
     await state.clear()
 
-# ---------- запуск бота ----------
+# =============================
+# Запуск бота
 async def main():
     await dp.start_polling(bot)
 
