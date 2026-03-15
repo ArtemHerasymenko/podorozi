@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -24,6 +25,7 @@ class DriverStates(StatesGroup):
     from_points = State()
     to_city = State()
     to_points = State()
+    day = State()  # новий стан для дня
     time = State()
     price = State()
     seats = State()
@@ -34,7 +36,7 @@ class PassengerStates(StatesGroup):
     time = State()
 
 # =============================
-# Кнопки меню
+# Меню кнопок
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Я водій")],
@@ -62,6 +64,21 @@ passenger_menu = ReplyKeyboardMarkup(
 )
 
 # =============================
+# Кнопки для вибору дня
+def day_menu():
+    today = datetime.now()
+    tomorrow = today + timedelta(days=1)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=f"Сьогодні ({today.strftime('%A')})")],
+            [KeyboardButton(text=f"Завтра ({tomorrow.strftime('%A')})")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    return keyboard
+
+# =============================
 # /start
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
@@ -69,7 +86,7 @@ async def start(message: types.Message, state: FSMContext):
     await message.answer("Привіт! Оберіть вашу роль:", reply_markup=role_menu)
 
 # =============================
-# Обробка кнопок (lambda-фільтри замість Text)
+# Обробка кнопок (lambda-фільтри)
 @dp.message(lambda message: message.text == "🚗 Я водій")
 async def choose_driver(message: types.Message):
     await message.answer("Ви обрали роль водія", reply_markup=driver_menu)
@@ -116,6 +133,13 @@ async def driver_to_city(message: types.Message, state: FSMContext):
 @dp.message(DriverStates.to_points)
 async def driver_to_points(message: types.Message, state: FSMContext):
     await state.update_data(to_points=message.text)
+    # запит на день поїздки
+    await message.answer("Оберіть день поїздки:", reply_markup=day_menu())
+    await state.set_state(DriverStates.day)
+
+@dp.message(DriverStates.day)
+async def driver_day(message: types.Message, state: FSMContext):
+    await state.update_data(day=message.text)
     await message.answer("Вкажіть час виїзду (наприклад 17:30):")
     await state.set_state(DriverStates.time)
 
@@ -139,6 +163,7 @@ async def driver_seats(message: types.Message, state: FSMContext):
         f"Поїздка створена!\n\n"
         f"{data['from_city']} → {data['to_city']}\n"
         f"Маршрут: {data['from_points']} → {data['to_points']}\n"
+        f"День: {data['day']}\n"
         f"Час: {data['time']}\n"
         f"Ціна: {data['price']}\n"
         f"Місця: {data['seats']}",
