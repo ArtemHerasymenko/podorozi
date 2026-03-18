@@ -1,4 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from database import get_cities
 
 def cities_keyboard():
     cities = get_cities() 
