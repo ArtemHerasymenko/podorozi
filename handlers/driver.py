@@ -6,7 +6,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import update_booking_status
+from database import update_booking_status, get_passenger_id
 
 
 router = Router()
@@ -93,15 +93,28 @@ async def seats(message: types.Message, state: FSMContext):
 
 # Обробка підтвердження броні
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
-async def confirm_booking(callback):
+async def confirm_booking(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
     update_booking_status(booking_id, "confirmed")
     await callback.answer("✅ Бронь підтверджена")
     await callback.message.edit_reply_markup()  # прибираємо кнопки
 
+    passenger_id = get_passenger_id(booking_id)
+    await bot.send_message(
+        passenger_id,
+        "✅ Вашу бронь підтвердив водій! Поїздка гарантована."
+    )
+
 @router.callback_query(lambda c: c.data.startswith("reject_booking:"))
-async def reject_booking(callback):
+async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
     update_booking_status(booking_id, "rejected")
     await callback.answer("❌ Бронь відхилена")
     await callback.message.edit_reply_markup()  # прибираємо кнопки
+
+    passenger_id = get_passenger_id(booking_id)
+    await bot.send_message(
+        passenger_id,
+        "❌ Вибачте, водій відмовив у бронюванні поїздки."
+    )
+
