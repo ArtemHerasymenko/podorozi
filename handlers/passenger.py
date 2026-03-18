@@ -84,7 +84,7 @@ async def book_trip_callback(callback: types.CallbackQuery):
 
     success = book_trip(trip_id)
 
-    if result:
+    if success:
         await callback.answer("✅ Поїздка заброньована!")
         await callback.message.edit_reply_markup()  # прибираємо кнопку
     else:
