@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips, book_trip
+from database import search_trips, book_trip, get_driver_id
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -82,6 +82,7 @@ async def search(message: types.Message, state: FSMContext):
 async def book_trip_callback(callback: types.CallbackQuery):
     trip_id = int(callback.data.split(":")[1])
     passenger_id = callback.from_user.id 
+    passenger_name = callback.from_user.full_name
 
     success = book_trip(trip_id, passenger_id)
 
@@ -90,3 +91,18 @@ async def book_trip_callback(callback: types.CallbackQuery):
         await callback.message.edit_reply_markup()  # прибираємо кнопку
     else:
         await callback.answer("❌ Місць більше немає", show_alert=True)
+
+     # Отримуємо id водія з поїздки
+    driver_id = get_driver_id(trip_id)
+
+    # Текст для водія
+    text = (
+        f"🚨 Пасажир {passenger_name} хоче поїхати з пункту "
+        f"A → B в {trip_id}"  # тут можна підставити час/місто з бази
+    )
+
+    await bot.send_message(
+        driver_id,
+        text,
+        reply_markup=booking_confirmation_keyboard(booking_id)
+    )

@@ -41,6 +41,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
     trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'pending',
     passenger_id BIGINT NOT NULL,  -- Telegram user id
     booked_at TIMESTAMP DEFAULT NOW()
 );
@@ -85,3 +86,15 @@ def book_trip(trip_id: int, passenger_id: int) -> bool:
     conn.commit()
 
     return True
+
+def update_booking_status(booking_id: int, status: str):
+    cursor.execute("""
+        UPDATE bookings
+        SET status = %s
+        WHERE id = %s
+    """, (status, booking_id))
+    conn.commit()
+
+def get_driver_id(trip_id: int) -> int:
+    cursor.execute("SELECT driver_id FROM trips WHERE id = %s", (trip_id,))
+    return cursor.fetchone()[0]
