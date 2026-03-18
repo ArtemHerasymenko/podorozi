@@ -44,21 +44,6 @@ async def to_city(message: types.Message, state: FSMContext):
     await message.answer("Час:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 
-@router.message(PassengerStates.time)
-async def search(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    trips = search_trips(data["from_city"], data["to_city"])
-
-    if trips:
-        text = ""
-        for t in trips:
-            text += f"{t[2]} → {t[4]} | {t[6]} | {t[7]}\n"
-    else:
-        text = "Нічого не знайдено"
-
-    await message.answer(text)
-    await state.clear()
-
 def trip_booking_keyboard(trip_id: int):
     """
     Створює клавіатуру для поїздки з кнопкою 'Забронювати'
