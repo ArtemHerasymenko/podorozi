@@ -1,5 +1,6 @@
 import psycopg2
 from config import DATABASE_URL
+from data.cities import CITIES
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
@@ -18,6 +19,23 @@ CREATE TABLE IF NOT EXISTS trips (
     seats TEXT
 )
 """)
+conn.commit()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS cities (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+)
+""")
+conn.commit()
+
+for city in CITIES:
+    cursor.execute("""
+        INSERT INTO cities (name)
+        VALUES (%s)
+        ON CONFLICT (name) DO NOTHING
+    """, (city,))
+
 conn.commit()
 
 def save_trip(driver_id, data):
@@ -43,3 +61,8 @@ def search_trips(from_city, to_city):
         WHERE from_city ILIKE %s AND to_city ILIKE %s
     """, (f"%{from_city}%", f"%{to_city}%"))
     return cursor.fetchall()
+
+def get_cities():
+    cursor.execute("SELECT name FROM cities ORDER BY name")
+    rows = cursor.fetchall()
+    return [r[0] for r in rows]
