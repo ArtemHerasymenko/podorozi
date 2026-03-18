@@ -84,8 +84,9 @@ def book_trip(trip_id: int, passenger_id: int) -> bool:
         VALUES (%s, %s)
     """, (trip_id, passenger_id))
     conn.commit()
+    booking_id = cursor.fetchone()[0]
 
-    return True
+    return True, booking_id
 
 def update_booking_status(booking_id: int, status: str):
     cursor.execute("""

@@ -99,7 +99,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
     passenger_id = callback.from_user.id 
     passenger_name = callback.from_user.full_name
 
-    success = book_trip(trip_id, passenger_id)
+    success, booking_id = book_trip(trip_id, passenger_id)
 
     if success:
         await callback.answer("✅ Поїздка заброньована!")
