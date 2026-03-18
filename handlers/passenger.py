@@ -82,15 +82,7 @@ async def search(message: types.Message, state: FSMContext):
 async def book_trip_callback(callback: types.CallbackQuery):
     trip_id = int(callback.data.split(":")[1])
 
-    # Тут можна додати логіку: зменшити місця, повідомити водія тощо
-    cursor.execute("""
-        UPDATE trips
-        SET seats = seats::int - 1
-        WHERE id = %s AND seats::int > 0
-        RETURNING seats
-    """, (trip_id,))
-    conn.commit()
-    result = cursor.fetchone()
+    success = book_trip(trip_id)
 
     if result:
         await callback.answer("✅ Поїздка заброньована!")

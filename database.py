@@ -66,3 +66,18 @@ def get_cities():
     cursor.execute("SELECT name FROM cities ORDER BY name")
     rows = cursor.fetchall()
     return [r[0] for r in rows]
+
+def book_trip(trip_id: int) -> bool:
+    """
+    Зменшує кількість місць на 1, якщо є доступні.
+    Повертає True, якщо бронювання успішне, False якщо місць немає.
+    """
+    cursor.execute("""
+        UPDATE trips
+        SET seats = seats::int - 1
+        WHERE id = %s AND seats::int > 0
+        RETURNING seats
+    """, (trip_id,))
+    conn.commit()
+    result = cursor.fetchone()
+    return bool(result)  # True, якщо оновлення пройшло
