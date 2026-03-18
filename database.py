@@ -35,7 +35,16 @@ for city in CITIES:
         VALUES (%s)
         ON CONFLICT (name) DO NOTHING
     """, (city,))
+conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS bookings (
+    id SERIAL PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    passenger_id BIGINT NOT NULL,  -- Telegram user id
+    booked_at TIMESTAMP DEFAULT NOW()
+);
+""")
 conn.commit()
 
 def save_trip(driver_id, data):
@@ -68,16 +77,11 @@ def get_cities():
     return [r[0] for r in rows]
 
 def book_trip(trip_id: int) -> bool:
-    """
-    Зменшує кількість місць на 1, якщо є доступні.
-    Повертає True, якщо бронювання успішне, False якщо місць немає.
-    """
+
     cursor.execute("""
-        UPDATE trips
-        SET seats = seats::int - 1
-        WHERE id = %s AND seats::int > 0
-        RETURNING seats
-    """, (trip_id,))
+        INSERT INTO bookings (trip_id, passenger_id)
+        VALUES (%s, %s)
+    """, (trip_id, passenger_id))
     conn.commit()
-    result = cursor.fetchone()
-    return bool(result)  # True, якщо оновлення пройшло
+
+    return True
