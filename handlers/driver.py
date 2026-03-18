@@ -84,5 +84,5 @@ async def seats(message: types.Message, state: FSMContext):
 
     save_trip(message.from_user.id, data)
 
-    await message.answer("Поїздка збережена ✅")
+    await message.answer("Поїздка збережена ✅", reply_markup=driver_menu_kb)
     await state.clear()
