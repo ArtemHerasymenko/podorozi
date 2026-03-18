@@ -80,8 +80,9 @@ def get_cities():
 def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     cursor.execute("""
-        INSERT INTO bookings (trip_id, passenger_id)
-        VALUES (%s, %s)
+        INSERT INTO bookings (trip_id, passenger_id, status)
+        VALUES (%s, %s, 'pending')
+        RETURNING id
     """, (trip_id, passenger_id))
     conn.commit()
     booking_id = cursor.fetchone()[0]
