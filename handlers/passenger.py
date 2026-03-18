@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips, book_trip, get_driver_id, booking_confirmation_keyboard
+from database import search_trips, book_trip, get_driver_id
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -78,6 +78,20 @@ async def search(message: types.Message, state: FSMContext):
         await message.answer(text, reply_markup=trip_booking_keyboard(t[0]))
 
     await state.clear()
+
+def booking_confirmation_keyboard(booking_id: int):
+    """
+    Кнопки для водія: підтвердити або відмовити бронь
+    """
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Підтвердити", callback_data=f"confirm_booking:{booking_id}"),
+                InlineKeyboardButton(text="❌ Відмовити", callback_data=f"reject_booking:{booking_id}")
+            ]
+        ]
+    )
+    return keyboard
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
 async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):

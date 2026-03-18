@@ -90,20 +90,6 @@ async def seats(message: types.Message, state: FSMContext):
     await message.answer("Поїздка збережена ✅", reply_markup=driver_menu_kb)
     await state.clear()
 
-# Confirm/decline booking
-def booking_confirmation_keyboard(booking_id: int):
-    """
-    Кнопки для водія: підтвердити або відмовити бронь
-    """
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Підтвердити", callback_data=f"confirm_booking:{booking_id}"),
-                InlineKeyboardButton(text="❌ Відмовити", callback_data=f"reject_booking:{booking_id}")
-            ]
-        ]
-    )
-    return keyboard
 
 # Обробка підтвердження броні
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
