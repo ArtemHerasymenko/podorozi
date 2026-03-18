@@ -34,7 +34,8 @@ async def create_trip(message: types.Message, state: FSMContext):
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
-    await message.answer("Точки маршруту:")
+    await message.answer("Введіть точки маршруту через кому:" , 
+        reply_markup=ReplyKeyboardRemove())
     await state.set_state(DriverStates.from_points)
 
 @router.message(DriverStates.from_points)
