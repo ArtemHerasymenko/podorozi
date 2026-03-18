@@ -81,8 +81,9 @@ async def search(message: types.Message, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
 async def book_trip_callback(callback: types.CallbackQuery):
     trip_id = int(callback.data.split(":")[1])
+    passenger_id = callback.from_user.id 
 
-    success = book_trip(trip_id)
+    success = book_trip(trip_id, passenger_id)
 
     if success:
         await callback.answer("✅ Поїздка заброньована!")

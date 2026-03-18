@@ -76,7 +76,7 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
-def book_trip(trip_id: int) -> bool:
+def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     cursor.execute("""
         INSERT INTO bookings (trip_id, passenger_id)
