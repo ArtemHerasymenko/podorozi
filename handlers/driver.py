@@ -4,6 +4,7 @@ from states.driver_states import DriverStates
 from database import save_trip
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
+from aiogram.types import ReplyKeyboardRemove
 
 router = Router()
 
@@ -43,13 +44,13 @@ async def from_city(message: types.Message, state: FSMContext):
 @router.message(DriverStates.from_points)
 async def from_points(message: types.Message, state: FSMContext):
     await state.update_data(from_points=message.text)
-    await message.answer("Місто прибуття:")
+    await message.answer("Місто прибуття:",reply_markup=cities_keyboard())
     await state.set_state(DriverStates.to_city)
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=message.text)
-    await message.answer("Точки прибуття:")
+    await message.answer("Точки прибуття:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(DriverStates.to_points)
 
 @router.message(DriverStates.to_points)
