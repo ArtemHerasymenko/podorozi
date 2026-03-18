@@ -6,6 +6,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot
 
 router = Router()
 
@@ -79,7 +80,7 @@ async def search(message: types.Message, state: FSMContext):
     await state.clear()
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
-async def book_trip_callback(callback: types.CallbackQuery):
+async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
     trip_id = int(callback.data.split(":")[1])
     passenger_id = callback.from_user.id 
     passenger_name = callback.from_user.full_name
