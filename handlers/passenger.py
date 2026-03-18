@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips
+from database import search_trips, book_trip
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
