@@ -4,6 +4,7 @@ from states.passenger_states import PassengerStates
 from database import search_trips
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
+from aiogram.types import ReplyKeyboardRemove
 
 router = Router()
 
@@ -39,7 +40,7 @@ async def from_city(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=message.text)
-    await message.answer("Час:")
+    await message.answer("Час:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 
 @router.message(PassengerStates.time)
