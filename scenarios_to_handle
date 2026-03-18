@@ -1,0 +1,16 @@
+IF there is 1 seat, 2 passenger requesed, driver approves first, then approves second
+we should notify both that there is no seats.
+
+WHen booking is created in pending, do we decrease seat count?
+If YES, no more bookings but the driver may not respond to a while, and then decline because 
+rider offers too low price, but if we were not dereasing, during this time maybe
+another rider would have sent a request as well, so driver wold not loose him.
+If NO, there can be too 5 requests for 1 seat, and driver does not respond for many
+hours, then acepts 1 and declines others, so rides would waste their time. The could
+ask another driver.
+Probably YES, we should be on the rider side?
+
+If 5 booking on 1 seat and driver accepts only 1, we should let others know that there are no seat, even though the driver did no explicitly decline.
+
+What if rider creates a booking but driver does not accept for a while?
+Can rider create multiple booking? Then if  driver A accepts, driver B should get an error then accepting him later?

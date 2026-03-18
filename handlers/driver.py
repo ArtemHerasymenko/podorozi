@@ -7,6 +7,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import update_booking_status, get_passenger_id
+from aiogram import Bot
 
 
 router = Router()
