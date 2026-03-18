@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
 from database import save_trip
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from keyboards.city_kb import cities_keyboard
 
 router = Router()
 
@@ -24,7 +25,10 @@ async def driver_menu(message: types.Message):
 
 @router.message(lambda m: m.text == "🚗 Створити поїздку")
 async def create_trip(message: types.Message, state: FSMContext):
-    await message.answer("Місто відправлення:")
+    await message.answer(
+    "Оберіть місто відправлення:",
+    reply_markup=cities_keyboard()
+    )
     await state.set_state(DriverStates.from_city)
 
 @router.message(DriverStates.from_city)

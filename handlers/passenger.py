@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
 from database import search_trips
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from keyboards.city_kb import cities_keyboard
 
 router = Router()
 
@@ -23,7 +24,10 @@ async def passenger_menu(message: types.Message):
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
-    await message.answer("Місто відправлення:")
+    await message.answer(
+    "Оберіть місто відправлення:",
+    reply_markup=cities_keyboard()
+)
     await state.set_state(PassengerStates.from_city)
 
 @router.message(PassengerStates.from_city)
