@@ -5,6 +5,7 @@ from database import search_trips
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
@@ -57,3 +58,58 @@ async def search(message: types.Message, state: FSMContext):
 
     await message.answer(text)
     await state.clear()
+
+def trip_booking_keyboard(trip_id: int):
+    """
+    Створює клавіатуру для поїздки з кнопкою 'Забронювати'
+    trip_id — унікальний id поїздки з бази
+    """
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton(
+        text="Забронювати ✅",
+        callback_data=f"book_trip:{trip_id}"
+    ))
+    return keyboard
+
+@router.message(PassengerStates.time)
+async def search(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trips = search_trips(data["from_city"], data["to_city"])
+
+    if not trips:
+        await message.answer("Нічого не знайдено")
+        await state.clear()
+        return
+
+    # Для кожної поїздки відправляємо окреме повідомлення з кнопкою
+    for t in trips:
+        text = (
+            f"🚗 {t[2]}({t[3]}) → {t[4]}({t[5]})\n"
+            f"День: {t[6]}\n"
+            f"Час: {t[7]}\n"
+            f"Ціна: {t[8]}\n"
+            f"Місця: {t[9]}"
+        )
+        await message.answer(text, reply_markup=trip_booking_keyboard(t[0]))
+
+    await state.clear()
+
+@router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
+async def book_trip_callback(callback: types.CallbackQuery):
+    trip_id = int(callback.data.split(":")[1])
+
+    # Тут можна додати логіку: зменшити місця, повідомити водія тощо
+    cursor.execute("""
+        UPDATE trips
+        SET seats = seats::int - 1
+        WHERE id = %s AND seats::int > 0
+        RETURNING seats
+    """, (trip_id,))
+    conn.commit()
+    result = cursor.fetchone()
+
+    if result:
+        await callback.answer("✅ Поїздка заброньована!")
+        await callback.message.edit_reply_markup()  # прибираємо кнопку
+    else:
+        await callback.answer("❌ Місць більше немає", show_alert=True)
