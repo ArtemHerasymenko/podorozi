@@ -45,15 +45,14 @@ async def to_city(message: types.Message, state: FSMContext):
     await state.set_state(PassengerStates.time)
 
 def trip_booking_keyboard(trip_id: int):
-    """
-    Створює клавіатуру для поїздки з кнопкою 'Забронювати'
-    trip_id — унікальний id поїздки з бази
-    """
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton(
-        text="Забронювати ✅",
-        callback_data=f"book_trip:{trip_id}"
-    ))
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Забронювати ✅",
+                callback_data=f"book_trip:{trip_id}"
+            )]
+        ]
+    )
     return keyboard
 
 @router.message(PassengerStates.time)
