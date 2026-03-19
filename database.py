@@ -113,7 +113,7 @@ def search_trips_ids(from_city, to_city):
         SELECT id
         FROM trips
         WHERE from_city = %s AND to_city = %s
-        ORDER BY date, time
+        # ORDER BY date, time
     """, (from_city, to_city))
 
     return [row[0] for row in cursor.fetchall()]
