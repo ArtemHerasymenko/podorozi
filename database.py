@@ -158,7 +158,9 @@ def get_current_trip_from_search_list(user_id: int):
 def increase_trip_search_list_index(user_id: int):
     cursor.execute("""
         UPDATE trip_search_lists
-        SET current_index = current_index + 1
+        SET current_index = (
+            (current_index + 1) % array_length(trip_ids, 1)
+        )
         WHERE user_id = %s
     """, (user_id,))
     conn.commit()
@@ -167,7 +169,10 @@ def increase_trip_search_list_index(user_id: int):
 def decrease_trip_search_list_index(user_id: int):
     cursor.execute("""
         UPDATE trip_search_lists
-        SET current_index = GREATEST(current_index - 1, 0)
+        SET current_index = (
+            (current_index - 1 + array_length(trip_ids, 1)) 
+            % array_length(trip_ids, 1)
+        )
         WHERE user_id = %s
     """, (user_id,))
     conn.commit()
