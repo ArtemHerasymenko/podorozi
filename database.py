@@ -48,6 +48,16 @@ CREATE TABLE IF NOT EXISTS bookings (
 """)
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE trip_search_lists (
+    user_id BIGINT PRIMARY KEY,
+    trip_ids INT[],          -- список знайдених поїздок
+    current_index INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+""")
+conn.commit()
+
 def save_trip(driver_id, data):
     cursor.execute("""
         INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, day, time, price, seats)
@@ -64,13 +74,6 @@ def save_trip(driver_id, data):
         data["seats"]
     ))
     conn.commit()
-
-def search_trips(from_city, to_city):
-    cursor.execute("""
-        SELECT * FROM trips
-        WHERE from_city ILIKE %s AND to_city ILIKE %s
-    """, (f"%{from_city}%", f"%{to_city}%"))
-    return cursor.fetchall()
 
 def get_cities():
     cursor.execute("SELECT name FROM cities ORDER BY name")
@@ -104,3 +107,68 @@ def get_driver_id(trip_id: int) -> int:
 def get_passenger_id(booking_id: int) -> int:
     cursor.execute("SELECT passenger_id FROM bookings WHERE id = %s", (booking_id,))
     return cursor.fetchone()[0]
+
+def search_trips_ids(from_city, to_city):
+    cursor.execute("""
+        SELECT id
+        FROM trips
+        WHERE from_city = %s AND to_city = %s
+        ORDER BY date, time
+    """, (from_city, to_city))
+
+    return [row[0] for row in cursor.fetchall()]
+
+def create_trip_search_list(user_id: int, trips: list[int]):
+    cursor.execute("""
+        INSERT INTO trip_search_lists (user_id, trip_ids, current_index, created_at)
+        VALUES (%s, %s, 0, NOW())
+        ON CONFLICT (user_id) DO UPDATE
+        SET trip_ids = EXCLUDED.trip_ids,
+            current_index = 0,
+            created_at = NOW()
+    """, (user_id, trips))
+    conn.commit()
+
+def get_current_trip_from_search_list(user_id: int):
+    cursor.execute("""
+        SELECT trip_ids, current_index
+        FROM trip_search_lists
+        WHERE user_id = %s
+    """, (user_id,))
+    
+    result = cursor.fetchone()
+    if not result:
+        return None
+
+    trip_ids, index = result
+
+    if index >= len(trip_ids):
+        return None
+
+    trip_id = trip_ids[index]
+
+    cursor.execute("""
+        SELECT id, from_city, to_city, date, time, price, seats
+        FROM trips
+        WHERE id = %s
+    """, (trip_id,))
+    
+    return cursor.fetchone()
+
+def increase_trip_search_list_index(user_id: int):
+    cursor.execute("""
+        UPDATE trip_search_lists
+        SET current_index = current_index + 1
+        WHERE user_id = %s
+    """, (user_id,))
+    conn.commit()
+
+
+def decrease_trip_search_list_index(user_id: int):
+    cursor.execute("""
+        UPDATE trip_search_lists
+        SET current_index = GREATEST(current_index - 1, 0)
+        WHERE user_id = %s
+    """, (user_id,))
+    conn.commit()
+

@@ -1,7 +1,8 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips, book_trip, get_driver_id
+from database import search_trips_ids, book_trip, get_driver_id
+from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -56,28 +57,78 @@ def trip_booking_keyboard(trip_id: int):
     )
     return keyboard
 
+def trip_keyboard(trip_id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️", callback_data="prev"),
+            InlineKeyboardButton(text="➡️", callback_data="next"),
+        ],
+        [
+            InlineKeyboardButton(
+                text="Забронювати ✅",
+                callback_data=f"book_trip:{trip_id}"
+            )
+        ]
+    ])
+
+def format_trip(trip):
+    return (
+        f"🚗 {trip[1]} → {trip[2]}\n"
+        f"📅 {trip[3]}\n"
+        f"⏰ {trip[4]}\n"
+        f"💰 {trip[5]} грн\n"
+        f"👥 {trip[6]} місць"
+    )
+
 @router.message(PassengerStates.time)
 async def search(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    trips = search_trips(data["from_city"], data["to_city"])
+    trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
-    if not trips:
+    if not trips_ids:
         await message.answer("Нічого не знайдено")
         await state.clear()
         return
 
-    # Для кожної поїздки відправляємо окреме повідомлення з кнопкою
-    for t in trips:
-        text = (
-            f"🚗 {t[2]}({t[3]}) → {t[4]}({t[5]})\n"
-            f"День: {t[6]}\n"
-            f"Час: {t[7]}\n"
-            f"Ціна: {t[8]}\n"
-            f"Місця: {t[9]}"
-        )
-        await message.answer(text, reply_markup=trip_booking_keyboard(t[0]))
+    create_trip_search_list(message.from_user.id, [t for t in trips_ids])
+    trip = get_current_trip_from_search_list(message.from_user.id)
 
-    await state.clear()
+    await message.answer(
+        format_trip(trip),
+        reply_markup=trip_keyboard(trip[0])
+    )
+
+@router.callback_query(lambda c: c.data == "next")
+async def next_handler(callback: types.CallbackQuery, bot: Bot):
+    user_id = callback.from_user.id
+
+    increase_trip_search_list_index(user_id)
+    trip = get_current_trip_from_search_list(user_id)
+
+    if not trip:
+        await callback.answer("❌ Це остання поїздка", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        format_trip(trip),
+        reply_markup=trip_keyboard(trip[0])
+    )
+
+    await callback.answer()
+
+@router.callback_query(lambda c: c.data == "prev")
+async def prev_handler(callback: types.CallbackQuery, bot: Bot):
+    user_id = callback.from_user.id
+
+    decrease_trip_search_list_index(user_id)
+    trip = get_current_trip_from_search_list(user_id)
+
+    await callback.message.edit_text(
+        format_trip(trip),
+        reply_markup=trip_keyboard(trip[0])
+    )
+
+    await callback.answer()
 
 def booking_confirmation_keyboard(booking_id: int):
     """

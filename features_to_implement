@@ -1,0 +1,23 @@
+A → B в {trip_id} - справжні назви
+
+Додати нотатки пасажира при бронюванні (буду біля куліничів)
+І нотатки водія при погодженні або відхиленні (чекайте в 10:10, сюди на заїжатиму)
+Додати пояснюючий текст для нотаток
+Пасажиру: вкажіть де чекатимете водія, або інші прохання, буду з собчкою, хочк за 50грн
+Водієві: якщо час для цього пасажира інший, вкажіть його.
+
+implement "my rides" info for both.
+
+send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
+
+Show only 3 rides at the time?
+Have buttons like 'rides 1-3', 'rides 4-6', ...?
+or 'there are 23 more rides available, show 3 more?
+Краще показувати одеу похзду з кнопкою забронбвати, наступна, попередня, І
+і показувати лічильник поїздок
+
+if a rider book an old ride or just. without seat - tell him to search again for available ones?
+
+Час від часу передтвлятися букінг таблицю і нагадувати водіям?
+
+переводити в особистий чат коли щось не ясно
