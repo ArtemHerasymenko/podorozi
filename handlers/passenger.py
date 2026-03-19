@@ -71,8 +71,10 @@ def trip_keyboard(trip_id):
         ]
     ])
 
-def format_trip(trip):
+def format_trip(trip, index, total_cnt):
+    position_text = f"Номер {index + 1}/{total_cnt}"
     return (
+        f"📍 {position_text}\n\n"
         f"🚗 {trip[1]} → {trip[2]}\n"
         f"📅 {trip[3]}\n"
         f"⏰ {trip[4]}\n"
@@ -91,10 +93,10 @@ async def search(message: types.Message, state: FSMContext):
         return
 
     create_trip_search_list(message.from_user.id, [t for t in trips_ids])
-    trip = get_current_trip_from_search_list(message.from_user.id)
+    trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
     await message.answer(
-        format_trip(trip),
+        format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
     )
 
@@ -103,14 +105,14 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
     increase_trip_search_list_index(user_id)
-    trip = get_current_trip_from_search_list(user_id)
+    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
 
     if not trip:
         await callback.answer("❌ Це остання поїздка", show_alert=True)
         return
 
     await callback.message.edit_text(
-        format_trip(trip),
+        format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
     )
 
@@ -121,10 +123,10 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
     decrease_trip_search_list_index(user_id)
-    trip = get_current_trip_from_search_list(user_id)
+    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
 
     await callback.message.edit_text(
-        format_trip(trip),
+        format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
     )
 

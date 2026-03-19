@@ -153,7 +153,7 @@ def get_current_trip_from_search_list(user_id: int):
         WHERE id = %s
     """, (trip_id,))
     
-    return cursor.fetchone()
+    return cursor.fetchone(), index, len(trip_ids)
 
 def increase_trip_search_list_index(user_id: int):
     cursor.execute("""
