@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 conn.commit()
 
 cursor.execute("""
-CREATE TABLE trip_search_lists (
+CREATE TABLE IF NOT EXISTS trip_search_lists (
     user_id BIGINT PRIMARY KEY,
     trip_ids INT[],          -- список знайдених поїздок
     current_index INT DEFAULT 0,
