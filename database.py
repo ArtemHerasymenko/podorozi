@@ -113,7 +113,7 @@ def search_trips_ids(from_city, to_city):
         SELECT id
         FROM trips
         WHERE from_city = %s AND to_city = %s
-        -- ORDER BY date, time
+        ORDER BY day, time
     """, (from_city, to_city))
 
     return [row[0] for row in cursor.fetchall()]
@@ -148,7 +148,7 @@ def get_current_trip_from_search_list(user_id: int):
     trip_id = trip_ids[index]
 
     cursor.execute("""
-        SELECT id, from_city, to_city, date, time, price, seats
+        SELECT id, from_city, to_city, day, time, price, seats
         FROM trips
         WHERE id = %s
     """, (trip_id,))
