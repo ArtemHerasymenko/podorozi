@@ -160,8 +160,8 @@ def increase_trip_search_list_index(user_id: int):
         UPDATE trip_search_lists
         SET current_index = (
             CASE 
-                WHEN COALESCE(cardinality(trip_ids), 0) = 0 THEN 0
-                ELSE (current_index + 1) % cardinality(trip_ids)
+                WHEN current_index = cardinality(trip_ids) - 1 THEN 0
+                ELSE current_index + 1
             END
         )
         WHERE user_id = %s
@@ -174,9 +174,8 @@ def decrease_trip_search_list_index(user_id: int):
         UPDATE trip_search_lists
         SET current_index = (
             CASE 
-                WHEN COALESCE(cardinality(trip_ids), 0) = 0 THEN 0
-                ELSE (current_index - 1 + cardinality(trip_ids)) 
-                     % cardinality(trip_ids)
+                WHEN current_index = 0 THEN cardinality(trip_ids) - 1
+                ELSE current_index - 1
             END
         )
         WHERE user_id = %s
