@@ -159,7 +159,10 @@ def increase_trip_search_list_index(user_id: int):
     cursor.execute("""
         UPDATE trip_search_lists
         SET current_index = (
-            (current_index + 1) % array_length(trip_ids, 1)
+            CASE 
+                WHEN COALESCE(cardinality(trip_ids), 0) = 0 THEN 0
+                ELSE (current_index + 1) % cardinality(trip_ids)
+            END
         )
         WHERE user_id = %s
     """, (user_id,))
@@ -170,8 +173,11 @@ def decrease_trip_search_list_index(user_id: int):
     cursor.execute("""
         UPDATE trip_search_lists
         SET current_index = (
-            (current_index - 1 + array_length(trip_ids, 1)) 
-            % array_length(trip_ids, 1)
+            CASE 
+                WHEN COALESCE(cardinality(trip_ids), 0) = 0 THEN 0
+                ELSE (current_index - 1 + cardinality(trip_ids)) 
+                     % cardinality(trip_ids)
+            END
         )
         WHERE user_id = %s
     """, (user_id,))
