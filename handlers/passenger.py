@@ -10,7 +10,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
-import locale
+from handlers.common import generate_quick_days, quick_day_kb, validate_time
 
 router = Router()
 
@@ -21,50 +21,6 @@ passenger_menu_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-
-def generate_quick_days():
-    # Hardcoded Ukrainian translations
-    uk_days = {
-        'Monday': 'Понеділок',
-        'Tuesday': 'Вівторок',
-        'Wednesday': 'Середа',
-        'Thursday': 'Четвер',
-        'Friday': 'Пʼятниця',
-        'Saturday': 'Субота',
-        'Sunday': 'Неділя'
-    }
-
-    uk_months = {
-        'January': 'січня',
-        'February': 'лютого',
-        'March': 'березня',
-        'April': 'квітня',
-        'May': 'травня',
-        'June': 'червня',
-        'July': 'липня',
-        'August': 'серпня',
-        'September': 'вересня',
-        'October': 'жовтня',
-        'November': 'листопада',
-        'December': 'грудня'
-    }
-
-    now = datetime.datetime.now()
-    quick_days = []
-    for d in range(2):
-        day = now + datetime.timedelta(days=d)
-        english_day = day.strftime("%A")
-        english_month = day.strftime("%B")
-        uk_day = uk_days.get(english_day, english_day)
-        uk_month = uk_months.get(english_month, english_month)
-        label = f"{uk_day}, {day.day} {uk_month}"
-        quick_days.append((label, day.strftime("%Y-%m-%d")))
-    return quick_days
-
-def quick_day_kb():
-    quick_days = generate_quick_days()
-    keyboard = [[KeyboardButton(text=label)] for label, _ in quick_days]
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
 async def passenger_menu(message: types.Message):
@@ -152,14 +108,9 @@ def format_trip(trip, index, total_cnt):
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
 
-    import re
-    if re.match(r'^\d{2}:\d{2}$', time_str):
-        hour, minute = map(int, time_str.split(':'))
-        if not (0 <= hour <= 23 and 0 <= minute <= 59):
-            await message.answer("Неправильний час. Години 00-23, хвилини 00-59:")
-            return
-    else:
-        await message.answer("Неправильний формат часу. Введи в форматі ГГ:ХХ. Наприклад, 14:30:")
+    is_valid, error_msg = validate_time(time_str)
+    if not is_valid:
+        await message.answer(error_msg)
         return
 
     await state.update_data(time=time_str)

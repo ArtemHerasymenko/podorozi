@@ -9,7 +9,8 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import update_booking_status, get_passenger_id
 from aiogram import Bot
-
+import datetime
+from handlers.common import generate_quick_days, quick_day_kb, validate_time
 
 router = Router()
 
@@ -63,18 +64,30 @@ async def to_city(message: types.Message, state: FSMContext):
 @router.message(DriverStates.to_points)
 async def to_points(message: types.Message, state: FSMContext):
     await state.update_data(to_points=message.text)
-    await message.answer("День:")
+    await message.answer("Обери день:", reply_markup=quick_day_kb())
     await state.set_state(DriverStates.day)
 
 @router.message(DriverStates.day)
 async def day(message: types.Message, state: FSMContext):
-    await state.update_data(day=message.text)
+    quick_days = generate_quick_days()
+    day_dict = {label: date_str for label, date_str in quick_days}
+    if message.text not in day_dict:
+        await message.answer("Обери день зі списку.")
+        return
+    await state.update_data(day=day_dict[message.text])
     await message.answer("Час:")
     await state.set_state(DriverStates.time)
 
 @router.message(DriverStates.time)
 async def time(message: types.Message, state: FSMContext):
-    await state.update_data(time=message.text)
+    time_str = message.text
+
+    is_valid, error_msg = validate_time(time_str)
+    if not is_valid:
+        await message.answer(error_msg)
+        return
+
+    await state.update_data(time=time_str)
     await message.answer("Ціна:")
     await state.set_state(DriverStates.price)
 
