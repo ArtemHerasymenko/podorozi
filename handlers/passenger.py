@@ -21,17 +21,6 @@ passenger_menu_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-def generate_quick_times():
-    now = datetime.datetime.now()
-    next_30 = (now + datetime.timedelta(minutes=30)).replace(second=0, microsecond=0)
-    quick_times = []
-    quick_times.append(f"{next_30.hour:02d}:{next_30.minute:02d}")
-    # Next hours
-    for h in range(1, 4):
-        next_h = (now + datetime.timedelta(hours=h)).replace(minute=0, second=0, microsecond=0)
-        quick_times.append(f"{next_h.hour:02d}:{next_h.minute:02d}")
-    return quick_times
-
 def generate_quick_days():
     now = datetime.datetime.now()
     quick_days = []
@@ -40,11 +29,6 @@ def generate_quick_days():
         label = day.strftime("%A, %b %d")
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
-
-def quick_time_kb():
-    quick_times = generate_quick_times()
-    keyboard = [[KeyboardButton(text=t)] for t in quick_times]
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 def quick_day_kb():
     quick_days = generate_quick_days()
@@ -94,7 +78,7 @@ async def day_handler(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Обери час, або введи в форматі ГГ:ХХ:", reply_markup=quick_time_kb())
+    await message.answer("Обери час, або введи в форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 
 def trip_booking_keyboard(trip_id: int):
