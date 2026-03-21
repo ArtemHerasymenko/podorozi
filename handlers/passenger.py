@@ -32,9 +32,23 @@ def generate_quick_times():
         quick_times.append(f"{next_h.hour:02d}:{next_h.minute:02d}")
     return quick_times
 
+def generate_quick_days():
+    now = datetime.datetime.now()
+    quick_days = []
+    for d in range(2):
+        day = now + datetime.timedelta(days=d)
+        label = day.strftime("%A, %b %d")
+        quick_days.append((label, day.strftime("%Y-%m-%d")))
+    return quick_days
+
 def quick_time_kb():
     quick_times = generate_quick_times()
     keyboard = [[KeyboardButton(text=t)] for t in quick_times]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+def quick_day_kb():
+    quick_days = generate_quick_days()
+    keyboard = [[KeyboardButton(text=label)] for label, _ in quick_days]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
@@ -69,6 +83,17 @@ async def to_city(message: types.Message, state: FSMContext):
         return
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
+    await message.answer("Обери день:", reply_markup=quick_day_kb())
+    await state.set_state(PassengerStates.day)
+
+@router.message(PassengerStates.day)
+async def day_handler(message: types.Message, state: FSMContext):
+    quick_days = generate_quick_days()
+    day_dict = {label: date_str for label, date_str in quick_days}
+    if message.text not in day_dict:
+        await message.answer("Обери день зі списку.")
+        return
+    await state.update_data(day=day_dict[message.text])
     await message.answer("Обери час, або введи в форматі ГГ:ХХ:", reply_markup=quick_time_kb())
     await state.set_state(PassengerStates.time)
 
