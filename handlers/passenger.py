@@ -23,15 +23,41 @@ passenger_menu_kb = ReplyKeyboardMarkup(
 )
 
 def generate_quick_days():
-    try:
-        locale.setlocale(locale.LC_TIME, 'uk_UA.UTF-8')
-    except locale.Error:
-        pass  # fallback to default
+    # Hardcoded Ukrainian translations
+    uk_days = {
+        'Monday': 'Понеділок',
+        'Tuesday': 'Вівторок',
+        'Wednesday': 'Середа',
+        'Thursday': 'Четвер',
+        'Friday': 'Пʼятниця',
+        'Saturday': 'Субота',
+        'Sunday': 'Неділя'
+    }
+
+    uk_months = {
+        'January': 'січня',
+        'February': 'лютого',
+        'March': 'березня',
+        'April': 'квітня',
+        'May': 'травня',
+        'June': 'червня',
+        'July': 'липня',
+        'August': 'серпня',
+        'September': 'вересня',
+        'October': 'жовтня',
+        'November': 'листопада',
+        'December': 'грудня'
+    }
+
     now = datetime.datetime.now()
     quick_days = []
     for d in range(2):
         day = now + datetime.timedelta(days=d)
-        label = day.strftime("%A, %d %B")
+        english_day = day.strftime("%A")
+        english_month = day.strftime("%B")
+        uk_day = uk_days.get(english_day, english_day)
+        uk_month = uk_months.get(english_month, english_month)
+        label = f"{uk_day}, {day.day} {uk_month}"
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 
