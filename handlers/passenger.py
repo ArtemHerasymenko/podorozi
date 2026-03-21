@@ -10,6 +10,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
+import locale
 
 router = Router()
 
@@ -22,11 +23,15 @@ passenger_menu_kb = ReplyKeyboardMarkup(
 )
 
 def generate_quick_days():
+    try:
+        locale.setlocale(locale.LC_TIME, 'uk_UA.UTF-8')
+    except locale.Error:
+        pass  # fallback to default
     now = datetime.datetime.now()
     quick_days = []
     for d in range(2):
         day = now + datetime.timedelta(days=d)
-        label = day.strftime("%A, %b %d")
+        label = day.strftime("%A, %d %B")
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 
