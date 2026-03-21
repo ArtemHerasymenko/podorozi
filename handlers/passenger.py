@@ -78,7 +78,7 @@ async def day_handler(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Обери час, або введи в форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 
 def trip_booking_keyboard(trip_id: int):
@@ -120,6 +120,16 @@ def format_trip(trip, index, total_cnt):
 @router.message(PassengerStates.time)
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
+
+    import re
+    if re.match(r'^\d{2}:\d{2}$', time_str):
+        hour, minute = map(int, time_str.split(':'))
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            await message.answer("Неправильний час. Години 00-23, хвилини 00-59:")
+            return
+    else:
+        await message.answer("Неправильний формат часу. Введи в форматі ГГ:ХХ. Наприклад, 14:30:")
+        return
 
     await state.update_data(time=time_str)
     data = await state.get_data()
