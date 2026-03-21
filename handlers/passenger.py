@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
 from database import search_trips_ids, book_trip, get_driver_id
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
+from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -30,19 +31,21 @@ async def passenger_menu(message: types.Message):
 async def find_trip(message: types.Message, state: FSMContext):
     await message.answer(
     "Обери місто відправлення зі списку. Не знайшлось? Введи вручну:",
-    reply_markup=cities_keyboard()
+    reply_markup=cities_keyboard(message.from_user.id)
 )
     await state.set_state(PassengerStates.from_city)
 
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
+    increment_city_popularity(message.from_user.id, message.text)
     await message.answer("Місто прибуття:")
     await state.set_state(PassengerStates.to_city)
 
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=message.text)
+    increment_city_popularity(message.from_user.id, message.text)
     await message.answer("Час:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 

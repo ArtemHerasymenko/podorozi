@@ -1,8 +1,11 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from database import get_cities
+from database import get_cities, get_cities_for_user
 
-def cities_keyboard():
-    cities = get_cities() 
+def cities_keyboard(user_id=None):
+    if user_id:
+        cities = get_cities_for_user(user_id)
+    else:
+        cities = get_cities()
     keyboard = []
 
     # робимо по 2 кнопки в ряд

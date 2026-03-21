@@ -2,6 +2,7 @@ from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
 from database import save_trip
+from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -32,13 +33,14 @@ async def driver_menu(message: types.Message):
 async def create_trip(message: types.Message, state: FSMContext):
     await message.answer(
     "Оберіть місто відправлення:",
-    reply_markup=cities_keyboard()
+    reply_markup=cities_keyboard(message.from_user.id)
     )
     await state.set_state(DriverStates.from_city)
 
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
+    increment_city_popularity(message.from_user.id, message.text)
     await message.answer(
         "Введіть точки маршруту через кому:", 
         reply_markup=ReplyKeyboardRemove()
@@ -48,12 +50,13 @@ async def from_city(message: types.Message, state: FSMContext):
 @router.message(DriverStates.from_points)
 async def from_points(message: types.Message, state: FSMContext):
     await state.update_data(from_points=message.text)
-    await message.answer("Місто прибуття:",reply_markup=cities_keyboard())
+    await message.answer("Місто прибуття:",reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(DriverStates.to_city)
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=message.text)
+    increment_city_popularity(message.from_user.id, message.text)
     await message.answer("Точки прибуття:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(DriverStates.to_points)
 

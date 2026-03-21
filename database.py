@@ -58,6 +58,16 @@ CREATE TABLE IF NOT EXISTS trip_search_lists (
 """)
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS city_popularity_per_user (
+    user_id BIGINT NOT NULL,
+    city_name TEXT NOT NULL,
+    counter INT DEFAULT 1,
+    PRIMARY KEY (user_id, city_name)
+);
+""")
+conn.commit()
+
 def save_trip(driver_id, data):
     cursor.execute("""
         INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, day, time, price, seats)
@@ -80,6 +90,16 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
+def get_cities_for_user(user_id: int):
+    cursor.execute("""
+        SELECT c.name, COALESCE(cp.counter, 0) as counter
+        FROM cities c
+        LEFT JOIN city_popularity_per_user cp ON c.name = cp.city_name AND cp.user_id = %s
+        ORDER BY counter DESC, c.name ASC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    return [r[0] for r in rows]
+
 def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     cursor.execute("""
@@ -98,6 +118,15 @@ def update_booking_status(booking_id: int, status: str):
         SET status = %s
         WHERE id = %s
     """, (status, booking_id))
+    conn.commit()
+
+def increment_city_popularity(user_id: int, city_name: str):
+    cursor.execute("""
+        INSERT INTO city_popularity_per_user (user_id, city_name, counter)
+        VALUES (%s, %s, 1)
+        ON CONFLICT (user_id, city_name)
+        DO UPDATE SET counter = city_popularity_per_user.counter + 1
+    """, (user_id, city_name))
     conn.commit()
 
 def get_driver_id(trip_id: int) -> int:
