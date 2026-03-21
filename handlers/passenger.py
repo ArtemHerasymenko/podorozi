@@ -9,6 +9,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
+import datetime
 
 router = Router()
 
@@ -19,6 +20,21 @@ passenger_menu_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+def generate_quick_times():
+    now = datetime.datetime.now()
+    next_30 = (now + datetime.timedelta(minutes=30)).replace(second=0, microsecond=0)
+    quick_times.append(f"{next_30.hour:02d}:{next_30.minute:02d}")
+    # Next hours
+    for h in range(1, 4):
+        next_h = (now + datetime.timedelta(hours=h)).replace(minute=0, second=0, microsecond=0)
+        quick_times.append(f"{next_h.hour:02d}:{next_h.minute:02d}")
+    return quick_times
+
+def quick_time_kb():
+    quick_times = generate_quick_times()
+    keyboard = [quick_times[i:i+1] for i in range(0, len(quick_times), 1)]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
 async def passenger_menu(message: types.Message):
@@ -52,7 +68,7 @@ async def to_city(message: types.Message, state: FSMContext):
         return
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
-    await message.answer("Час:", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Обери час, або введи в форматі ГГ:ХХ:", reply_markup=quick_time_kb())
     await state.set_state(PassengerStates.time)
 
 def trip_booking_keyboard(trip_id: int):
@@ -93,6 +109,9 @@ def format_trip(trip, index, total_cnt):
 
 @router.message(PassengerStates.time)
 async def search(message: types.Message, state: FSMContext):
+    time_str = message.text
+
+    await state.update_data(time=time_str)
     data = await state.get_data()
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
@@ -108,6 +127,7 @@ async def search(message: types.Message, state: FSMContext):
         format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
     )
+    await state.clear()
 
 @router.callback_query(lambda c: c.data == "next")
 async def next_handler(callback: types.CallbackQuery, bot: Bot):
