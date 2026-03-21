@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id
+from database import search_trips_ids, book_trip, get_driver_id, get_trip_details
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -10,6 +10,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
+import zoneinfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time
 
 router = Router()
@@ -68,17 +69,6 @@ async def day_handler(message: types.Message, state: FSMContext):
     await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.time)
 
-def trip_booking_keyboard(trip_id: int):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(
-                text="Забронювати ✅",
-                callback_data=f"book_trip:{trip_id}"
-            )]
-        ]
-    )
-    return keyboard
-
 def trip_keyboard(trip_id):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -95,13 +85,23 @@ def trip_keyboard(trip_id):
 
 def format_trip(trip, index, total_cnt):
     position_text = f"Номер {index + 1}/{total_cnt}"
+    # trip[6] is departure_datetime (timestamptz)
+    dt_utc = trip[6]
+    if dt_utc:
+        local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+        dt_local = dt_utc.astimezone(local_tz)
+        day = dt_local.strftime("%Y-%m-%d")
+        time = dt_local.strftime("%H:%M")
+    else:
+        day = "N/A"
+        time = "N/A"
     return (
         f"📍 {position_text}\n\n"
-        f"🚗 {trip[1]} → {trip[2]}\n"
-        f"📅 {trip[3]}\n"
-        f"⏰ {trip[4]}\n"
-        f"💰 {trip[5]} грн\n"
-        f"👥 {trip[6]} місць"
+        f"🚗 {trip[2]} → {trip[4]}\n"
+        f"📅 {day}\n"
+        f"⏰ {time}\n"
+        f"💰 {trip[7]} грн\n"
+        f"👥 {trip[8]} місць"
     )
 
 @router.message(PassengerStates.time)
@@ -115,6 +115,7 @@ async def search(message: types.Message, state: FSMContext):
 
     await state.update_data(time=time_str)
     data = await state.get_data()
+    #TODO: search by day/time as well, not just cities
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
     if not trips_ids:
@@ -194,10 +195,26 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
      # Отримуємо id водія з поїздки
     driver_id = get_driver_id(trip_id)
 
+    # Отримуємо деталі поїздки
+    trip_details = get_trip_details(trip_id)
+    if trip_details:
+        from_city, to_city, dep_dt = trip_details
+        if dep_dt:
+            local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+            local_dt = dep_dt.astimezone(local_tz)
+            time_str = local_dt.strftime("%d.%m %H:%M")
+        else:
+            time_str = "N/A"
+        route = f"{from_city} → {to_city}"
+    else:
+        route = "N/A"
+        time_str = "N/A"
+
     # Текст для водія
     text = (
-        f"🚨 Пасажир {passenger_name} хоче поїхати з пункту "
-        f"A → B в {trip_id}"  # тут можна підставити час/місто з бази
+        f"🚨 Пасажир {passenger_name} забронював поїздку:\n"
+        f"📍 {route}\n"
+        f"⏰ {time_str}"
     )
 
     await bot.send_message(

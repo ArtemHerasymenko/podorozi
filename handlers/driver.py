@@ -75,7 +75,7 @@ async def day(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Час:")
+    await message.answer("Введи запланований час виїзду у форматі ГГ:ХХ:")
     await state.set_state(DriverStates.time)
 
 @router.message(DriverStates.time)

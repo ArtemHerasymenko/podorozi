@@ -1,9 +1,16 @@
 import psycopg2
 from config import DATABASE_URL
 from data.cities import CITIES
+import datetime
+import zoneinfo
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
+
+cursor.execute("""
+DROP TABLE trips
+""")
+conn.commit()
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS trips (
@@ -13,8 +20,7 @@ CREATE TABLE IF NOT EXISTS trips (
     from_points TEXT,
     to_city TEXT,
     to_points TEXT,
-    day TEXT,
-    time TEXT,
+    departure_datetime TIMESTAMPTZ,
     price TEXT,
     seats TEXT
 )
@@ -69,17 +75,24 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
 conn.commit()
 
 def save_trip(driver_id, data):
+    # Combine day and time into datetime, assume local timezone (Ukraine)
+    local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+    date_str = data["day"]  # e.g., "2023-10-01"
+    time_str = data["time"]  # e.g., "14:30"
+    naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str}")
+    local_dt = naive_dt.replace(tzinfo=local_tz)
+    utc_dt = local_dt.astimezone(datetime.timezone.utc)
+    
     cursor.execute("""
-        INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, day, time, price, seats)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         driver_id,
         data["from_city"],
         data["from_points"],
         data["to_city"],
         data["to_points"],
-        data["day"],
-        data["time"],
+        utc_dt,
         data["price"],
         data["seats"]
     ))
@@ -144,12 +157,20 @@ def get_passenger_id(booking_id: int) -> int:
     cursor.execute("SELECT passenger_id FROM bookings WHERE id = %s", (booking_id,))
     return cursor.fetchone()[0]
 
+def get_trip_details(trip_id: int):
+    cursor.execute("""
+        SELECT from_city, to_city, departure_datetime
+        FROM trips
+        WHERE id = %s
+    """, (trip_id,))
+    return cursor.fetchone()
+
 def search_trips_ids(from_city, to_city):
     cursor.execute("""
         SELECT id
         FROM trips
         WHERE from_city = %s AND to_city = %s
-        ORDER BY day, time
+        ORDER BY departure_datetime
     """, (from_city, to_city))
 
     return [row[0] for row in cursor.fetchall()]
@@ -184,7 +205,7 @@ def get_current_trip_from_search_list(user_id: int):
     trip_id = trip_ids[index]
 
     cursor.execute("""
-        SELECT id, from_city, to_city, day, time, price, seats
+        SELECT id, driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats
         FROM trips
         WHERE id = %s
     """, (trip_id,))
