@@ -124,7 +124,7 @@ def get_cities_for_user_sorted(user_id: int):
     cursor.execute("""
         SELECT city_name FROM city_popularity_per_user
         WHERE user_id = %s
-        ORDER BY counter DESC, name ASC
+        ORDER BY counter DESC, city_name ASC
     """, (user_id,))
     popular = [r[0] for r in cursor.fetchall()]
 
