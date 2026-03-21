@@ -34,7 +34,7 @@ def generate_quick_times():
 
 def quick_time_kb():
     quick_times = generate_quick_times()
-    keyboard = [quick_times[i:i+1] for i in range(0, len(quick_times), 1)]
+    keyboard = [[KeyboardButton(text=t)] for t in quick_times]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
