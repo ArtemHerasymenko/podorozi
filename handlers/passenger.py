@@ -29,7 +29,7 @@ async def passenger_menu(message: types.Message):
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
     await message.answer(
-    "Оберіть місто відправлення:",
+    "Обери місто відправлення зі списку. Не знайшлось? Введи вручну:",
     reply_markup=cities_keyboard()
 )
     await state.set_state(PassengerStates.from_city)
