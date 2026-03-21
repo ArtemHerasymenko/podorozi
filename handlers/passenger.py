@@ -37,6 +37,9 @@ async def find_trip(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
+    if message.text.startswith("───"):
+        await message.answer("Будь ласка, обери місто зі списку.")
+        return
     await state.update_data(from_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
     await message.answer("Місто прибуття:")
@@ -44,6 +47,9 @@ async def from_city(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
+    if message.text.startswith("───"):
+        await message.answer("Будь ласка, обери місто зі списку.")
+        return
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
     await message.answer("Час:", reply_markup=ReplyKeyboardRemove())

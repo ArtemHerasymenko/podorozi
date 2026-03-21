@@ -90,16 +90,6 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
-def get_cities_for_user(user_id: int):
-    cursor.execute("""
-        SELECT c.name, COALESCE(cp.counter, 0) as counter
-        FROM cities c
-        LEFT JOIN city_popularity_per_user cp ON c.name = cp.city_name AND cp.user_id = %s
-        ORDER BY counter DESC, c.name ASC
-    """, (user_id,))
-    rows = cursor.fetchall()
-    return [r[0] for r in rows]
-
 def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     cursor.execute("""
@@ -128,6 +118,23 @@ def increment_city_popularity(user_id: int, city_name: str):
         DO UPDATE SET counter = city_popularity_per_user.counter + 1
     """, (user_id, city_name))
     conn.commit()
+
+def get_cities_for_user_sorted(user_id: int):
+    # Get popular cities for the user, sorted by counter DESC
+    cursor.execute("""
+        SELECT city_name FROM city_popularity_per_user
+        WHERE user_id = %s
+        ORDER BY counter DESC
+    """, (user_id,))
+    popular = [r[0] for r in cursor.fetchall()]
+
+    # Get all cities
+    all_cities = get_cities()
+
+    # Others: cities not in popular, sorted alphabetically
+    others = sorted([c for c in all_cities if c not in popular])
+
+    return popular, others
 
 def get_driver_id(trip_id: int) -> int:
     cursor.execute("SELECT driver_id FROM trips WHERE id = %s", (trip_id,))
