@@ -8,11 +8,6 @@ conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
 cursor.execute("""
-DROP TABLE trips
-""")
-conn.commit()
-
-cursor.execute("""
 CREATE TABLE IF NOT EXISTS trips (
     id SERIAL PRIMARY KEY,
     driver_id BIGINT,
