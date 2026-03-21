@@ -7,7 +7,7 @@ def cities_keyboard():
 
     # робимо по 2 кнопки в ряд
     for i in range(0, len(cities), 1):
-        row = [KeyboardButton(text=city) for city in cities[i:i+2]]
+        row = [KeyboardButton(text=city) for city in cities[i:i+1]]
         keyboard.append(row)
 
     keyboard.append([KeyboardButton(text="⬅️ Назад")])
