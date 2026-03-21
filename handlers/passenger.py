@@ -24,6 +24,7 @@ passenger_menu_kb = ReplyKeyboardMarkup(
 def generate_quick_times():
     now = datetime.datetime.now()
     next_30 = (now + datetime.timedelta(minutes=30)).replace(second=0, microsecond=0)
+    quick_times = []
     quick_times.append(f"{next_30.hour:02d}:{next_30.minute:02d}")
     # Next hours
     for h in range(1, 4):
