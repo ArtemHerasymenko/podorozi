@@ -121,6 +121,7 @@ async def search(message: types.Message, state: FSMContext):
     await state.update_data(datetime=response)
 
     #TODO: search by day/time as well, not just cities
+    data = await state.get_data()
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
     if not trips_ids:
