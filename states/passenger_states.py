@@ -5,3 +5,4 @@ class PassengerStates(StatesGroup):
     to_city = State()
     day = State()
     datetime = State()
+    browsing_trips = State()

@@ -132,11 +132,13 @@ async def search(message: types.Message, state: FSMContext):
     create_trip_search_list(message.from_user.id, [t for t in trips_ids])
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
-    await message.answer(
+    trip_message = await message.answer(
         format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
     )
-    await state.clear()
+    
+    await state.set_state(PassengerStates.browsing_trips)
+    await state.update_data(trip_message_id=trip_message.message_id)
 
 @router.callback_query(lambda c: c.data == "next")
 async def next_handler(callback: types.CallbackQuery, bot: Bot):
@@ -155,6 +157,24 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     )
 
     await callback.answer()
+
+@router.message(PassengerStates.browsing_trips)
+async def remove_buttons_on_message(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trip_message_id = data.get("trip_message_id")
+    
+    if trip_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(
+                chat_id=message.chat.id,
+                message_id=trip_message_id,
+                reply_markup=None
+            )
+        except:
+            pass
+    
+    await state.clear()
+    await message.answer("", reply_markup=passenger_menu_kb)
 
 @router.callback_query(lambda c: c.data == "prev")
 async def prev_handler(callback: types.CallbackQuery, bot: Bot):
