@@ -174,7 +174,10 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
             pass
     
     await state.clear()
-    await message.answer("", reply_markup=passenger_menu_kb)
+    await message.answer(
+        "Меню пасажира:",
+        reply_markup=passenger_menu_kb
+    )
 
 @router.callback_query(lambda c: c.data == "prev")
 async def prev_handler(callback: types.CallbackQuery, bot: Bot):
