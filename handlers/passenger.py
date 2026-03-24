@@ -11,7 +11,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
 import zoneinfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime
 
 router = Router()
 
