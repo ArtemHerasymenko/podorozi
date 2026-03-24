@@ -67,7 +67,7 @@ async def day_handler(message: types.Message, state: FSMContext):
         return
     await state.update_data(day=day_dict[message.text])
     await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
-    await state.set_state(PassengerStates.time)
+    await state.set_state(PassengerStates.datetime)
 
 def trip_keyboard(trip_id):
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -104,7 +104,7 @@ def format_trip(trip, index, total_cnt):
         f"👥 {trip[8]} місць"
     )
 
-@router.message(PassengerStates.time)
+@router.message(PassengerStates.datetime)
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
 
@@ -113,8 +113,13 @@ async def search(message: types.Message, state: FSMContext):
         await message.answer(error_msg)
         return
 
-    await state.update_data(time=time_str)
-    data = await state.get_data()
+    success, response = generate_datetime((await state.get_data()).get("day"), time_str)
+    if not success:
+        await message.answer(response)
+        return
+
+    await state.update_data(datetime=response)
+
     #TODO: search by day/time as well, not just cities
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 

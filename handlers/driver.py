@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
-from database import save_trip
+from database import save_trip_to_db
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
@@ -10,7 +10,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import update_booking_status, get_passenger_id
 from aiogram import Bot
 import datetime
-from handlers.common import generate_quick_days, quick_day_kb, validate_time
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime
 
 router = Router()
 
@@ -75,19 +75,26 @@ async def day(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Введи запланований час виїзду у форматі ГГ:ХХ:")
-    await state.set_state(DriverStates.time)
+    await message.answer("Введи запланований час виїзду у форматі ГГ:ХХ:", reply_markup=ReplyKeyboardRemove())
+    await state.set_state(DriverStates.datetime)
 
-@router.message(DriverStates.time)
+@router.message(DriverStates.datetime)
 async def time(message: types.Message, state: FSMContext):
     time_str = message.text
 
+    # Validate time format and values
     is_valid, error_msg = validate_time(time_str)
     if not is_valid:
         await message.answer(error_msg)
         return
 
-    await state.update_data(time=time_str)
+    data = await state.get_data()
+    is_valid, response = generate_datetime(data.get("day"), time_str)
+    if not is_valid:
+        await message.answer(response)
+        return
+
+    await state.update_data(datetime=response)
     await message.answer("Ціна:")
     await state.set_state(DriverStates.price)
 
@@ -102,7 +109,7 @@ async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
     data = await state.get_data()
 
-    save_trip(message.from_user.id, data)
+    save_trip_to_db(message.from_user.id, data)
 
     await message.answer("Поїздка збережена ✅", reply_markup=driver_menu_kb)
     await state.clear()

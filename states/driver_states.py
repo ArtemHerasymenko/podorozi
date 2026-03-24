@@ -6,6 +6,6 @@ class DriverStates(StatesGroup):
     to_city = State()
     to_points = State()
     day = State()
-    time = State()
+    datetime = State()
     price = State()
     seats = State()

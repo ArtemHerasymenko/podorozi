@@ -4,4 +4,4 @@ class PassengerStates(StatesGroup):
     from_city = State()
     to_city = State()
     day = State()
-    time = State()
+    datetime = State()

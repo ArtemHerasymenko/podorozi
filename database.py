@@ -1,8 +1,7 @@
 import psycopg2
 from config import DATABASE_URL
 from data.cities import CITIES
-import datetime
-import zoneinfo
+from handlers.common import generate_datetime
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
@@ -69,14 +68,7 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
 """)
 conn.commit()
 
-def save_trip(driver_id, data):
-    # Combine day and time into datetime, assume local timezone (Ukraine)
-    local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
-    date_str = data["day"]  # e.g., "2023-10-01"
-    time_str = data["time"]  # e.g., "14:30"
-    naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str}")
-    local_dt = naive_dt.replace(tzinfo=local_tz)
-    utc_dt = local_dt.astimezone(datetime.timezone.utc)
+def save_trip_to_db(driver_id, data):
     
     cursor.execute("""
         INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats)
@@ -87,7 +79,7 @@ def save_trip(driver_id, data):
         data["from_points"],
         data["to_city"],
         data["to_points"],
-        utc_dt,
+        data["datetime"],
         data["price"],
         data["seats"]
     ))

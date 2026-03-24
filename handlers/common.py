@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import datetime
+import zoneinfo
 
 router = Router()
 
@@ -52,13 +53,28 @@ def quick_day_kb():
 
 def validate_time(time_str):
     import re
-    if re.match(r'^\d{2}:\d{2}$', time_str):
-        hour, minute = map(int, time_str.split(':'))
-        if not (0 <= hour <= 23 and 0 <= minute <= 59):
-            return False, "Неправильний час. Години 00-23, хвилини 00-59:"
-    else:
+    
+    # Validate time format
+    if not re.match(r'^\d{2}:\d{2}$', time_str):
         return False, "Неправильний формат часу. Введи в форматі ГГ:ХХ. Наприклад, 14:30:"
+    
+    # Validate time values
+    hour, minute = map(int, time_str.split(':'))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return False, "Неправильний час. Години 00-23, хвилини 00-59:"
+    
     return True, None
+
+def generate_datetime(date_str, time_str):
+    # Parse into datetime with timezone conversion
+    try:
+        local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+        naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str}")
+        local_dt = naive_dt.replace(tzinfo=local_tz)
+        utc_dt = local_dt.astimezone(datetime.timezone.utc)
+        return True, utc_dt
+    except ValueError as e:
+        return False, f"Неправильна дата чи час: {str(e)}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
