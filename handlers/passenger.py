@@ -315,6 +315,6 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
     cancel_booking(booking_id)
-    await callback.message.edit_reply_markup(reply_markup=passenger_menu_kb)
+    await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.edit_text(callback.message.text + "\n\n❌ Скасовано")
     await callback.answer("Бронь скасовано")
