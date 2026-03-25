@@ -110,6 +110,10 @@ def update_booking_status(booking_id: int, status: str):
     """, (status, booking_id))
     conn.commit()
 
+def cancel_booking(booking_id: int):
+    cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+    conn.commit()
+
 def increment_city_popularity(user_id: int, city_name: str):
     cursor.execute("""
         INSERT INTO city_popularity_per_user (user_id, city_name, counter)
@@ -143,6 +147,16 @@ def get_driver_id(trip_id: int) -> int:
 def get_passenger_id(booking_id: int) -> int:
     cursor.execute("SELECT passenger_id FROM bookings WHERE id = %s", (booking_id,))
     return cursor.fetchone()[0]
+
+def get_passenger_bookings(passenger_id: int):
+    cursor.execute("""
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.passenger_id = %s
+        ORDER BY t.departure_datetime DESC
+    """, (passenger_id,))
+    return cursor.fetchall()
 
 def get_trip_details(trip_id: int):
     cursor.execute("""

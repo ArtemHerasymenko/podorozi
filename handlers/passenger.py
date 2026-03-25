@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_trip_details
+from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, cancel_booking
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -18,6 +18,7 @@ router = Router()
 passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
+        [KeyboardButton(text="📋 Мої поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -29,6 +30,39 @@ async def passenger_menu(message: types.Message):
         "Меню пасажира:",
         reply_markup=passenger_menu_kb
     )
+
+@router.message(lambda m: m.text == "📋 Мої поїздки")
+async def my_trips(message: types.Message):
+    trips = get_passenger_bookings(message.from_user.id)
+    if not trips:
+        await message.answer("У вас ще немає заброньованих поїздок.")
+        return
+
+    status_labels = {
+        "pending": "⏳ Очікує підтвердження",
+        "confirmed": "✅ Підтверджено",
+        "rejected": "❌ Відхилено",
+    }
+
+    for trip in trips:
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id = trip
+        if dep_dt:
+            local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+            local_dt = dep_dt.astimezone(local_tz)
+            dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
+        else:
+            dt_str = "N/A"
+        status_label = status_labels.get(status, status)
+        try:
+            driver_chat = await message.bot.get_chat(driver_id)
+            driver_name = driver_chat.full_name
+        except:
+            driver_name = "Водій"
+        text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"cancel_booking:{booking_id}")]
+        ])
+        await message.answer(text, reply_markup=kb)
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
@@ -275,3 +309,12 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
     await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
+async def cancel_booking_callback(callback: types.CallbackQuery):
+    booking_id = int(callback.data.split(":")[1])
+    cancel_booking(booking_id)
+    await callback.message.edit_reply_markup(reply_markup=passenger_menu_kb)
+    await callback.message.edit_text(callback.message.text + "\n\n❌ Скасовано")
+    await callback.answer("Бронь скасовано")

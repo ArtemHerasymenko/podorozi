@@ -16,3 +16,7 @@ If 5 booking on 1 seat and driver accepts only 1, we should let others know that
 
 What if rider creates a booking but driver does not accept for a while?
 Can rider create multiple booking? Then if  driver A accepts, driver B should get an error then accepting him later?
+
+what is user enters a city whic does not exist? both driver and pax.
+
+cases like pax created, driver open, pax cancels, driver accepts - show message that passenger already canceled
