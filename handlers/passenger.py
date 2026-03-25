@@ -140,24 +140,6 @@ async def search(message: types.Message, state: FSMContext):
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
-@router.callback_query(lambda c: c.data == "next")
-async def next_handler(callback: types.CallbackQuery, bot: Bot):
-    user_id = callback.from_user.id
-
-    increase_trip_search_list_index(user_id)
-    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
-
-    if not trip:
-        await callback.answer("❌ Це остання поїздка", show_alert=True)
-        return
-
-    await callback.message.edit_text(
-        format_trip(trip, index, total_cnt),
-        reply_markup=trip_keyboard(trip[0])
-    )
-
-    await callback.answer()
-
 @router.message(PassengerStates.browsing_trips)
 async def remove_buttons_on_message(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -175,9 +157,27 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
     
     await state.clear()
     await message.answer(
-        "Меню пасажира:",
+        "Повернення в меню пасажира:",
         reply_markup=passenger_menu_kb
     )
+
+@router.callback_query(lambda c: c.data == "next")
+async def next_handler(callback: types.CallbackQuery, bot: Bot):
+    user_id = callback.from_user.id
+
+    increase_trip_search_list_index(user_id)
+    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
+
+    if not trip:
+        await callback.answer("❌ Це остання поїздка", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        format_trip(trip, index, total_cnt),
+        reply_markup=trip_keyboard(trip[0])
+    )
+
+    await callback.answer()
 
 @router.callback_query(lambda c: c.data == "prev")
 async def prev_handler(callback: types.CallbackQuery, bot: Bot):
