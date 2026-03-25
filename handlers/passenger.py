@@ -45,6 +45,9 @@ async def my_trips(message: types.Message):
         "cancelled_by_passenger": "🚫 Скасовано вами",
     }
 
+    CANCELLED_STATUSES = ("cancelled_by_passenger", "rejected")
+    trips = sorted(trips, key=lambda t: t[7] in CANCELLED_STATUSES)
+
     for trip in trips:
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id = trip
         if dep_dt:
@@ -60,7 +63,7 @@ async def my_trips(message: types.Message):
         except:
             driver_name = "Водій"
         text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
-        if status not in ("cancelled_by_passenger", "rejected"):
+        if status not in CANCELLED_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
