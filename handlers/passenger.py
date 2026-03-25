@@ -148,7 +148,7 @@ async def search(message: types.Message, state: FSMContext):
         reply_markup=trip_keyboard(trip[0])
     )
     
-    await message.answer("‎", reply_markup=passenger_menu_kb)
+    await message.answer("\u2800", reply_markup=passenger_menu_kb)
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
