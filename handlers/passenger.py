@@ -91,6 +91,12 @@ def trip_keyboard(trip_id):
                 text="Забронювати ✅",
                 callback_data=f"book_trip:{trip_id}"
             )
+        ],
+        [
+            InlineKeyboardButton(
+                text="Скасувати пошук ❌",
+                callback_data="cancel_search"
+            )
         ]
     ])
 
@@ -148,7 +154,6 @@ async def search(message: types.Message, state: FSMContext):
         reply_markup=trip_keyboard(trip[0])
     )
     
-    await message.answer("\u2800", reply_markup=passenger_menu_kb)
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
@@ -263,3 +268,10 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
         text,
         reply_markup=booking_confirmation_keyboard(booking_id)
     )
+
+@router.callback_query(lambda c: c.data == "cancel_search")
+async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.clear()
+    await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
+    await callback.answer()
