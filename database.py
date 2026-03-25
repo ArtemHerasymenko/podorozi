@@ -110,8 +110,8 @@ def update_booking_status(booking_id: int, status: str):
     """, (status, booking_id))
     conn.commit()
 
-def cancel_booking(booking_id: int):
-    cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+def cancel_booking_by_passenger(booking_id: int):
+    cursor.execute("UPDATE bookings SET status = 'cancelled_by_passenger' WHERE id = %s", (booking_id,))
     conn.commit()
 
 def increment_city_popularity(user_id: int, city_name: str):
@@ -154,6 +154,7 @@ def get_passenger_bookings(passenger_id: int):
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
+          AND t.departure_datetime >= NOW() - INTERVAL '2 hours'
         ORDER BY t.departure_datetime DESC
     """, (passenger_id,))
     return cursor.fetchall()

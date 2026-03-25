@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, cancel_booking
+from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, cancel_booking_by_passenger
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -41,7 +41,8 @@ async def my_trips(message: types.Message):
     status_labels = {
         "pending": "⏳ Очікує підтвердження",
         "confirmed": "✅ Підтверджено",
-        "rejected": "❌ Відхилено",
+        "rejected": "❌ Відхилено водієм",
+        "cancelled_by_passenger": "🚫 Скасовано вами",
     }
 
     for trip in trips:
@@ -314,7 +315,7 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
 async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
-    cancel_booking(booking_id)
+    cancel_booking_by_passenger(booking_id)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.edit_text(callback.message.text + "\n\n❌ Скасовано")
+    await callback.message.edit_text(callback.message.text + "\n\n❌ Ви скасували")
     await callback.answer("Бронь скасовано")
