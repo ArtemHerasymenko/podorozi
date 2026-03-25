@@ -60,9 +60,12 @@ async def my_trips(message: types.Message):
         except:
             driver_name = "Водій"
         text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"cancel_booking:{booking_id}")]
-        ])
+        if status not in ("cancelled_by_passenger", "rejected"):
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"cancel_booking:{booking_id}")]
+            ])
+        else:
+            kb = None
         await message.answer(text, reply_markup=kb)
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")

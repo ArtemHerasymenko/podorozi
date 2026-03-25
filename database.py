@@ -155,7 +155,7 @@ def get_passenger_bookings(passenger_id: int):
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
           AND t.departure_datetime >= NOW() - INTERVAL '2 hours'
-        ORDER BY t.departure_datetime DESC
+        ORDER BY t.departure_datetime
     """, (passenger_id,))
     return cursor.fetchall()
 
