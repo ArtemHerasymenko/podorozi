@@ -32,6 +32,17 @@ async def passenger_menu(message: types.Message):
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trip_message_id = data.get("trip_message_id")
+    if trip_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(
+                chat_id=message.chat.id,
+                message_id=trip_message_id,
+                reply_markup=None
+            )
+        except:
+            pass
     await message.answer(
     "Обери місто відправлення зі списку. Не знайшлось? Введи вручну:",
     reply_markup=cities_keyboard(message.from_user.id)
@@ -137,6 +148,7 @@ async def search(message: types.Message, state: FSMContext):
         reply_markup=trip_keyboard(trip[0])
     )
     
+    await message.answer("‎", reply_markup=passenger_menu_kb)
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
