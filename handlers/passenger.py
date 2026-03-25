@@ -125,7 +125,7 @@ async def search(message: types.Message, state: FSMContext):
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
     if not trips_ids:
-        await message.answer("Нічого не знайдено")
+        await message.answer("Нічого не знайдено", reply_markup=passenger_menu_kb)
         await state.clear()
         return
 
