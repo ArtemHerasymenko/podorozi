@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS trips (
     to_points TEXT,
     departure_datetime TIMESTAMPTZ,
     price TEXT,
-    seats TEXT
+    seats TEXT,
+    status TEXT DEFAULT 'active'
 )
 """)
 conn.commit()
@@ -94,13 +95,16 @@ def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     cursor.execute("""
         INSERT INTO bookings (trip_id, passenger_id, status)
-        VALUES (%s, %s, 'pending')
+        SELECT %s, %s, 'pending'
+        WHERE EXISTS (SELECT 1 FROM trips WHERE id = %s AND status = 'active')
         RETURNING id
-    """, (trip_id, passenger_id))
+    """, (trip_id, passenger_id, trip_id))
     conn.commit()
-    booking_id = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    if not row:
+        return False, None
 
-    return True, booking_id
+    return True, row[0]
 
 def update_booking_status(booking_id: int, status: str):
     cursor.execute("""

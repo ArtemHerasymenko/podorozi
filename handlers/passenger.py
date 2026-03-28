@@ -277,7 +277,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
         await callback.answer("✅ Поїздка заброньована!")
         await callback.message.edit_reply_markup()  # прибираємо кнопку
     else:
-        await callback.answer("❌ Місць більше немає", show_alert=True)
+        await callback.answer("❌ Водій скасував поїздку", show_alert=True)
 
      # Отримуємо id водія з поїздки
     driver_id = get_driver_id(trip_id)
