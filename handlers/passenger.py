@@ -180,6 +180,7 @@ async def search(message: types.Message, state: FSMContext):
     await state.update_data(datetime=response)
 
     #TODO: search by day/time as well, not just cities
+    # Also do not show cancelled trips in search results
     data = await state.get_data()
     trips_ids = search_trips_ids(data["from_city"], data["to_city"])
 
@@ -326,21 +327,21 @@ async def cancel_booking_callback(callback: types.CallbackQuery):
     lines = callback.message.text.rsplit("\n", 1)
     if prev_status in ("pending", "confirmed"):
         new_text = lines[0] + "\n" + STATUS_LABELS["cancelled_by_passenger"]
-        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
-        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
     elif prev_status == "rejected":
         new_text = lines[0] + "\n" + "🚫 Водій вже відхилив вашу бронь раніше"
-        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
     elif prev_status == "trip_cancelled":
         new_text = lines[0] + "\n" + STATUS_LABELS["trip_cancelled"]
-        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
     else:
         new_text = lines[0] + "\n" + "🚫 Не вдалося скасувати бронь. Виникла помилка, спробуйте ще."
-        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer()
