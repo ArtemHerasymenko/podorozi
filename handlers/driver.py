@@ -152,7 +152,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
     lines = callback.message.text.rsplit("\n", 1)
 
     if success:
-        await callback.message.edit_text(lines[0] + "\n🚫 Ви скасували цю поїздку", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(lines[0] + "\n🚫 Ви скасували цю поїздку", reply_markup=None)
         await callback.answer("")
         for booking_id in booking_ids:
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])
@@ -160,7 +160,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                 passenger_id = get_passenger_id(booking_id)
                 await bot.send_message(passenger_id, "❌ На жаль, водій скасував цю поїздку.")
     else:
-        await callback.message.edit_text(lines[0] + "\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(lines[0] + "\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None)
         await callback.answer("")
 
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
@@ -169,24 +169,24 @@ async def confirm_booking(callback: types.CallbackQuery, bot: Bot):
     prev_status, new_status = update_booking_status(booking_id, "confirmed", ["pending"])
     if prev_status == "pending":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n✅ Ви підтвердили бронювання", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n✅ Ви підтвердили бронювання", reply_markup=None)
         passenger_id = get_passenger_id(booking_id)
         await bot.send_message(passenger_id, "✅ Вашу бронь підтвердив водій!")
     elif prev_status == "confirmed":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\nВи вже підтвердили це бронювання раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\nВи вже підтвердили це бронювання раніше", reply_markup=None)
     elif prev_status == "rejected":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\nВи вже відхилили це бронювання раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\nВи вже відхилили це бронювання раніше", reply_markup=None)
     elif prev_status == "trip_cancelled":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\nВи вже скасували цю поїздку раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\nВи вже скасували цю поїздку раніше", reply_markup=None)
     elif prev_status == "cancelled_by_passenger":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\nПасажир вже скасував це бронювання", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\nПасажир вже скасував це бронювання", reply_markup=None)
     else:
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + f"\n\nБронювання недоступне ({prev_status})", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + f"\n\nБронювання недоступне ({prev_status})", reply_markup=None)
 
 @router.callback_query(lambda c: c.data.startswith("reject_booking:"))
 async def reject_booking(callback: types.CallbackQuery, bot: Bot):
@@ -194,24 +194,24 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     prev_status, new_status = update_booking_status(booking_id, "rejected", ["pending", "confirmed"])
     if prev_status == "pending":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви відмовили цьому пасажиру", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви відмовили цьому пасажиру", reply_markup=None)
         passenger_id = get_passenger_id(booking_id)
         await bot.send_message(passenger_id, "❌ Вибачте, водій відмовив у бронюванні поїздки.")
     elif prev_status == "confirmed":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌  Ви скасували це бронювання", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n❌  Ви скасували це бронювання", reply_markup=None)
         passenger_id = get_passenger_id(booking_id)
         await bot.send_message(passenger_id, "❌ Вибачте, водій скасував ваше бронювання.")
     elif prev_status == "rejected":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже відхилили це бронювання раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже відхилили це бронювання раніше", reply_markup=None)
     elif prev_status == "trip_cancelled":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже скасували цю поїздку раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже скасували цю поїздку раніше", reply_markup=None)
     elif prev_status == "cancelled_by_passenger":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Пасажир вже скасував це бронювання раніше", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + "\n\n❌ Пасажир вже скасував це бронювання раніше", reply_markup=None)
     else:
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + f"\n\n❌ Бронювання недоступне ({prev_status})", reply_markup=driver_menu_kb)
+        await callback.message.edit_text(callback.message.text + f"\n\n❌ Бронювання недоступне ({prev_status})", reply_markup=None)
 
