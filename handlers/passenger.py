@@ -42,7 +42,7 @@ async def my_trips(message: types.Message):
         "pending": "⏳ Очікує підтвердження водієм",
         "confirmed": "✅ Підтверджено водієм",
         "rejected": "❌ Відхилено водієм",
-        "cancelled_by_passenger": "🚫 Скасовано вами",
+        "cancelled_by_passenger": "🚫 Ви скасували бронь",
     }
 
     CANCELLED_STATUSES = ("cancelled_by_passenger", "rejected")
@@ -65,7 +65,7 @@ async def my_trips(message: types.Message):
         text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status not in CANCELLED_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"cancel_booking:{booking_id}")]
+                [InlineKeyboardButton(text="Скасувати поїздку ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
         else:
             kb = None
@@ -323,5 +323,5 @@ async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
     cancel_booking_by_passenger(booking_id)
     lines = callback.message.text.rsplit("\n", 1)
-    new_text = lines[0] + "\n🚫 Ви скасували бронь"
+    new_text = lines[0] + "\n" + status_labels["cancelled_by_passenger"]
     await callback.message.edit_text(new_text, reply_markup=None)
