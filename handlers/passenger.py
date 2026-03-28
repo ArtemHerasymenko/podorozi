@@ -20,7 +20,7 @@ STATUS_LABELS = {
     "confirmed": "✅ Підтверджено водієм",
     "rejected": "❌ Відхилено водієм",
     "cancelled_by_passenger": "🚫 Ви скасували поїздку",
-    "trip_cancelled": "🚫 Водій скасував поїздку"
+    "trip_cancelled": "🚫 Водій скасував цю поїздку"
 }
 
 passenger_menu_kb = ReplyKeyboardMarkup(
@@ -282,11 +282,15 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
     success, booking_id = book_trip(trip_id, passenger_id)
 
     if not success:
-        await callback.answer("❌ Водій скасував поїздку", show_alert=True)
+        await callback.answer("❌ Водій скасував цю поїздку", show_alert=True)
         return
 
     await callback.answer("✅ Поїздка заброньована!")
     await callback.message.edit_reply_markup()  # прибираємо кнопку
+    await callback.message.answer(
+        "Ми відправили запит водієві, очікуйте підтвердження:",
+        reply_markup=passenger_menu_kb
+    )
 
      # Отримуємо id водія з поїздки
     driver_id = get_driver_id(trip_id)
