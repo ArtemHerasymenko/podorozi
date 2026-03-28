@@ -189,6 +189,14 @@ def get_driver_id(trip_id: int) -> int:
     cursor.execute("SELECT driver_id FROM trips WHERE id = %s", (trip_id,))
     return cursor.fetchone()[0]
 
+def get_driver_id_by_booking(booking_id: int) -> int:
+    cursor.execute("""
+        SELECT t.driver_id FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.id = %s
+    """, (booking_id,))
+    return cursor.fetchone()[0]
+
 def get_passenger_id(booking_id: int) -> int:
     cursor.execute("SELECT passenger_id FROM bookings WHERE id = %s", (booking_id,))
     return cursor.fetchone()[0]

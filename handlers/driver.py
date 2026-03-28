@@ -171,7 +171,7 @@ async def confirm_booking(callback: types.CallbackQuery, bot: Bot):
         await callback.answer()
         await callback.message.edit_text(callback.message.text + "\n\n✅ Ви підтвердили бронювання", reply_markup=None)
         passenger_id = get_passenger_id(booking_id)
-        await bot.send_message(passenger_id, "✅ Вашу бронь підтвердив водій!")
+        await bot.send_message(passenger_id, "✅ Водій підтвердив вашу бронь! Вдалої поїздки!")
     elif prev_status == "confirmed":
         await callback.answer()
         await callback.message.edit_text(callback.message.text + "\n\nВи вже підтвердили це бронювання раніше", reply_markup=None)

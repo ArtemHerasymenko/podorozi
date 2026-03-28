@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, update_booking_status
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_passenger_bookings, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -19,7 +19,7 @@ STATUS_LABELS = {
     "pending": "⏳ Очікує підтвердження водієм",
     "confirmed": "✅ Підтверджено водієм",
     "rejected": "❌ Відхилено водієм",
-    "cancelled_by_passenger": "🚫 Ви скасували поїздку",
+    "cancelled_by_passenger": "🚫 Ви скасували ваше бронювання",
     "trip_cancelled": "🚫 Водій скасував цю поїздку"
 }
 
@@ -288,7 +288,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
     await callback.answer("✅ Поїздка заброньована!")
     await callback.message.edit_reply_markup()  # прибираємо кнопку
     await callback.message.answer(
-        "Ми відправили запит водієві, очікуйте підтвердження:",
+        "Ми відправили запит водієві, очікуйте підтвердження.",
         reply_markup=passenger_menu_kb
     )
 
@@ -332,7 +332,7 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
-async def cancel_booking_callback(callback: types.CallbackQuery):
+async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
     lines = callback.message.text.rsplit("\n", 1)
@@ -340,6 +340,9 @@ async def cancel_booking_callback(callback: types.CallbackQuery):
         new_text = lines[0] + "\n" + STATUS_LABELS["cancelled_by_passenger"]
         await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
+        driver_id = get_driver_id_by_booking(booking_id)
+        passenger_name = callback.from_user.full_name
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
