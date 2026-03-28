@@ -17,7 +17,7 @@ router = Router()
 driver_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Створити поїздку")],
-        [KeyboardButton(text="📋 Мої поїздки")],
+        [KeyboardButton(text="📋 Мої поїздки водія")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -119,21 +119,28 @@ async def seats(message: types.Message, state: FSMContext):
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
 async def confirm_booking(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
-    update_booking_status(booking_id, "confirmed")
-    await callback.answer("✅ Бронь підтверджена")
+    updated = update_booking_status(booking_id, "confirmed")
+    if not updated:
+        await callback.answer()
+        await callback.message.edit_text(callback.message.text + "\n\nПасажир вже відмінив бронювання", reply_markup=None)
+    else:
+        await callback.answer()
+        await callback.message.edit_text(callback.message.text + "\n\nБронювання підтверджено", reply_markup=None)
+
     await callback.message.edit_reply_markup()  # прибираємо кнопки
 
     passenger_id = get_passenger_id(booking_id)
     await bot.send_message(
         passenger_id,
-        "✅ Вашу бронь підтвердив водій! Поїздка гарантована."
+        "✅ Вашу бронь підтвердив водій!"
     )
 
 @router.callback_query(lambda c: c.data.startswith("reject_booking:"))
 async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
     update_booking_status(booking_id, "rejected")
-    await callback.answer("❌ Бронь відхилена")
+    await callback.message.edit_text(callback.message.text + "\n\n❌ Бронь відхилена", reply_markup=None)
+
     await callback.message.edit_reply_markup()  # прибираємо кнопки
 
     passenger_id = get_passenger_id(booking_id)

@@ -18,7 +18,7 @@ router = Router()
 passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
-        [KeyboardButton(text="📋 Мої поїздки")],
+        [KeyboardButton(text="📋 Мої поїздки пасажира")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -31,7 +31,7 @@ async def passenger_menu(message: types.Message):
         reply_markup=passenger_menu_kb
     )
 
-@router.message(lambda m: m.text == "📋 Мої поїздки")
+@router.message(lambda m: m.text == "📋 Мої поїздки пасажира")
 async def my_trips(message: types.Message):
     trips = get_passenger_bookings(message.from_user.id)
     if not trips:

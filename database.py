@@ -106,9 +106,10 @@ def update_booking_status(booking_id: int, status: str):
     cursor.execute("""
         UPDATE bookings
         SET status = %s
-        WHERE id = %s
+        WHERE id = %s AND status = 'pending'
     """, (status, booking_id))
     conn.commit()
+    return cursor.rowcount > 0
 
 def cancel_booking_by_passenger(booking_id: int):
     cursor.execute("UPDATE bookings SET status = 'cancelled_by_passenger' WHERE id = %s", (booking_id,))

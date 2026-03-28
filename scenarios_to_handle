@@ -20,3 +20,7 @@ Can rider create multiple booking? Then if  driver A accepts, driver B should ge
 what is user enters a city whic does not exist? both driver and pax.
 
 cases like pax created, driver open, pax cancels, driver accepts - show message that passenger already canceled
+
+driver should get a messasge if confirmed passenger cancled the trip.
+
+can we run queries in paralell? like user cancels booking, driver aceepts. Won't there by race condition and corrupted data, errors?
