@@ -39,8 +39,8 @@ async def my_trips(message: types.Message):
         return
 
     status_labels = {
-        "pending": "⏳ Очікує підтвердження",
-        "confirmed": "✅ Підтверджено",
+        "pending": "⏳ Очікує підтвердження водієм",
+        "confirmed": "✅ Підтверджено водієм",
         "rejected": "❌ Відхилено водієм",
         "cancelled_by_passenger": "🚫 Скасовано вами",
     }
@@ -322,6 +322,6 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
     cancel_booking_by_passenger(booking_id)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.edit_text(callback.message.text + "\n\n❌ Ви скасували")
-    await callback.answer("Бронь скасовано")
+    lines = callback.message.text.rsplit("\n", 1)
+    new_text = lines[0] + "\n🚫 Ви скасували бронь"
+    await callback.message.edit_text(new_text, reply_markup=None)

@@ -24,3 +24,5 @@ cases like pax created, driver open, pax cancels, driver accepts - show message 
 driver should get a messasge if confirmed passenger cancled the trip.
 
 can we run queries in paralell? like user cancels booking, driver aceepts. Won't there by race condition and corrupted data, errors?
+
+bug? sometimes when pas loads bookings: we see ones that are already outdated. But next request is fine.
