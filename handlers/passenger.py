@@ -226,12 +226,13 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
     increase_trip_search_list_index(user_id)
-    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
+    result = get_current_trip_from_search_list(user_id)
 
-    if not trip:
-        await callback.answer("❌ Це остання поїздка", show_alert=True)
+    if not result:
+        await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
         return
 
+    trip, index, total_cnt = result
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
@@ -244,8 +245,13 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
     decrease_trip_search_list_index(user_id)
-    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
+    result = get_current_trip_from_search_list(user_id)
 
+    if not result:
+        await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
+        return
+
+    trip, index, total_cnt = result
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0])
