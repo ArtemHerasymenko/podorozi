@@ -15,6 +15,13 @@ from handlers.common import generate_quick_days, quick_day_kb, validate_time, ge
 
 router = Router()
 
+STATUS_LABELS = {
+    "pending": "⏳ Очікує підтвердження водієм",
+    "confirmed": "✅ Підтверджено водієм",
+    "rejected": "❌ Відхилено водієм",
+    "cancelled_by_passenger": "🚫 Ви скасували бронь",
+}
+
 passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
@@ -38,13 +45,6 @@ async def my_trips(message: types.Message):
         await message.answer("У вас ще немає заброньованих поїздок.")
         return
 
-    status_labels = {
-        "pending": "⏳ Очікує підтвердження водієм",
-        "confirmed": "✅ Підтверджено водієм",
-        "rejected": "❌ Відхилено водієм",
-        "cancelled_by_passenger": "🚫 Ви скасували бронь",
-    }
-
     CANCELLED_STATUSES = ("cancelled_by_passenger", "rejected")
     trips = sorted(trips, key=lambda t: t[7] in CANCELLED_STATUSES)
 
@@ -56,7 +56,7 @@ async def my_trips(message: types.Message):
             dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
         else:
             dt_str = "N/A"
-        status_label = status_labels.get(status, status)
+        status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
@@ -321,7 +321,13 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
 async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
-    cancel_booking_by_passenger(booking_id)
+    success = cancel_booking_by_passenger(booking_id)
     lines = callback.message.text.rsplit("\n", 1)
-    new_text = lines[0] + "\n" + status_labels["cancelled_by_passenger"]
-    await callback.message.edit_text(new_text, reply_markup=None)
+    if success:
+        new_text = lines[0] + "\n" + STATUS_LABELS["cancelled_by_passenger"]
+        await callback.message.edit_text(new_text, reply_markup=None)
+        await callback.answer("")
+    else:
+        new_text = lines[0] + "\n" + STATUS_LABELS["rejected"]
+        await callback.message.edit_text(new_text, reply_markup=None)
+        await callback.answer()

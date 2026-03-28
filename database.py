@@ -116,8 +116,12 @@ def update_booking_status(booking_id: int, status: str):
     return cursor.rowcount > 0
 
 def cancel_booking_by_passenger(booking_id: int):
-    cursor.execute("UPDATE bookings SET status = 'cancelled_by_passenger' WHERE id = %s", (booking_id,))
+    cursor.execute("""
+        UPDATE bookings SET status = 'cancelled_by_passenger'
+        WHERE id = %s AND status != 'rejected'
+    """, (booking_id,))
     conn.commit()
+    return cursor.rowcount > 0
 
 def increment_city_popularity(user_id: int, city_name: str):
     cursor.execute("""
