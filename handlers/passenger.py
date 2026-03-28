@@ -19,7 +19,7 @@ STATUS_LABELS = {
     "pending": "⏳ Очікує підтвердження водієм",
     "confirmed": "✅ Підтверджено водієм",
     "rejected": "❌ Відхилено водієм",
-    "cancelled_by_passenger": "🚫 Ви скасували бронь",
+    "cancelled_by_passenger": "🚫 Ви скасували поїздку",
 }
 
 passenger_menu_kb = ReplyKeyboardMarkup(

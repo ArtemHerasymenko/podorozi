@@ -139,7 +139,7 @@ async def confirm_booking(callback: types.CallbackQuery, bot: Bot):
 async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     booking_id = int(callback.data.split(":")[1])
     update_booking_status(booking_id, "rejected")
-    await callback.message.edit_text(callback.message.text + "\n\n❌ Бронь відхилена", reply_markup=None)
+    await callback.message.edit_text(callback.message.text + "\n\n❌ Ви відмовили цьому пасажиру", reply_markup=None)
 
     await callback.message.edit_reply_markup()  # прибираємо кнопки
 
