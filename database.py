@@ -106,22 +106,26 @@ def book_trip(trip_id: int, passenger_id: int) -> bool:
 
     return True, row[0]
 
-def update_booking_status(booking_id: int, status: str):
+def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuses: list[str]):
     cursor.execute("""
-        UPDATE bookings
-        SET status = %s
-        WHERE id = %s AND status = 'pending'
-    """, (status, booking_id))
+        WITH prev AS (
+            SELECT status FROM bookings WHERE id = %s
+        ),
+        updated AS (
+            UPDATE bookings SET status = %s
+            WHERE id = %s AND status = ANY(%s)
+            RETURNING status
+        )
+        SELECT
+            (SELECT status FROM prev),
+            COALESCE(
+                (SELECT status FROM updated),
+                (SELECT status FROM prev)
+            )
+    """, (booking_id, new_status, booking_id, allowed_prev_statuses))
     conn.commit()
-    return cursor.rowcount > 0
-
-def cancel_booking_by_passenger(booking_id: int):
-    cursor.execute("""
-        UPDATE bookings SET status = 'cancelled_by_passenger'
-        WHERE id = %s AND status != 'rejected'
-    """, (booking_id,))
-    conn.commit()
-    return cursor.rowcount > 0
+    row = cursor.fetchone()
+    return (row[0], row[1]) if row else (None, None)
 
 def increment_city_popularity(user_id: int, city_name: str):
     cursor.execute("""
@@ -148,6 +152,38 @@ def get_cities_for_user_sorted(user_id: int):
     others = sorted([c for c in all_cities if c not in popular])
 
     return popular, others
+
+def get_driver_trips(driver_id: int):
+    cursor.execute("""
+        SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
+               COUNT(b.id) FILTER (WHERE b.status = 'confirmed') AS confirmed_count,
+               COUNT(b.id) FILTER (WHERE b.status = 'pending') AS pending_count
+        FROM trips t
+        LEFT JOIN bookings b ON b.trip_id = t.id
+        WHERE t.driver_id = %s
+          AND t.departure_datetime >= NOW() - INTERVAL '2 hours'
+          AND t.status != 'cancelled'
+        GROUP BY t.id
+        ORDER BY t.departure_datetime
+    """, (driver_id,))
+    return cursor.fetchall()
+
+def cancel_trip(trip_id: int, driver_id: int):
+    cursor.execute("""
+        WITH cancelled_trip AS (
+            UPDATE trips SET status = 'cancelled'
+            WHERE id = %s AND driver_id = %s AND status = 'active'
+            RETURNING id
+        )
+        SELECT
+            (SELECT COUNT(*) FROM cancelled_trip) > 0,
+            ARRAY(SELECT id FROM bookings WHERE trip_id IN (SELECT id FROM cancelled_trip))
+    """, (trip_id, driver_id))
+    conn.commit()
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return False, []
+    return True, row[1] or []
 
 def get_driver_id(trip_id: int) -> int:
     cursor.execute("SELECT driver_id FROM trips WHERE id = %s", (trip_id,))

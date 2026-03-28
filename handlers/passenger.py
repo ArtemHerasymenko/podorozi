@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, cancel_booking_by_passenger
+from database import search_trips_ids, book_trip, get_driver_id, get_trip_details, get_passenger_bookings, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -20,6 +20,7 @@ STATUS_LABELS = {
     "confirmed": "✅ Підтверджено водієм",
     "rejected": "❌ Відхилено водієм",
     "cancelled_by_passenger": "🚫 Ви скасували поїздку",
+    "trip_cancelled": "🚫 Водій скасував поїздку"
 }
 
 passenger_menu_kb = ReplyKeyboardMarkup(
@@ -45,8 +46,8 @@ async def my_trips(message: types.Message):
         await message.answer("У вас ще немає заброньованих поїздок.")
         return
 
-    CANCELLED_STATUSES = ("cancelled_by_passenger", "rejected")
-    trips = sorted(trips, key=lambda t: t[7] in CANCELLED_STATUSES)
+    ACTIVE_STATUSES = ("pending", "confirmed")
+    trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id = trip
@@ -63,9 +64,9 @@ async def my_trips(message: types.Message):
         except:
             driver_name = "Водій"
         text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
-        if status not in CANCELLED_STATUSES:
+        if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Скасувати поїздку ❌", callback_data=f"cancel_booking:{booking_id}")]
+                [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
         else:
             kb = None
@@ -321,13 +322,25 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
 async def cancel_booking_callback(callback: types.CallbackQuery):
     booking_id = int(callback.data.split(":")[1])
-    success = cancel_booking_by_passenger(booking_id)
+    prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
     lines = callback.message.text.rsplit("\n", 1)
-    if success:
+    if prev_status in ("pending", "confirmed"):
         new_text = lines[0] + "\n" + STATUS_LABELS["cancelled_by_passenger"]
-        await callback.message.edit_text(new_text, reply_markup=None)
+        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.answer("")
+    elif prev_status == "cancelled_by_passenger":
+        new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
+        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.answer("")
+    elif prev_status == "rejected":
+        new_text = lines[0] + "\n" + "🚫 Водій вже відхилив вашу бронь раніше"
+        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
+        await callback.answer("")
+    elif prev_status == "trip_cancelled":
+        new_text = lines[0] + "\n" + STATUS_LABELS["trip_cancelled"]
+        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
         await callback.answer("")
     else:
-        new_text = lines[0] + "\n" + STATUS_LABELS["rejected"]
-        await callback.message.edit_text(new_text, reply_markup=None)
+        new_text = lines[0] + "\n" + "🚫 Не вдалося скасувати бронь. Виникла помилка, спробуйте ще."
+        await callback.message.edit_text(new_text, reply_markup=passenger_menu_kb)
         await callback.answer()

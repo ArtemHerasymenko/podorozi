@@ -26,3 +26,5 @@ driver should get a messasge if confirmed passenger cancled the trip.
 can we run queries in paralell? like user cancels booking, driver aceepts. Won't there by race condition and corrupted data, errors?
 
 bug? sometimes when pas loads bookings: we see ones that are already outdated. But next request is fine.
+
+when p cancels and it is confirmed - driver should get a message
