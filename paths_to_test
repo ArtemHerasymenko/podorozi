@@ -1,0 +1,12 @@
+1
+- Driver creates a trip
+- Driver cancels a trip.
+- Driver and P should not see it
+
+2
+- Driver creates a trip
+- P opens list, does not book yet.
+- Driver cancels a trip.
+- P tries to book
+
+3
