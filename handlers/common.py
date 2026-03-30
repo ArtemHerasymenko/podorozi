@@ -34,7 +34,7 @@ uk_months = {
 }
 
 def generate_quick_days():
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("Europe/Kiev"))
     quick_days = []
     for d in range(2):
         day = now + datetime.timedelta(days=d)
