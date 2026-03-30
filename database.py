@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending',
     passenger_id BIGINT NOT NULL,  -- Telegram user id
-    booked_at TIMESTAMP DEFAULT NOW()
+    booked_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP()
 );
 """)
 conn.commit()
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS trip_search_lists (
     user_id BIGINT PRIMARY KEY,
     trip_ids INT[],          -- список знайдених поїздок
     current_index INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP()
 );
 """)
 conn.commit()
@@ -161,7 +161,7 @@ def get_driver_trips(driver_id: int):
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
-          AND t.departure_datetime >= NOW() - INTERVAL '2 hours'
+          AND t.departure_datetime >= CLOCK_TIMESTAMP() - INTERVAL '2 hours'
           AND t.status != 'cancelled'
         GROUP BY t.id
         ORDER BY t.departure_datetime
@@ -207,7 +207,8 @@ def get_passenger_bookings(passenger_id: int):
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
-          AND t.departure_datetime >= NOW() - INTERVAL '2 hours'
+          AND b.status IN ('pending', 'confirmed')
+          AND t.departure_datetime >= CLOCK_TIMESTAMP() - INTERVAL '2 hours'
         ORDER BY t.departure_datetime
     """, (passenger_id,))
     return cursor.fetchall()
@@ -233,11 +234,11 @@ def search_trips_ids(from_city, to_city):
 def create_trip_search_list(user_id: int, trips: list[int]):
     cursor.execute("""
         INSERT INTO trip_search_lists (user_id, trip_ids, current_index, created_at)
-        VALUES (%s, %s, 0, NOW())
+        VALUES (%s, %s, 0, CLOCK_TIMESTAMP())
         ON CONFLICT (user_id) DO UPDATE
         SET trip_ids = EXCLUDED.trip_ids,
             current_index = 0,
-            created_at = NOW()
+            created_at = CLOCK_TIMESTAMP()
     """, (user_id, trips))
     conn.commit()
 
