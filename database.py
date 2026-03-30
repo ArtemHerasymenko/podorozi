@@ -168,6 +168,14 @@ def get_driver_trips(driver_id: int):
     """, (driver_id,))
     return cursor.fetchall()
 
+def get_bookings_for_trip(trip_id: int, status: str):
+    cursor.execute("""
+        SELECT id, passenger_id
+        FROM bookings
+        WHERE trip_id = %s AND status = %s
+    """, (trip_id, status))
+    return cursor.fetchall()
+
 def cancel_trip(trip_id: int, driver_id: int):
     cursor.execute("""
         WITH cancelled_trip AS (

@@ -7,7 +7,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import update_booking_status, get_passenger_id, get_driver_trips, cancel_trip
+from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
+from database import update_booking_status, get_passenger_id, get_driver_trips, cancel_trip, get_bookings_for_trip
 from aiogram import Bot
 import zoneinfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime
@@ -143,6 +144,28 @@ async def my_driver_trips(message: types.Message):
             [InlineKeyboardButton(text="Скасувати поїздку ❌", callback_data=f"cancel_trip:{trip_id}")]
         ])
         await message.answer(text, reply_markup=kb)
+
+        pending_bookings = get_bookings_for_trip(trip_id, 'pending')
+        if pending_bookings:
+            await message.answer("⏳ Ці пасажири хочуть поїхати з вами, але ви ще не підтвердили:")
+        for booking_id, passenger_id in pending_bookings:
+            try:
+                passenger_chat = await message.bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            await message.answer(f"👤 {passenger_name} ", reply_markup=booking_actions_kb(booking_id))
+
+        confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
+        if confirmed_bookings:
+            await message.answer("✅ Підтверджені пасажири:")
+        for booking_id, passenger_id in confirmed_bookings:
+            try:
+                passenger_chat = await message.bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            await message.answer(f"👤 {passenger_name}", reply_markup=reject_booking_kb(booking_id))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))

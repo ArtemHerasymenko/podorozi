@@ -6,6 +6,7 @@ from database import create_trip_search_list, get_current_trip_from_search_list,
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
+from keyboards.booking_kb import booking_actions_kb
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
@@ -259,19 +260,6 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
 
     await callback.answer()
 
-def booking_confirmation_keyboard(booking_id: int):
-    """
-    Кнопки для водія: підтвердити або відмовити бронь
-    """
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Підтвердити", callback_data=f"confirm_booking:{booking_id}"),
-                InlineKeyboardButton(text="❌ Відмовити", callback_data=f"reject_booking:{booking_id}")
-            ]
-        ]
-    )
-    return keyboard
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
 async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
@@ -312,7 +300,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
 
     # Текст для водія
     text = (
-        f"🚨 Пасажир {passenger_name} забронював поїздку:\n"
+        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
         f"📍 {route}\n"
         f"⏰ {time_str}"
     )
@@ -320,7 +308,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
     await bot.send_message(
         driver_id,
         text,
-        reply_markup=booking_confirmation_keyboard(booking_id)
+        reply_markup=booking_actions_kb(booking_id)
     )
 
 @router.callback_query(lambda c: c.data == "cancel_search")
