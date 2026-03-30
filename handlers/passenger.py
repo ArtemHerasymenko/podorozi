@@ -255,7 +255,7 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
         await callback.answer("❌ Водій скасував цю поїздку", show_alert=True)
         return
 
-    await callback.answer("✅ Поїздка заброньована!")
+    await callback.answer()
     await callback.message.edit_reply_markup()  # прибираємо кнопку
     await callback.message.answer(
         "⏳ Ми відправили запит водієві, очікуйте підтвердження.",

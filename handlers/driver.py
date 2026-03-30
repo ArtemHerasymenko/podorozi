@@ -10,7 +10,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
 from database import update_booking_status, get_passenger_id, get_driver_trips, cancel_trip, get_bookings_for_trip, get_trip_details_by_booking
 from aiogram import Bot
-import zoneinfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_trip_description
 
 router = Router()
@@ -125,16 +124,8 @@ async def my_driver_trips(message: types.Message):
 
     for trip in trips:
         trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count = trip
-        if dep_dt:
-            local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
-            local_dt = dep_dt.astimezone(local_tz)
-            dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
-        else:
-            dt_str = "N/A"
-
         text = (
-            f"🚗 {from_city} → {to_city}\n"
-            f"📅 {dt_str}\n"
+            f"{format_trip_description(from_city, to_city, dep_dt)}\n"
             f"💰 {price} грн\n"
             f"👥 {seats} місць\n"
             f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
@@ -181,7 +172,9 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])
             if prev_status in ("pending", "confirmed"):
                 passenger_id = get_passenger_id(booking_id)
-                await bot.send_message(passenger_id, "❌ На жаль, водій скасував цю поїздку.")
+                trip = get_trip_details_by_booking(booking_id)
+                trip_desc = f"\n{format_trip_description(*trip)}" if trip else ""
+                await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.\n{trip_desc}")
     else:
         await callback.message.edit_text(lines[0] + "\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None)
         await callback.answer("")

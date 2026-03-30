@@ -79,8 +79,9 @@ def generate_datetime(date_str, time_str):
 def format_trip_description(from_city: str, to_city: str, dep_dt) -> str:
     local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
     local_dt = dep_dt.astimezone(local_tz)
+    uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
     dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
-    return f"🚗 {from_city} → {to_city}\n📅 {dt_str}"
+    return f"🚗 {from_city} → {to_city}\n📅 {uk_day}, {dt_str}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
