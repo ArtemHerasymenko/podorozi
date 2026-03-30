@@ -10,3 +10,7 @@
 - P tries to book
 
 3
+- Driver creates a few trips
+- P searches trips, gets a list
+- Driver cancels some trips
+- P presses next or prev, we still show the trip

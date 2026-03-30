@@ -76,6 +76,12 @@ def generate_datetime(date_str, time_str):
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
+def format_trip_description(from_city: str, to_city: str, dep_dt) -> str:
+    local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+    local_dt = dep_dt.astimezone(local_tz)
+    dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
+    return f"🚗 {from_city} → {to_city}\n📅 {dt_str}"
+
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Я водій")],

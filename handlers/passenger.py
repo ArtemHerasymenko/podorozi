@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_passenger_bookings, update_booking_status
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -11,8 +11,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
-import zoneinfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_trip_description
 
 router = Router()
 
@@ -52,19 +51,14 @@ async def my_trips(message: types.Message):
 
     for trip in trips:
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id = trip
-        if dep_dt:
-            local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
-            local_dt = dep_dt.astimezone(local_tz)
-            dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
-        else:
-            dt_str = "N/A"
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
         except:
             driver_name = "Водій"
-        text = f"🚗 {from_city} → {to_city}\n📅 {dt_str}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+        trip_desc = format_trip_description(from_city, to_city, dep_dt)
+        text = f"{trip_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
@@ -145,21 +139,9 @@ def trip_keyboard(trip_id):
 
 def format_trip(trip, index, total_cnt):
     position_text = f"Номер {index + 1}/{total_cnt}"
-    # trip[6] is departure_datetime (timestamptz)
-    dt_utc = trip[6]
-    if dt_utc:
-        local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
-        dt_local = dt_utc.astimezone(local_tz)
-        day = dt_local.strftime("%Y-%m-%d")
-        time = dt_local.strftime("%H:%M")
-    else:
-        day = "N/A"
-        time = "N/A"
     return (
         f"📍 {position_text}\n\n"
-        f"🚗 {trip[2]} → {trip[4]}\n"
-        f"📅 {day}\n"
-        f"⏰ {time}\n"
+        f"{format_trip_description(trip[2], trip[4], trip[6])}\n"
         f"💰 {trip[7]} грн\n"
         f"👥 {trip[8]} місць"
     )
@@ -285,24 +267,12 @@ async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
 
     # Отримуємо деталі поїздки
     trip_details = get_trip_details(trip_id)
-    if trip_details:
-        from_city, to_city, dep_dt = trip_details
-        if dep_dt:
-            local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
-            local_dt = dep_dt.astimezone(local_tz)
-            time_str = local_dt.strftime("%d.%m %H:%M")
-        else:
-            time_str = "N/A"
-        route = f"{from_city} → {to_city}"
-    else:
-        route = "N/A"
-        time_str = "N/A"
+    trip_desc = format_trip_description(*trip_details) if trip_details else "N/A"
 
     # Текст для водія
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
-        f"📍 {route}\n"
-        f"⏰ {time_str}"
+        f"{trip_desc}"
     )
 
     await bot.send_message(
@@ -330,7 +300,9 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
         await callback.answer("")
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.")
+        trip = get_trip_details_by_booking(booking_id)
+        trip_desc = format_trip_description(*trip) if trip else ""
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{trip_desc}")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
