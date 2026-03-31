@@ -316,8 +316,10 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
         trip = get_trip_details_by_booking(booking_id)
-        trip_desc = format_trip_description(*trip) if trip else ""
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{trip_desc}")
+        trip_desc = format_trip_description(*trip[:3]) if trip else ""
+        notes = trip[3] if trip else None
+        notes_line = f"\n📝Деталі: {notes}" if notes else ""
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{trip_desc}{notes_line}")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
