@@ -6,3 +6,4 @@ class PassengerStates(StatesGroup):
     day = State()
     datetime = State()
     browsing_trips = State()
+    booking_notes = State()

@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending',
     passenger_id BIGINT NOT NULL,  -- Telegram user id
-    booked_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP()
+    booked_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP(),
+    notes TEXT
 );
 """)
 conn.commit()
@@ -91,14 +92,14 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
-def book_trip(trip_id: int, passenger_id: int) -> bool:
+def book_trip(trip_id: int, passenger_id: int, notes: str = None) -> bool:
 
     cursor.execute("""
-        INSERT INTO bookings (trip_id, passenger_id, status)
-        SELECT %s, %s, 'pending'
+        INSERT INTO bookings (trip_id, passenger_id, status, notes)
+        SELECT %s, %s, 'pending', %s
         WHERE EXISTS (SELECT 1 FROM trips WHERE id = %s AND status = 'active')
         RETURNING id
-    """, (trip_id, passenger_id, trip_id))
+    """, (trip_id, passenger_id, notes, trip_id))
     conn.commit()
     row = cursor.fetchone()
     if not row:
@@ -170,7 +171,7 @@ def get_driver_trips(driver_id: int):
 
 def get_bookings_for_trip(trip_id: int, status: str):
     cursor.execute("""
-        SELECT id, passenger_id
+        SELECT id, passenger_id, notes
         FROM bookings
         WHERE trip_id = %s AND status = %s
     """, (trip_id, status))
@@ -211,7 +212,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s

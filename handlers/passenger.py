@@ -50,7 +50,7 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
@@ -58,7 +58,8 @@ async def my_trips(message: types.Message):
         except:
             driver_name = "Водій"
         trip_desc = format_trip_description(from_city, to_city, dep_dt)
-        text = f"{trip_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+        notes_line = f"\n📝 Деталі: {notes}" if notes else ""
+        text = f"{trip_desc}\n💰 {price} грн\n👤 {driver_name}{notes_line}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
@@ -244,38 +245,52 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
-async def book_trip_callback(callback: types.CallbackQuery, bot: Bot):
+async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     trip_id = int(callback.data.split(":")[1])
-    passenger_id = callback.from_user.id 
-    passenger_name = callback.from_user.full_name
-
-    success, booking_id = book_trip(trip_id, passenger_id)
-
-    if not success:
-        await callback.answer("❌ Водій скасував цю поїздку", show_alert=True)
-        return
 
     await callback.answer()
-    await callback.message.edit_reply_markup()  # прибираємо кнопку
+    await callback.message.edit_reply_markup()
+    await state.update_data(booking_trip_id=trip_id)
+    await state.set_state(PassengerStates.booking_notes)
+
     await callback.message.answer(
+        "📝 Вкажіть місце де вас підібрати, наприклад: 'біля магазину Нектар'",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+@router.message(PassengerStates.booking_notes)
+async def booking_notes_handler(message: types.Message, state: FSMContext):
+    notes = message.text
+    data = await state.get_data()
+    trip_id = data["booking_trip_id"]
+    passenger_id = message.from_user.id
+    passenger_name = message.from_user.full_name
+
+    success, booking_id = book_trip(trip_id, passenger_id, notes)
+
+    if not success:
+        await message.answer("❌ Водій скасував цю поїздку", reply_markup=passenger_menu_kb)
+        await state.clear()
+        return
+
+    await state.clear()
+    await message.answer(
         "⏳ Ми відправили запит водієві, очікуйте підтвердження.",
         reply_markup=passenger_menu_kb
     )
 
-     # Отримуємо id водія з поїздки
     driver_id = get_driver_id(trip_id)
-
-    # Отримуємо деталі поїздки
     trip_details = get_trip_details(trip_id)
     trip_desc = format_trip_description(*trip_details) if trip_details else "N/A"
 
-    # Текст для водія
+    notes_line = f"\n📝 Деталі: {notes}" if notes else ""
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
         f"{trip_desc}"
+        f"{notes_line}"
     )
 
-    await bot.send_message(
+    await message.bot.send_message(
         driver_id,
         text,
         reply_markup=booking_actions_kb(booking_id)
