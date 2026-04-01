@@ -11,7 +11,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_trip_description
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
 
 router = Router()
 
@@ -50,16 +50,15 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
         except:
             driver_name = "Водій"
-        trip_desc = format_trip_description(from_city, to_city, dep_dt)
-        notes_line = f"\n📝 Деталі: {notes}" if notes else ""
-        text = f"{trip_desc}\n💰 {price} грн\n👤 {driver_name}{notes_line}\n{status_label}"
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes)
+        text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
@@ -142,7 +141,7 @@ def format_trip(trip, index, total_cnt):
     position_text = f"Номер {index + 1}/{total_cnt}"
     return (
         f"📍 {position_text}\n\n"
-        f"{format_trip_description(trip[2], trip[4], trip[6])}\n"
+        f"{format_basic_details(trip[2], trip[4], trip[6])}\n"
         f"💰 {trip[7]} грн\n"
         f"👥 {trip[8]} місць"
     )
@@ -281,13 +280,11 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)
-    trip_desc = format_trip_description(*trip_details) if trip_details else "N/A"
+    booking_desc = format_booking_description_for_driver(*trip_details, notes) if trip_details else "N/A"
 
-    notes_line = f"\n📝 Деталі: {notes}" if notes else ""
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
-        f"{trip_desc}"
-        f"{notes_line}"
+        f"{booking_desc}"
     )
 
     await message.bot.send_message(
@@ -316,10 +313,8 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
         trip = get_trip_details_by_booking(booking_id)
-        trip_desc = format_trip_description(*trip[:3]) if trip else ""
-        notes = trip[3] if trip else None
-        notes_line = f"\n📝Деталі: {notes}" if notes else ""
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{trip_desc}{notes_line}")
+        booking_desc = format_booking_description_for_driver(*trip) if trip else ""
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
