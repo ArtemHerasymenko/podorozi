@@ -82,18 +82,26 @@ def format_basic_details(from_city: str, to_city: str, dep_dt) -> str:
     uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
     dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
     return f"🚗 {from_city} → {to_city}\n📅 {uk_day}, {dt_str}"
+    
+def format_notes_details_for_driver(notes: str = None, driver_notes: str = None) -> str:
+    notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
+    driver_notes_line = f"\n⏱ Ви прибуде о: {driver_notes}" if driver_notes else ""
+    return f"{notes_line}{driver_notes_line}"
 
 def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None) -> str:
     trip_desc = format_basic_details(from_city, to_city, dep_dt)
-    notes_line = f"\n📍 Пасажир пропонує підібрати його тут: {notes}" if notes else ""
-    driver_notes_line = f"\n⏱ Ви прибуде о: {driver_notes}" if driver_notes else ""
-    return f"{trip_desc}{notes_line}{driver_notes_line}"
+    notes_desc = format_notes_details_for_driver(notes, driver_notes)
+    return f"{trip_desc}{notes_desc}"
+
+def format_notes_details_for_passenger(notes: str = None, driver_notes: str = None) -> str:
+    notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
+    driver_notes_line = f"\n⏱ Водій прибуде о: {driver_notes}" if driver_notes else ""
+    return f"{notes_line}{driver_notes_line}"
 
 def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None) -> str:
     trip_desc = format_basic_details(from_city, to_city, dep_dt)
-    notes_line = f"\n📍 Ваше місце посадки: {notes}" if notes else ""
-    driver_notes_line = f"\n⏱ Водій прибуде о: {driver_notes}" if driver_notes else ""
-    return f"{trip_desc}{notes_line}{driver_notes_line}"
+    notes_desc = format_notes_details_for_passenger(notes, driver_notes)
+    return f"{trip_desc}{notes_desc}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[

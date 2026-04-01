@@ -12,7 +12,7 @@ from database import update_booking_status, get_passenger_id, get_driver_trips, 
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_basic_details, format_booking_description_for_passenger
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver
 
 router = Router()
 
@@ -147,7 +147,7 @@ async def my_driver_trips(message: types.Message):
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = f"\n📝Деталі: {notes}" if notes else ""
+            notes_line = format_notes_details_for_driver(notes)
             await message.answer(f"👤 {passenger_name}{notes_line}", reply_markup=booking_actions_kb(booking_id))
 
         confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
@@ -159,9 +159,8 @@ async def my_driver_trips(message: types.Message):
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = f"\n📝Деталі: {notes}" if notes else ""
-            driver_notes_line = f"\n💬 {driver_notes}" if driver_notes else ""
-            await message.answer(f"👤 {passenger_name}{notes_line}{driver_notes_line}", reply_markup=reject_booking_kb(booking_id))
+            notes_line = format_notes_details_for_driver(notes, driver_notes)
+            await message.answer(f"👤 {passenger_name}{notes_line}", reply_markup=reject_booking_kb(booking_id))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))
