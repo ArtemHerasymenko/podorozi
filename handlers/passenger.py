@@ -89,17 +89,17 @@ async def find_trip(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку.")
+        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
     await state.update_data(from_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
-    await message.answer("Місто прибуття:")
+    await message.answer("Місто прибуття:", reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(PassengerStates.to_city)
 
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку.")
+        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
@@ -211,6 +211,12 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     increase_trip_search_list_index(user_id)
     result = get_current_trip_from_search_list(user_id)
 
+    if result == "expired":
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, почніть новий!", reply_markup=passenger_menu_kb)
+        await callback.answer()
+        return
+
     if not result:
         await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
         return
@@ -230,6 +236,12 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     decrease_trip_search_list_index(user_id)
     result = get_current_trip_from_search_list(user_id)
 
+    if result == "expired":
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
+        await callback.answer()
+        return
+
     if not result:
         await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
         return
@@ -246,6 +258,13 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
 async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     trip_id = int(callback.data.split(":")[1])
+
+    result = get_current_trip_from_search_list(callback.from_user.id)
+    if result == "expired":
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
+        await callback.answer()
+        return
 
     await callback.answer()
     await callback.message.edit_reply_markup()

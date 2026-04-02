@@ -269,7 +269,7 @@ def create_trip_search_list(user_id: int, trips: list[int]):
 
 def get_current_trip_from_search_list(user_id: int):
     cursor.execute("""
-        SELECT trip_ids, current_index
+        SELECT trip_ids, current_index, CLOCK_TIMESTAMP() - created_at > INTERVAL '5 minutes'
         FROM trip_search_lists
         WHERE user_id = %s
     """, (user_id,))
@@ -278,7 +278,10 @@ def get_current_trip_from_search_list(user_id: int):
     if not result:
         return None
 
-    trip_ids, index = result
+    trip_ids, index, is_expired = result
+
+    if is_expired:
+        return "expired"
 
     if index >= len(trip_ids):
         return None
