@@ -143,7 +143,7 @@ def format_trip(trip, index, total_cnt):
         f"📍 {position_text}\n\n"
         f"{format_basic_details(trip[2], trip[4], trip[6])}\n"
         f"💰 {trip[7]} грн\n"
-        f"👥 {trip[8]} місць"
+        f"👥 Вільних місць: {trip[9]}/{trip[8]}"
     )
 
 @router.message(PassengerStates.datetime)
@@ -162,10 +162,8 @@ async def search(message: types.Message, state: FSMContext):
 
     await state.update_data(datetime=response)
 
-    #TODO: search by day/time as well, not just cities
-    # Also do not show cancelled trips in search results
     data = await state.get_data()
-    trips_ids = search_trips_ids(data["from_city"], data["to_city"])
+    trips_ids = search_trips_ids(data["from_city"], data["to_city"], data.get("datetime"))
 
     if not trips_ids:
         await message.answer("Нічого не знайдено", reply_markup=passenger_menu_kb)

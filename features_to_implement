@@ -28,3 +28,9 @@ if a rider book an old ride or just. without seat - tell him to search again for
 це було супер зручно і корисно.
 
 Мої попередні поздки, для обох.
+
+P search: time, status, num of free seats. Do not let book if was 1 seat before booking, but during booking there is no seats.
+
+P show trips: time
+
+P and D shound not be able to change booking and trip status once it is started. Or after it is already finished
