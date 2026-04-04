@@ -176,7 +176,7 @@ async def my_driver_trips(message: types.Message):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes)
-            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=booking_actions_kb(booking_id))
+            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=booking_actions_kb(booking_id, passenger_id))
 
         confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
         if confirmed_bookings:
@@ -188,7 +188,7 @@ async def my_driver_trips(message: types.Message):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, driver_notes)
-            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=reject_booking_kb(booking_id))
+            await message.answer(f"👤 {passenger_name} ({booking_seats} місць){notes_line}", reply_markup=reject_booking_kb(booking_id, passenger_id))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))
