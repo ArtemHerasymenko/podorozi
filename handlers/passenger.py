@@ -50,14 +50,14 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes, arrival_time = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
         except:
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time)
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -141,7 +141,7 @@ def format_trip(trip, index, total_cnt):
     position_text = f"Номер {index + 1}/{total_cnt}"
     return (
         f"📍 {position_text}\n\n"
-        f"{format_basic_details(trip[2], trip[4], trip[6])}\n"
+        f"{format_basic_details(trip[2], trip[4], trip[6], trip[10])}\n"
         f"💰 {trip[7]} грн\n"
         f"👥 Вільних місць: {trip[9]}/{trip[8]}"
     )
@@ -284,8 +284,15 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
 
     success, booking_id = book_trip(trip_id, passenger_id, notes)
 
+    BOOK_ERRORS = {
+        "not_found": "❌ Поїздку не знайдено.",
+        "cancelled":  "❌ Водій скасував цю поїздку.",
+        "departed":   "❌ Ця поїздка вже відправилась.",
+        "no_seats":   "❌ На жаль, вільних місць більше немає.",
+        "overlap":    "❌ У вас вже є активне бронювання на цей час.",
+    }
     if not success:
-        await message.answer("❌ Водій скасував цю поїздку", reply_markup=passenger_menu_kb)
+        await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb)
         await state.clear()
         return
 
@@ -297,7 +304,7 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)
-    booking_desc = format_booking_description_for_driver(*trip_details, notes) if trip_details else "N/A"
+    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3]) if trip_details else "N/A"
 
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"

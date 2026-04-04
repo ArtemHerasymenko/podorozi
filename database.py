@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS trips (
     departure_datetime TIMESTAMPTZ,
     price TEXT,
     seats TEXT,
-    arrival_time TEXT,
+    arrival_time TIMESTAMPTZ,
     status TEXT DEFAULT 'active'
 )
 """)
@@ -95,20 +95,61 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
-def book_trip(trip_id: int, passenger_id: int, notes: str = None) -> bool:
-
+def book_trip(trip_id: int, passenger_id: int, notes: str = None):
+    cursor.execute("BEGIN")
+    # Lock the trip row so concurrent bookings can't race past the seat check
+    cursor.execute("SELECT id FROM trips WHERE id = %s FOR UPDATE", (trip_id,))
     cursor.execute("""
-        INSERT INTO bookings (trip_id, passenger_id, status, notes)
-        SELECT %s, %s, 'pending', %s
-        WHERE EXISTS (SELECT 1 FROM trips WHERE id = %s AND status = 'active')
-        RETURNING id
-    """, (trip_id, passenger_id, notes, trip_id))
+        WITH trip AS (
+            SELECT
+                status,
+                departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
+                seats::int > (
+                    SELECT COUNT(*) FROM bookings
+                    WHERE trip_id = %s AND status IN ('pending', 'confirmed')
+                ) AS has_seats,
+                (
+                    SELECT COUNT(*) FROM bookings b2
+                    JOIN trips t2 ON b2.trip_id = t2.id
+                    WHERE b2.passenger_id = %s
+                      AND b2.status IN ('pending', 'confirmed')
+                      AND t2.departure_datetime < (SELECT arrival_time  FROM trips WHERE id = %s)
+                      AND t2.arrival_time        > (SELECT departure_datetime FROM trips WHERE id = %s)
+                ) AS overlap_count
+            FROM trips WHERE id = %s
+        ),
+        inserted AS (
+            INSERT INTO bookings (trip_id, passenger_id, status, notes)
+            SELECT %s, %s, 'pending', %s
+            FROM trip
+            WHERE status = 'active'
+              AND not_departed
+              AND has_seats
+              AND overlap_count = 0
+            RETURNING id
+        )
+        SELECT
+            (SELECT status        FROM trip),
+            (SELECT not_departed  FROM trip),
+            (SELECT has_seats     FROM trip),
+            (SELECT overlap_count FROM trip),
+            (SELECT id            FROM inserted)
+    """, (trip_id, passenger_id, trip_id, trip_id, trip_id, trip_id, passenger_id, notes))
     conn.commit()
     row = cursor.fetchone()
-    if not row:
-        return False, None
 
-    return True, row[0]
+    if not row or row[0] is None:
+        return False, "not_found"
+    status, not_departed, has_seats, overlap_count, inserted_id = row
+    if status != 'active':
+        return False, "cancelled"
+    if not not_departed:
+        return False, "departed"
+    if not has_seats:
+        return False, "no_seats"
+    if overlap_count:
+        return False, "overlap"
+    return True, inserted_id
 
 def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuses: list[str]):
     cursor.execute("""
@@ -161,7 +202,8 @@ def get_driver_trips(driver_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COUNT(b.id) FILTER (WHERE b.status = 'confirmed') AS confirmed_count,
-               COUNT(b.id) FILTER (WHERE b.status = 'pending') AS pending_count
+               COUNT(b.id) FILTER (WHERE b.status = 'pending') AS pending_count,
+               t.arrival_time
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -215,7 +257,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.driver_notes
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.driver_notes, t.arrival_time
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -227,7 +269,7 @@ def get_passenger_bookings(passenger_id: int):
 
 def get_trip_details(trip_id: int):
     cursor.execute("""
-        SELECT from_city, to_city, departure_datetime
+        SELECT from_city, to_city, departure_datetime, arrival_time
         FROM trips
         WHERE id = %s
     """, (trip_id,))
@@ -235,7 +277,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
@@ -302,7 +344,8 @@ def get_current_trip_from_search_list(user_id: int):
                t.seats::int - (
                    SELECT COUNT(*) FROM bookings b
                    WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
-               ) AS free_seats
+               ) AS free_seats,
+               t.arrival_time
         FROM trips t
         WHERE t.id = %s
     """, (trip_id,))

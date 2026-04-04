@@ -76,20 +76,21 @@ def generate_datetime(date_str, time_str):
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
-def format_basic_details(from_city: str, to_city: str, dep_dt) -> str:
+def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt) -> str:
     local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
     local_dt = dep_dt.astimezone(local_tz)
+    arrival_local = arrival_dt.astimezone(local_tz)
     uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
     dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
-    return f"🚗 {from_city} → {to_city}\n📅 {uk_day}, {dt_str}"
+    return f"🚗 {from_city} → {to_city}\n📅 {uk_day}, {dt_str} — {arrival_local.strftime('%H:%M')}"
     
 def format_notes_details_for_driver(notes: str = None, driver_notes: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
     driver_notes_line = f"\n⏱ Ви прибуде о: {driver_notes}" if driver_notes else ""
     return f"{notes_line}{driver_notes_line}"
 
-def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None) -> str:
-    trip_desc = format_basic_details(from_city, to_city, dep_dt)
+def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None) -> str:
+    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt)
     notes_desc = format_notes_details_for_driver(notes, driver_notes)
     return f"{trip_desc}{notes_desc}"
 
@@ -98,8 +99,8 @@ def format_notes_details_for_passenger(notes: str = None, driver_notes: str = No
     driver_notes_line = f"\n⏱ Водій прибуде о: {driver_notes}" if driver_notes else ""
     return f"{notes_line}{driver_notes_line}"
 
-def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None) -> str:
-    trip_desc = format_basic_details(from_city, to_city, dep_dt)
+def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None) -> str:
+    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt)
     notes_desc = format_notes_details_for_passenger(notes, driver_notes)
     return f"{trip_desc}{notes_desc}"
 
