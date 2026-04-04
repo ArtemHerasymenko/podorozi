@@ -50,14 +50,14 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes, arrival_time = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes, arrival_time, booked_seats = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
         except:
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time, booked_seats)
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
