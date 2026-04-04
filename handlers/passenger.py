@@ -117,25 +117,16 @@ async def day_handler(message: types.Message, state: FSMContext):
     await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.datetime)
 
-def trip_keyboard(trip_id):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
+def trip_keyboard(trip_id, total_cnt=1):
+    rows = []
+    if total_cnt > 1:
+        rows.append([
             InlineKeyboardButton(text="⬅️", callback_data="prev"),
             InlineKeyboardButton(text="➡️", callback_data="next"),
-        ],
-        [
-            InlineKeyboardButton(
-                text="Забронювати ✅",
-                callback_data=f"book_trip:{trip_id}"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="Скасувати пошук ❌",
-                callback_data="cancel_search"
-            )
-        ]
-    ])
+        ])
+    rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
+    rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def format_trip(trip, index, total_cnt):
     position_text = f"Номер {index + 1}/{total_cnt}"
@@ -175,7 +166,7 @@ async def search(message: types.Message, state: FSMContext):
 
     trip_message = await message.answer(
         format_trip(trip, index, total_cnt),
-        reply_markup=trip_keyboard(trip[0])
+        reply_markup=trip_keyboard(trip[0], total_cnt)
     )
     
     await state.set_state(PassengerStates.browsing_trips)
@@ -222,7 +213,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     trip, index, total_cnt = result
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt),
-        reply_markup=trip_keyboard(trip[0])
+        reply_markup=trip_keyboard(trip[0], total_cnt)
     )
 
     await callback.answer()
@@ -247,7 +238,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     trip, index, total_cnt = result
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt),
-        reply_markup=trip_keyboard(trip[0])
+        reply_markup=trip_keyboard(trip[0], total_cnt)
     )
 
     await callback.answer()
