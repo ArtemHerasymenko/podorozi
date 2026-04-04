@@ -169,26 +169,26 @@ async def my_driver_trips(message: types.Message):
         pending_bookings = get_bookings_for_trip(trip_id, 'pending')
         if pending_bookings:
             await message.answer("⏳ Ці пасажири хочуть поїхати з вами, але ви ще не підтвердили:")
-        for booking_id, passenger_id, notes, driver_notes in pending_bookings:
+        for booking_id, passenger_id, notes, driver_notes, booking_seats in pending_bookings:
             try:
                 passenger_chat = await message.bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes)
-            await message.answer(f"👤 {passenger_name}{notes_line}", reply_markup=booking_actions_kb(booking_id))
+            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=booking_actions_kb(booking_id))
 
         confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
         if confirmed_bookings:
             await message.answer("✅ Підтверджені пасажири:")
-        for booking_id, passenger_id, notes, driver_notes in confirmed_bookings:
+        for booking_id, passenger_id, notes, driver_notes, booking_seats in confirmed_bookings:
             try:
                 passenger_chat = await message.bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, driver_notes)
-            await message.answer(f"👤 {passenger_name}{notes_line}", reply_markup=reject_booking_kb(booking_id))
+            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=reject_booking_kb(booking_id))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))

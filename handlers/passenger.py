@@ -152,9 +152,23 @@ async def search(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(datetime=response)
+    await state.set_state(PassengerStates.seats_requested)
+    await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    ))
+
+@router.message(PassengerStates.seats_requested)
+async def seats_requested_handler(message: types.Message, state: FSMContext):
+    if not message.text.isdigit() or int(message.text) < 1:
+        await message.answer("Введіть ціле число, наприклад 1:")
+        return
+    seats = int(message.text)
+    await state.update_data(seats_requested=seats)
 
     data = await state.get_data()
-    trips_ids = search_trips_ids(data["from_city"], data["to_city"], data.get("datetime"))
+    trips_ids = search_trips_ids(data["from_city"], data["to_city"], data.get("datetime"), seats)
 
     if not trips_ids:
         await message.answer("Нічого не знайдено", reply_markup=passenger_menu_kb)
@@ -162,13 +176,14 @@ async def search(message: types.Message, state: FSMContext):
         return
 
     create_trip_search_list(message.from_user.id, [t for t in trips_ids])
+    # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
     trip_message = await message.answer(
         format_trip(trip, index, total_cnt),
         reply_markup=trip_keyboard(trip[0], total_cnt)
     )
-    
+
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
@@ -270,16 +285,17 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
     notes = message.text
     data = await state.get_data()
     trip_id = data["booking_trip_id"]
+    seats_requested = data.get("seats_requested", 1)
     passenger_id = message.from_user.id
     passenger_name = message.from_user.full_name
 
-    success, booking_id = book_trip(trip_id, passenger_id, notes)
+    success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested)
 
     BOOK_ERRORS = {
         "not_found": "❌ Поїздку не знайдено.",
         "cancelled":  "❌ Водій скасував цю поїздку.",
         "departed":   "❌ Ця поїздка вже відправилась.",
-        "no_seats":   "❌ На жаль, вільних місць більше немає.",
+        "no_seats":   "❌ На жаль, недостатньо вільних місць.",
         "overlap":    "❌ У вас вже є активне бронювання на цей час.",
     }
     if not success:
@@ -295,7 +311,7 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)
-    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3]) if trip_details else "N/A"
+    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested) if trip_details else "N/A"
 
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"

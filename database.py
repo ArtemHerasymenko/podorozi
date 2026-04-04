@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     passenger_id BIGINT NOT NULL,  -- Telegram user id
     booked_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP(),
     notes TEXT,
-    driver_notes TEXT
+    driver_notes TEXT,
+    seats INT DEFAULT 1
 );
 """)
 conn.commit()
@@ -108,7 +109,7 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
-def book_trip(trip_id: int, passenger_id: int, notes: str = None):
+def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1):
     cursor.execute("BEGIN")
     # Lock the trip row so concurrent bookings can't race past the seat check
     cursor.execute("SELECT id FROM trips WHERE id = %s FOR UPDATE", (trip_id,))
@@ -117,10 +118,10 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None):
             SELECT
                 status,
                 departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
-                seats::int > (
-                    SELECT COUNT(*) FROM bookings
-                    WHERE trip_id = %s AND status IN ('pending', 'confirmed')
-                ) AS has_seats,
+                seats::int - (
+                    SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
+                    WHERE b.trip_id = %s AND b.status IN ('pending', 'confirmed')
+                ) >= %s AS has_seats,
                 (
                     SELECT COUNT(*) FROM bookings b2
                     JOIN trips t2 ON b2.trip_id = t2.id
@@ -132,8 +133,8 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None):
             FROM trips WHERE id = %s
         ),
         inserted AS (
-            INSERT INTO bookings (trip_id, passenger_id, status, notes)
-            SELECT %s, %s, 'pending', %s
+            INSERT INTO bookings (trip_id, passenger_id, status, notes, seats)
+            SELECT %s, %s, 'pending', %s, %s
             FROM trip
             WHERE status = 'active'
               AND not_departed
@@ -147,7 +148,7 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None):
             (SELECT has_seats     FROM trip),
             (SELECT overlap_count FROM trip),
             (SELECT id            FROM inserted)
-    """, (trip_id, passenger_id, trip_id, trip_id, trip_id, trip_id, passenger_id, notes))
+    """, (trip_id, seats_requested, passenger_id, trip_id, trip_id, trip_id, trip_id, passenger_id, notes, seats_requested))
     conn.commit()
     row = cursor.fetchone()
 
@@ -229,7 +230,7 @@ def get_driver_trips(driver_id: int):
 
 def get_bookings_for_trip(trip_id: int, status: str):
     cursor.execute("""
-        SELECT id, passenger_id, notes, driver_notes
+        SELECT id, passenger_id, notes, driver_notes, seats
         FROM bookings
         WHERE trip_id = %s AND status = %s
     """, (trip_id, status))
@@ -290,7 +291,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time, b.seats
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
@@ -303,7 +304,7 @@ def set_booking_driver_notes(booking_id: int, driver_notes: str):
     """, (driver_notes, booking_id))
     conn.commit()
 
-def search_trips_ids(from_city, to_city, from_datetime):
+def search_trips_ids(from_city, to_city, from_datetime, seats_needed=1):
     cursor.execute("""
         SELECT t.id
         FROM trips t
@@ -312,11 +313,13 @@ def search_trips_ids(from_city, to_city, from_datetime):
           AND t.departure_datetime > CLOCK_TIMESTAMP()
           AND t.departure_datetime >= %s
           AND (
-            SELECT COUNT(*) FROM bookings b
-            WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
-          ) < t.seats::int
+            t.seats::int - COALESCE((
+              SELECT SUM(b.seats) FROM bookings b
+              WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
+            ), 0)
+          ) >= %s
         ORDER BY t.departure_datetime
-    """, (from_city, to_city, from_datetime))
+    """, (from_city, to_city, from_datetime, seats_needed))
 
     return [row[0] for row in cursor.fetchall()]
 
@@ -355,7 +358,7 @@ def get_current_trip_from_search_list(user_id: int):
     cursor.execute("""
         SELECT t.id, t.driver_id, t.from_city, t.from_points, t.to_city, t.to_points, t.departure_datetime, t.price, t.seats,
                t.seats::int - (
-                   SELECT COUNT(*) FROM bookings b
+                   SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
                    WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
                ) AS free_seats,
                t.arrival_time
