@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS trips (
     departure_datetime TIMESTAMPTZ,
     price TEXT,
     seats TEXT,
+    arrival_time TEXT,
     status TEXT DEFAULT 'active'
 )
 """)
@@ -74,8 +75,8 @@ conn.commit()
 def save_trip_to_db(driver_id, data):
     
     cursor.execute("""
-        INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         driver_id,
         data["from_city"],
@@ -84,7 +85,8 @@ def save_trip_to_db(driver_id, data):
         data["to_points"],
         data["datetime"],
         data["price"],
-        data["seats"]
+        data["seats"],
+        data.get("arrival_time")
     ))
     conn.commit()
 

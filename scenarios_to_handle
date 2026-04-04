@@ -32,3 +32,5 @@ when p cancels and it is confirmed - driver should get a message
 make sure we handle day corretnyl ,like if we ask at 11:30, is it still today, or at 00:30 is it already tomorrow - handle time on a service layer.
 
 If we create a ride for tomorrow at 14:30, and this night there is a shit to summer time.  Will the ride still be visiable as 14:30 tomorrow, I guess no, since we now add 3h, so it will be 15:30 now.
+
+book multiple seats

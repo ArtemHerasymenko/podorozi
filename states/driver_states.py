@@ -7,6 +7,7 @@ class DriverStates(StatesGroup):
     to_points = State()
     day = State()
     datetime = State()
+    arrival_time = State()
     price = State()
     seats = State()
     confirming_booking = State()

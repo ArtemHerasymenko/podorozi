@@ -97,6 +97,23 @@ async def time(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(datetime=response)
+    await message.answer(f"Вкажіть приблизний час прибуття в {data.get('to_city')} у форматі ГГ:ХХ:")
+    await state.set_state(DriverStates.arrival_time)
+
+@router.message(DriverStates.arrival_time)
+async def arrival_time(message: types.Message, state: FSMContext):
+    is_valid, error_msg = validate_time(message.text)
+    if not is_valid:
+        await message.answer(error_msg)
+        return
+
+    data = await state.get_data()
+    is_valid, response = generate_datetime(data.get("day"), message.text)
+    if not is_valid:
+        await message.answer(response)
+        return
+
+    await state.update_data(arrival_time=response)
     await message.answer("Ціна:")
     await state.set_state(DriverStates.price)
 
