@@ -273,6 +273,11 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
+    trip, _, _ = result
+    if trip[1] == callback.from_user.id:
+        await callback.answer("❌ Ви не можете забронювати власну поїздку.", show_alert=True)
+        return
+
     await callback.answer()
     await callback.message.edit_reply_markup()
     await state.update_data(booking_trip_id=trip_id)
