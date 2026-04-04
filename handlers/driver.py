@@ -113,6 +113,10 @@ async def arrival_time(message: types.Message, state: FSMContext):
         await message.answer(response)
         return
 
+    if response <= data.get("datetime"):
+        await message.answer("❌ Час прибуття має бути пізніше часу відправлення. Введіть знову:")
+        return
+
     await state.update_data(arrival_time=response)
     await message.answer("Ціна:")
     await state.set_state(DriverStates.price)
@@ -128,7 +132,14 @@ async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
     data = await state.get_data()
 
-    save_trip_to_db(message.from_user.id, data)
+    saved = save_trip_to_db(message.from_user.id, data)
+    if not saved:
+        await message.answer(
+            "❌ У вас вже є активна поїздка в цей час.",
+            reply_markup=driver_menu_kb
+        )
+        await state.clear()
+        return
 
     await message.answer("Поїздка збережена ✅", reply_markup=driver_menu_kb)
     await state.clear()

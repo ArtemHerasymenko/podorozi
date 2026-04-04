@@ -73,22 +73,35 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
 conn.commit()
 
 def save_trip_to_db(driver_id, data):
-    
+    """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
+    cursor.execute("BEGIN")
     cursor.execute("""
-        INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        WITH overlap AS (
+            SELECT EXISTS (
+                SELECT 1 FROM trips
+                WHERE driver_id = %s
+                  AND status = 'active'
+                  AND departure_datetime < %s
+                  AND arrival_time > %s
+            ) AS has_overlap
+        ),
+        inserted AS (
+            INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
+            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s
+            FROM overlap WHERE NOT has_overlap
+            RETURNING id
+        )
+        SELECT (SELECT has_overlap FROM overlap), (SELECT id FROM inserted)
     """, (
+        driver_id, data["arrival_time"], data["datetime"],
         driver_id,
-        data["from_city"],
-        data["from_points"],
-        data["to_city"],
-        data["to_points"],
-        data["datetime"],
-        data["price"],
-        data["seats"],
-        data.get("arrival_time")
+        data["from_city"], data["from_points"],
+        data["to_city"],  data["to_points"],
+        data["datetime"], data["price"], data["seats"], data["arrival_time"]
     ))
     conn.commit()
+    has_overlap, inserted_id = cursor.fetchone()
+    return not has_overlap
 
 def get_cities():
     cursor.execute("SELECT name FROM cities ORDER BY name")
