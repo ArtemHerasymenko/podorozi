@@ -131,14 +131,19 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None):
     rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-def format_trip(trip, index, total_cnt):
+def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
     position_text = f"Номер {index + 1}/{total_cnt}"
+    name_str = driver_name or "Водій"
+    if is_own:
+        name_str += " (Ви)"
+    driver_line = f"\n👤 {name_str}"
     return (
         f"📍 {position_text}\n\n"
+        f"{driver_line}"
         f"{format_basic_details(trip[2], trip[4], trip[6], trip[10])}\n"
         f"💰 {trip[7]} грн\n"
         f"👥 Вільних місць: {trip[9]}/{trip[8]}"
-    )
+        f"{driver_line}"    )
 
 @router.message(PassengerStates.datetime)
 async def search(message: types.Message, state: FSMContext):
@@ -182,8 +187,14 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
+    try:
+        driver_chat = await message.bot.get_chat(trip[1])
+        driver_name = driver_chat.full_name
+    except:
+        driver_name = None
+
     trip_message = await message.answer(
-        format_trip(trip, index, total_cnt),
+        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id)),
         reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
     )
 
@@ -229,8 +240,13 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         return
 
     trip, index, total_cnt = result
+    try:
+        driver_chat = await callback.bot.get_chat(trip[1])
+        driver_name = driver_chat.full_name
+    except:
+        driver_name = None
     await callback.message.edit_text(
-        format_trip(trip, index, total_cnt),
+        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
         reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
     )
 
@@ -254,8 +270,13 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         return
 
     trip, index, total_cnt = result
+    try:
+        driver_chat = await callback.bot.get_chat(trip[1])
+        driver_name = driver_chat.full_name
+    except:
+        driver_name = None
     await callback.message.edit_text(
-        format_trip(trip, index, total_cnt),
+        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
         reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
     )
 
