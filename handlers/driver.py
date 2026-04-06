@@ -248,7 +248,9 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
     if trip:
         # trip is (from_city, to_city, dep_dt, notes)
         dep_dt = trip[2]
+        arrival_dt = trip[5]
         local_dt = dep_dt.astimezone(ZoneInfo("Europe/Kiev"))
+        arrival_local = arrival_dt.astimezone(ZoneInfo("Europe/Kiev"))
 
         def round_to_5(dt):
             total_mins = dt.hour * 60 + dt.minute
@@ -256,13 +258,14 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
             return dt.replace(hour=rounded // 60, minute=rounded % 60, second=0, microsecond=0)
 
         base = round_to_5(local_dt)
-        times = [
-            local_dt.strftime("%H:%M"),
-            (base + datetime.timedelta(minutes=5)).strftime("%H:%M"),
-            (base + datetime.timedelta(minutes=10)).strftime("%H:%M"),
-            (base + datetime.timedelta(minutes=15)).strftime("%H:%M"),
-            (base + datetime.timedelta(minutes=20)).strftime("%H:%M"),
+        candidates = [
+            local_dt,
+            base + datetime.timedelta(minutes=5),
+            base + datetime.timedelta(minutes=10),
+            base + datetime.timedelta(minutes=15),
+            base + datetime.timedelta(minutes=20),
         ]
+        times = [t.strftime("%H:%M") for t in candidates if t <= arrival_local]
         rows = [[KeyboardButton(text=t) for t in times[i:i+3]] for i in range(0, len(times), 3)]
         arrival_kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, one_time_keyboard=True)
     else:
