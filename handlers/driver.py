@@ -170,7 +170,9 @@ async def my_driver_trips(message: types.Message):
         await message.answer("У вас ще немає запланованих поїздок.")
         return
 
-    for trip in trips:
+    for i, trip in enumerate(trips):
+        if i > 0:
+            await message.answer("*\n*\n*")
         trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip
         text = (
             f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
