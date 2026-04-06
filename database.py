@@ -224,8 +224,8 @@ def get_cities_for_user_sorted(user_id: int):
 def get_driver_trips(driver_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
-               COUNT(b.id) FILTER (WHERE b.status = 'confirmed') AS confirmed_count,
-               COUNT(b.id) FILTER (WHERE b.status = 'pending') AS pending_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
                t.arrival_time, t.from_points, t.to_points
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
