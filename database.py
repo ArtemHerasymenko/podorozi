@@ -230,7 +230,7 @@ def get_driver_trips(driver_id: int):
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
-          AND t.departure_datetime >= CLOCK_TIMESTAMP() - INTERVAL '2 hours'
+          AND t.arrival_time >= CLOCK_TIMESTAMP()
           AND t.status != 'cancelled'
         GROUP BY t.id
         ORDER BY t.departure_datetime
@@ -285,7 +285,7 @@ def get_passenger_bookings(passenger_id: int):
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
           AND b.status IN ('pending', 'confirmed')
-          AND t.departure_datetime >= CLOCK_TIMESTAMP() - INTERVAL '2 hours'
+          AND t.arrival_time >= CLOCK_TIMESTAMP()
         ORDER BY t.departure_datetime
     """, (passenger_id,))
     return cursor.fetchall()

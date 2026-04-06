@@ -109,6 +109,12 @@ async def time(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(datetime=response)
+
+    now = datetime.datetime.now(tz=response.tzinfo)
+    if response <= now:
+        await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
+        return
+
     await message.answer(f"Вкажіть приблизний час прибуття в {data.get('to_city')} у форматі ГГ:ХХ:")
     await state.set_state(DriverStates.arrival_time)
 
