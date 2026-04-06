@@ -2,7 +2,7 @@ from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
 from database import save_trip_to_db
-from database import increment_city_popularity
+from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
@@ -44,6 +44,7 @@ async def create_trip(message: types.Message, state: FSMContext):
 async def from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
+    add_city_if_missing(message.text)
     await message.answer(
         "Введіть точки маршруту через кому:", 
         reply_markup=ReplyKeyboardRemove()
@@ -60,6 +61,7 @@ async def from_points(message: types.Message, state: FSMContext):
 async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
+    add_city_if_missing(message.text)
     await message.answer("Точки прибуття:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(DriverStates.to_points)
 

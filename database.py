@@ -26,7 +26,8 @@ conn.commit()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS cities (
     id SERIAL PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL
+    name TEXT UNIQUE NOT NULL,
+    approved BOOLEAN DEFAULT TRUE
 )
 """)
 conn.commit()
@@ -105,9 +106,17 @@ def save_trip_to_db(driver_id, data):
     return not has_overlap
 
 def get_cities():
-    cursor.execute("SELECT name FROM cities ORDER BY name")
+    cursor.execute("SELECT name FROM cities WHERE approved = TRUE ORDER BY name")
     rows = cursor.fetchall()
     return [r[0] for r in rows]
+
+def add_city_if_missing(city_name: str):
+    cursor.execute("""
+        INSERT INTO cities (name, approved)
+        VALUES (%s, FALSE)
+        ON CONFLICT (name) DO NOTHING
+    """, (city_name,))
+    conn.commit()
 
 def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1):
     cursor.execute("BEGIN")

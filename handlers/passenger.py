@@ -3,7 +3,7 @@ from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
 from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
-from database import increment_city_popularity
+from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from keyboards.booking_kb import booking_actions_kb
@@ -94,6 +94,7 @@ async def from_city(message: types.Message, state: FSMContext):
         return
     await state.update_data(from_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
+    add_city_if_missing(message.text)
     await message.answer("Місто прибуття:", reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(PassengerStates.to_city)
 
@@ -104,6 +105,7 @@ async def to_city(message: types.Message, state: FSMContext):
         return
     await state.update_data(to_city=message.text)
     increment_city_popularity(message.from_user.id, message.text)
+    add_city_if_missing(message.text)
     await message.answer("Обери день:", reply_markup=quick_day_kb())
     await state.set_state(PassengerStates.day)
 
