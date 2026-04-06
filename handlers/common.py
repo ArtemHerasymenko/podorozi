@@ -54,8 +54,8 @@ def quick_day_kb():
 def validate_time(time_str):
     import re
     
-    # Validate time format
-    if not re.match(r'^\d{2}:\d{2}$', time_str):
+    # Validate time format (allow H:MM or HH:MM)
+    if not re.match(r'^\d{1,2}:\d{2}$', time_str):
         return False, "Неправильний формат часу. Введи в форматі ГГ:ХХ. Наприклад, 14:30:"
     
     # Validate time values
