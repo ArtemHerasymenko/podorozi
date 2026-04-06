@@ -51,6 +51,12 @@ def quick_day_kb():
     keyboard = [[KeyboardButton(text=label)] for label, _ in quick_days]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
+def validate_city_name(city: str):
+    import re
+    if not city or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", city):
+        return False, "Назва міста може містити лише літери, пробіли та дефіси."
+    return True, None
+
 def validate_time(time_str):
     import re
     

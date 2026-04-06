@@ -1,4 +1,3 @@
-import re
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
@@ -13,7 +12,7 @@ from database import update_booking_status, get_passenger_id, get_driver_trips, 
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver
 
 router = Router()
 
@@ -43,8 +42,9 @@ async def create_trip(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
-    if not message.text or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
-        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+    is_valid, error_msg = validate_city_name(message.text)
+    if not is_valid:
+        await message.answer(error_msg)
         return
     city = message.text.capitalize()
     await state.update_data(from_city=city)
@@ -64,8 +64,9 @@ async def from_points(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
-    if not message.text or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
-        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+    is_valid, error_msg = validate_city_name(message.text)
+    if not is_valid:
+        await message.answer(error_msg)
         return
     city = message.text.capitalize()
     await state.update_data(to_city=city)

@@ -1,4 +1,3 @@
-import re
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
@@ -12,7 +11,7 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
 import datetime
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
 
 router = Router()
 
@@ -93,8 +92,9 @@ async def from_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
         await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
-    if not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
-        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+    is_valid, error_msg = validate_city_name(message.text)
+    if not is_valid:
+        await message.answer(error_msg)
         return
     city = message.text.capitalize()
     await state.update_data(from_city=city)
@@ -108,8 +108,9 @@ async def to_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
         await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
-    if not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
-        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+    is_valid, error_msg = validate_city_name(message.text)
+    if not is_valid:
+        await message.answer(error_msg)
         return
     city = message.text.capitalize()
     await state.update_data(to_city=city)
