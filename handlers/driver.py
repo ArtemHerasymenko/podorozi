@@ -286,6 +286,19 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
 
     data = await state.get_data()
     booking_id = data["confirming_booking_id"]
+
+    trip = get_trip_details_by_booking(booking_id)
+    if trip:
+        dep_dt = trip[2]
+        arrival_dt = trip[5]
+        local_date = dep_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%Y-%m-%d")
+        ok, pickup_dt = generate_datetime(local_date, message.text)
+        if ok and not (dep_dt <= pickup_dt <= arrival_dt):
+            dep_local = dep_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%H:%M")
+            arr_local = arrival_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%H:%M")
+            await message.answer(f"❌ Час має бути між {dep_local} та {arr_local}. Введіть знову:")
+            return
+
     msg_id = data["confirming_message_id"]
     chat_id = data["confirming_chat_id"]
     original_text = data["confirming_message_text"]
@@ -301,11 +314,10 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         )
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
-        trip = get_trip_details_by_booking(booking_id)
         if trip:
             msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(*trip)}\nВдалої поїздки!"
         else:
-            msg = f"✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
+            msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)
     elif prev_status == "confirmed":
         await message.answer("Ви вже підтвердили це бронювання раніше")
