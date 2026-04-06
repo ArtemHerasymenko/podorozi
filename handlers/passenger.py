@@ -365,7 +365,16 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
 async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
+    import datetime
     booking_id = int(callback.data.split(":")[1])
+
+    trip = get_trip_details_by_booking(booking_id)
+    if trip:
+        arrival_dt = trip[5]
+        if arrival_dt <= datetime.datetime.now(tz=arrival_dt.tzinfo):
+            await callback.answer("❌ Поїздка вже відбулась, скасування неможливе.", show_alert=True)
+            return
+
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
     lines = callback.message.text.rsplit("\n", 1)
     if prev_status in ("pending", "confirmed"):
@@ -374,7 +383,6 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
         await callback.answer("")
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
-        trip = get_trip_details_by_booking(booking_id)
         booking_desc = format_booking_description_for_driver(*trip) if trip else ""
         await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}")
     elif prev_status == "cancelled_by_passenger":
