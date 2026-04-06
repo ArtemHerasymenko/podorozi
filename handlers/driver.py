@@ -165,9 +165,9 @@ async def my_driver_trips(message: types.Message):
         return
 
     for trip in trips:
-        trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time = trip
+        trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip
         text = (
-            f"{format_basic_details(from_city, to_city, dep_dt, arrival_time)}\n"
+            f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
             f"💰 {price} грн\n"
             f"👥 {seats} місць\n"
             f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"

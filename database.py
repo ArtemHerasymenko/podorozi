@@ -226,7 +226,7 @@ def get_driver_trips(driver_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COUNT(b.id) FILTER (WHERE b.status = 'confirmed') AS confirmed_count,
                COUNT(b.id) FILTER (WHERE b.status = 'pending') AS pending_count,
-               t.arrival_time
+               t.arrival_time, t.from_points, t.to_points
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -280,7 +280,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.driver_notes, t.arrival_time, b.seats
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.driver_notes, t.arrival_time, b.seats, t.from_points, t.to_points
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -292,7 +292,7 @@ def get_passenger_bookings(passenger_id: int):
 
 def get_trip_details(trip_id: int):
     cursor.execute("""
-        SELECT from_city, to_city, departure_datetime, arrival_time
+        SELECT from_city, to_city, departure_datetime, arrival_time, from_points, to_points
         FROM trips
         WHERE id = %s
     """, (trip_id,))
@@ -300,7 +300,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time, b.seats
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time, b.seats, t.from_points, t.to_points
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s

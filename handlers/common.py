@@ -82,21 +82,25 @@ def generate_datetime(date_str, time_str):
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
-def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt) -> str:
+def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_points: str = None, to_points: str = None) -> str:
     local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
     local_dt = dep_dt.astimezone(local_tz)
     arrival_local = arrival_dt.astimezone(local_tz)
     uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
-    dt_str = local_dt.strftime("%d.%m.%Y %H:%M")
-    return f"🚗 {from_city} → {to_city}\n📅 {uk_day}, {dt_str} — {arrival_local.strftime('%H:%M')}"
+    dep_time = local_dt.strftime("%H:%M")
+    arr_time = arrival_local.strftime("%H:%M")
+    date_str = local_dt.strftime("%d.%m.%Y")
+    from_str = f"{from_city} ({from_points})" if from_points else from_city
+    to_str = f"{to_city} ({to_points})" if to_points else to_city
+    return f"🚗 {from_str}\n➡️ {to_str}\n🕐 {dep_time} → {arr_time} ({uk_day}, {date_str})"
     
 def format_notes_details_for_driver(notes: str = None, driver_notes: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
     driver_notes_line = f"\n⏱ Ви прибуде о: {driver_notes}" if driver_notes else ""
     return f"{notes_line}{driver_notes_line}"
 
-def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None, seats: int = None) -> str:
-    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt)
+def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None) -> str:
+    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
     notes_desc = format_notes_details_for_driver(notes, driver_notes)
     return f"{trip_desc}{seats_line}{notes_desc}"
@@ -106,8 +110,8 @@ def format_notes_details_for_passenger(notes: str = None, driver_notes: str = No
     driver_notes_line = f"\n⏱ Водій прибуде о: {driver_notes}" if driver_notes else ""
     return f"{notes_line}{driver_notes_line}"
 
-def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None, seats: int = None) -> str:
-    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt)
+def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, driver_notes: str = None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None) -> str:
+    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
     notes_desc = format_notes_details_for_passenger(notes, driver_notes)
     return f"{trip_desc}{seats_line}{notes_desc}"

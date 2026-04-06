@@ -50,14 +50,14 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes, arrival_time, booked_seats = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, driver_notes, arrival_time, booked_seats, from_points, to_points = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
         except:
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time, booked_seats)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time, booked_seats, from_points, to_points)
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -144,18 +144,17 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
-    position_text = f"Номер {index + 1}/{total_cnt}"
+    position_text = f"Варіант номер {index + 1}/{total_cnt}"
     name_str = driver_name or "Водій"
     if is_own:
         name_str += " (Ви)"
     driver_line = f"\n👤 {name_str}"
     return (
-        f"📍 {position_text}\n\n"
+        f"📍 {position_text}\n"
         f"{driver_line}"
-        f"{format_basic_details(trip[2], trip[4], trip[6], trip[10])}\n"
+        f"{format_basic_details(trip[2], trip[4], trip[6], trip[10], trip[3], trip[5])}\n"
         f"💰 {trip[7]} грн\n"
-        f"👥 Вільних місць: {trip[9]}/{trip[8]}"
-        f"{driver_line}"    )
+        f"👥 Вільних місць: {trip[9]}/{trip[8]}")
 
 @router.message(PassengerStates.datetime)
 async def search(message: types.Message, state: FSMContext):
@@ -352,7 +351,7 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)
-    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested) if trip_details else "N/A"
+    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5]) if trip_details else "N/A"
 
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
