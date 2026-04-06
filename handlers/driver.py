@@ -1,3 +1,4 @@
+import re
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
@@ -42,9 +43,13 @@ async def create_trip(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
-    await state.update_data(from_city=message.text)
-    increment_city_popularity(message.from_user.id, message.text)
-    add_city_if_missing(message.text)
+    if not message.text or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
+        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+        return
+    city = message.text.capitalize()
+    await state.update_data(from_city=city)
+    increment_city_popularity(message.from_user.id, city)
+    add_city_if_missing(city)
     await message.answer(
         "Введіть точки маршруту через кому:", 
         reply_markup=ReplyKeyboardRemove()
@@ -59,9 +64,13 @@ async def from_points(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
-    await state.update_data(to_city=message.text)
-    increment_city_popularity(message.from_user.id, message.text)
-    add_city_if_missing(message.text)
+    if not message.text or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
+        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+        return
+    city = message.text.capitalize()
+    await state.update_data(to_city=city)
+    increment_city_popularity(message.from_user.id, city)
+    add_city_if_missing(city)
     await message.answer("Точки прибуття:", reply_markup=ReplyKeyboardRemove())
     await state.set_state(DriverStates.to_points)
 

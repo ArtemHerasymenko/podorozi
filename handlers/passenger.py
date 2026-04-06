@@ -1,3 +1,4 @@
+import re
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
@@ -92,9 +93,13 @@ async def from_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
         await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
-    await state.update_data(from_city=message.text)
-    increment_city_popularity(message.from_user.id, message.text)
-    add_city_if_missing(message.text)
+    if not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
+        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+        return
+    city = message.text.capitalize()
+    await state.update_data(from_city=city)
+    increment_city_popularity(message.from_user.id, city)
+    add_city_if_missing(city)
     await message.answer("Місто прибуття:", reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(PassengerStates.to_city)
 
@@ -103,9 +108,13 @@ async def to_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
         await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
         return
-    await state.update_data(to_city=message.text)
-    increment_city_popularity(message.from_user.id, message.text)
-    add_city_if_missing(message.text)
+    if not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", message.text):
+        await message.answer("Назва міста може містити лише літери, пробіли та дефіси.")
+        return
+    city = message.text.capitalize()
+    await state.update_data(to_city=city)
+    increment_city_popularity(message.from_user.id, city)
+    add_city_if_missing(city)
     await message.answer("Обери день:", reply_markup=quick_day_kb())
     await state.set_state(PassengerStates.day)
 
