@@ -382,10 +382,15 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
             return
 
     trip_id = get_trip_id_for_booking(booking_id)
+    from_trips_view = any(
+        btn.callback_data and btn.callback_data.startswith("cancel_trip:")
+        for row in (callback.message.reply_markup.inline_keyboard if callback.message.reply_markup else [])
+        for btn in row
+    )
     prev_status, new_status = update_booking_status(booking_id, "rejected", ["pending", "confirmed"])
 
     async def _rebuild_or_append(suffix: str):
-        updated_trip = get_driver_trip_by_id(trip_id) if trip_id else None
+        updated_trip = get_driver_trip_by_id(trip_id) if (trip_id and from_trips_view) else None
         if updated_trip:
             new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
             await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
