@@ -262,9 +262,16 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.answer()
     trip_id = get_trip_id_for_booking(booking_id)
+    # Use cancel_trip do distinguish if we are confirming from view trip or P msg.
+    from_trips_view = any(
+        btn.callback_data and btn.callback_data.startswith("cancel_trip:")
+        for row in (callback.message.reply_markup.inline_keyboard if callback.message.reply_markup else [])
+        for btn in row
+    )
     await state.update_data(
         confirming_booking_id=booking_id,
         confirming_trip_id=trip_id,
+        confirming_from_trips_view=from_trips_view,
         confirming_message_id=callback.message.message_id,
         confirming_chat_id=callback.message.chat.id,
         confirming_message_text=callback.message.html_text
@@ -329,6 +336,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     msg_id = data["confirming_message_id"]
     chat_id = data["confirming_chat_id"]
     trip_id = data.get("confirming_trip_id")
+    from_trips_view = data.get("confirming_from_trips_view", False)
     original_text = data["confirming_message_text"]
     driver_notes = message.text
     await state.clear()
@@ -336,7 +344,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     prev_status, _ = update_booking_status(booking_id, "confirmed", ["pending"])
     if prev_status == "pending":
         set_booking_driver_notes(booking_id, driver_notes)
-        updated_trip = get_driver_trip_by_id(trip_id) if trip_id else None
+        updated_trip = get_driver_trip_by_id(trip_id) if (trip_id and from_trips_view) else None
         if updated_trip:
             # if trip_id - we got here from my_driver_trips, so we need to rebuild the message with updated booking counts
             new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
