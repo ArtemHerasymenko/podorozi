@@ -8,13 +8,65 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_driver_notes
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_driver_notes
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver
 
 router = Router()
+
+
+async def _build_driver_trip_details_msg(trip_row, bot):
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip_row
+    text = (
+        f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
+        f"💰 {price} грн | 👥 {seats} місць\n"
+        f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
+    )
+    rows = []
+
+    pending_bookings = get_bookings_for_trip(trip_id, 'pending')
+    if pending_bookings:
+        text += "\n\n⏳ <b>Очікують:</b>"
+        for booking_id, passenger_id, notes, driver_notes, booking_seats in pending_bookings:
+            try:
+                passenger_chat = await bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            notes_line = format_notes_details_for_driver(notes)
+            msg_link = f'<a href="tg://user?id={passenger_id}">✉️ Написати повідомлення</a>'
+            text += f"\n👤 {passenger_name} ({booking_seats} міс.) \n{msg_link} {notes_line}"
+            parts = passenger_name.split()
+            first_name = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
+            rows.append([
+                InlineKeyboardButton(text=f"✅ {first_name}", callback_data=f"confirm_booking:{booking_id}"),
+                InlineKeyboardButton(text=f"❌ {first_name}", callback_data=f"reject_booking:{booking_id}"),
+            ])
+
+    confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
+    if confirmed_bookings:
+        text += "\n\n✅ <b>Підтверджені:</b>"
+        for booking_id, passenger_id, notes, driver_notes, booking_seats in confirmed_bookings:
+            try:
+                passenger_chat = await bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            notes_line = format_notes_details_for_driver(notes, driver_notes)
+            msg_link = f'<a href="tg://user?id={passenger_id}">✉️ Написати повідомлення</a>'
+            text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}\n{msg_link}"
+            parts = passenger_name.split()
+            first_name = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
+            rows.append([
+                InlineKeyboardButton(text=f"❌ Скасувати {first_name}", callback_data=f"reject_booking:{booking_id}"),
+            ])
+
+    rows.append([InlineKeyboardButton(text="Скасувати поїздку ❌", callback_data=f"cancel_trip:{trip_id}")])
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+    return text, kb
+
 
 driver_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
@@ -173,42 +225,8 @@ async def my_driver_trips(message: types.Message):
     for i, trip in enumerate(trips):
         if i > 0:
             await message.answer("*\n*\n*")
-        trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip
-        text = (
-            f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-            f"💰 {price} грн\n"
-            f"👥 {seats} місць\n"
-            f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
-        )
-
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Скасувати поїздку ❌", callback_data=f"cancel_trip:{trip_id}")]
-        ])
-        await message.answer(text, reply_markup=kb)
-
-        pending_bookings = get_bookings_for_trip(trip_id, 'pending')
-        if pending_bookings:
-            await message.answer("⏳ Ці пасажири хочуть поїхати з вами, але ви ще не підтвердили:")
-        for booking_id, passenger_id, notes, driver_notes, booking_seats in pending_bookings:
-            try:
-                passenger_chat = await message.bot.get_chat(passenger_id)
-                passenger_name = passenger_chat.full_name
-            except:
-                passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes)
-            await message.answer(f"👤 {passenger_name} ({booking_seats} міс.){notes_line}", reply_markup=booking_actions_kb(booking_id, passenger_id))
-
-        confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
-        if confirmed_bookings:
-            await message.answer("✅ Підтверджені пасажири:")
-        for booking_id, passenger_id, notes, driver_notes, booking_seats in confirmed_bookings:
-            try:
-                passenger_chat = await message.bot.get_chat(passenger_id)
-                passenger_name = passenger_chat.full_name
-            except:
-                passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, driver_notes)
-            await message.answer(f"👤 {passenger_name} ({booking_seats} місць){notes_line}", reply_markup=reject_booking_kb(booking_id, passenger_id))
+        text, kb = await _build_driver_trip_details_msg(trip, message.bot)
+        await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))
@@ -223,10 +241,9 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
             return
 
     success, booking_ids = cancel_trip(trip_id, callback.from_user.id)
-    lines = callback.message.text.rsplit("\n", 1)
 
     if success:
-        await callback.message.edit_text(lines[0] + "\n🚫 Ви скасували цю поїздку", reply_markup=None)
+        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", reply_markup=None, parse_mode="HTML")
         await callback.answer("")
         for booking_id in booking_ids:
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])
@@ -236,7 +253,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                 booking_desc = f"\n{format_booking_description_for_passenger(*trip)}" if trip else ""
                 await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.{booking_desc}")
     else:
-        await callback.message.edit_text(lines[0] + "\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None)
+        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None, parse_mode="HTML")
         await callback.answer("")
 
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
@@ -244,11 +261,13 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
     booking_id = int(callback.data.split(":")[1])
 
     await callback.answer()
+    trip_id = get_trip_id_for_booking(booking_id)
     await state.update_data(
         confirming_booking_id=booking_id,
+        confirming_trip_id=trip_id,
         confirming_message_id=callback.message.message_id,
         confirming_chat_id=callback.message.chat.id,
-        confirming_message_text=callback.message.text
+        confirming_message_text=callback.message.html_text
     )
     await state.set_state(DriverStates.confirming_booking)
 
@@ -309,6 +328,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
 
     msg_id = data["confirming_message_id"]
     chat_id = data["confirming_chat_id"]
+    trip_id = data.get("confirming_trip_id")
     original_text = data["confirming_message_text"]
     driver_notes = message.text
     await state.clear()
@@ -316,10 +336,14 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     prev_status, _ = update_booking_status(booking_id, "confirmed", ["pending"])
     if prev_status == "pending":
         set_booking_driver_notes(booking_id, driver_notes)
-        await bot.edit_message_text(
-            original_text + "\n\n✅ Ви підтвердили бронювання",
-            chat_id=chat_id, message_id=msg_id, reply_markup=None
-        )
+        updated_trip = get_driver_trip_by_id(trip_id) if trip_id else None
+        if updated_trip:
+            # if trip_id - we got here from my_driver_trips, so we need to rebuild the message with updated booking counts
+            new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
+            await bot.edit_message_text(new_text, chat_id=chat_id, message_id=msg_id, reply_markup=new_kb, parse_mode="HTML")
+        else:
+            # if no trip_id - we got here from the direct booking confirmation msg, so we just append the confirmation note to the existing message
+            await bot.edit_message_text(original_text + "\n\n✅ Ви підтвердили бронювання", chat_id=chat_id, message_id=msg_id, reply_markup=None, parse_mode="HTML")
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
         if trip:
@@ -349,29 +373,35 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
             await callback.answer("❌ Не можливо відхилити бронювання, поїздка вже відбулась.", show_alert=True)
             return
 
+    trip_id = get_trip_id_for_booking(booking_id)
     prev_status, new_status = update_booking_status(booking_id, "rejected", ["pending", "confirmed"])
+
+    async def _rebuild_or_append(suffix: str):
+        updated_trip = get_driver_trip_by_id(trip_id) if trip_id else None
+        if updated_trip:
+            new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
+            await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
+        else:
+            await callback.message.edit_text(callback.message.html_text + suffix, reply_markup=None, parse_mode="HTML")
+
     if prev_status == "pending":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви відмовили цьому пасажиру", reply_markup=None)
+        await _rebuild_or_append("\n\n❌ Ви відмовили цьому пасажиру")
         passenger_id = get_passenger_id(booking_id)
         booking_desc = f"\n{format_booking_description_for_passenger(*trip)}" if trip else ""
         await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.{booking_desc}")
     elif prev_status == "confirmed":
         await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌  Ви скасували це бронювання", reply_markup=None)
+        await _rebuild_or_append("\n\n❌ Ви скасували це бронювання")
         passenger_id = get_passenger_id(booking_id)
         booking_desc = f"\n{format_booking_description_for_passenger(*trip)}" if trip else ""
         await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання.{booking_desc}")
     elif prev_status == "rejected":
-        await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже відхилили це бронювання раніше", reply_markup=None)
+        await callback.answer("❌ Ви вже відхилили це бронювання раніше", show_alert=True)
     elif prev_status == "trip_cancelled":
-        await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Ви вже скасували цю поїздку раніше", reply_markup=None)
+        await callback.answer("❌ Ви вже скасували цю поїздку раніше", show_alert=True)
     elif prev_status == "cancelled_by_passenger":
-        await callback.answer()
-        await callback.message.edit_text(callback.message.text + "\n\n❌ Пасажир вже скасував це бронювання раніше", reply_markup=None)
+        await callback.answer("❌ Пасажир вже скасував це бронювання раніше", show_alert=True)
     else:
-        await callback.answer()
-        await callback.message.edit_text(callback.message.text + f"\n\n❌ Бронювання недоступне ({prev_status})", reply_markup=None)
+        await callback.answer(f"❌ Бронювання недоступне ({prev_status})", show_alert=True)
 

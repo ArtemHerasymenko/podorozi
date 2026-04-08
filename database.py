@@ -237,6 +237,24 @@ def get_driver_trips(driver_id: int):
     """, (driver_id,))
     return cursor.fetchall()
 
+def get_driver_trip_by_id(trip_id: int):
+    cursor.execute("""
+        SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
+               t.arrival_time, t.from_points, t.to_points
+        FROM trips t
+        LEFT JOIN bookings b ON b.trip_id = t.id
+        WHERE t.id = %s
+        GROUP BY t.id
+    """, (trip_id,))
+    return cursor.fetchone()
+
+def get_trip_id_for_booking(booking_id: int):
+    cursor.execute("SELECT trip_id FROM bookings WHERE id = %s", (booking_id,))
+    row = cursor.fetchone()
+    return row[0] if row else None
+
 def get_bookings_for_trip(trip_id: int, status: str):
     cursor.execute("""
         SELECT id, passenger_id, notes, driver_notes, seats
