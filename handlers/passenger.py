@@ -60,8 +60,9 @@ async def my_trips(message: types.Message):
         booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, driver_notes, arrival_time, booked_seats, from_points, to_points)
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
         if status in ACTIVE_STATUSES:
+            driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="✉️ Написати водію", url=f"tg://user?id={driver_id}")],
+                [InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)],
                 [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
         else:
@@ -130,7 +131,7 @@ async def day_handler(message: types.Message, state: FSMContext):
     await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
     await state.set_state(PassengerStates.datetime)
 
-def trip_keyboard(trip_id, total_cnt=1, driver_id=None):
+def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
     rows = []
     if total_cnt > 1:
         rows.append([
@@ -138,7 +139,8 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None):
             InlineKeyboardButton(text="➡️", callback_data="next"),
         ])
     if driver_id:
-        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=f"tg://user?id={driver_id}")])
+        driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
+        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
     rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
     rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -198,6 +200,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
+    driver_chat = None
     try:
         driver_chat = await message.bot.get_chat(trip[1])
         driver_name = driver_chat.full_name
@@ -206,7 +209,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
 
     trip_message = await message.answer(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
     )
 
     await state.set_state(PassengerStates.browsing_trips)
@@ -251,6 +254,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         return
 
     trip, index, total_cnt = result
+    driver_chat = None
     try:
         driver_chat = await callback.bot.get_chat(trip[1])
         driver_name = driver_chat.full_name
@@ -258,7 +262,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
     )
 
     await callback.answer()
@@ -281,6 +285,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         return
 
     trip, index, total_cnt = result
+    driver_chat = None
     try:
         driver_chat = await callback.bot.get_chat(trip[1])
         driver_name = driver_chat.full_name
@@ -288,7 +293,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1])
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
     )
 
     await callback.answer()
@@ -342,7 +347,6 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
         await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb)
         await state.clear()
         return
-
     await state.clear()
     await message.answer(
         "⏳ Ми відправили запит водієві, очікуйте підтвердження.",
@@ -361,7 +365,7 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
     await message.bot.send_message(
         driver_id,
         text,
-        reply_markup=booking_actions_kb(booking_id, passenger_id)
+        reply_markup=booking_actions_kb(booking_id, passenger_id, message.from_user.username)
     )
 
 @router.callback_query(lambda c: c.data == "cancel_search")

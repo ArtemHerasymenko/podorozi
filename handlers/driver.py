@@ -39,7 +39,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
             text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
             parts = passenger_name.split()
             first_name = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
-            msg_url = f"tg://user?id={passenger_id}"
+            msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"✅ {first_name}", callback_data=f"confirm_booking:{booking_id}"),
                 InlineKeyboardButton(text=f"❌ {first_name}", callback_data=f"reject_booking:{booking_id}"),
@@ -59,7 +59,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             parts = passenger_name.split()
             first_name = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
-            msg_url = f"tg://user?id={passenger_id}"
+            msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"❌ Скасувати {first_name}", callback_data=f"reject_booking:{booking_id}"),
                 InlineKeyboardButton(text="✉️", url=msg_url),
