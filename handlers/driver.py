@@ -357,7 +357,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
         if trip:
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(*trip)}\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], driver_notes, trip[5], trip[6], trip[7], trip[8])}\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)
