@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -237,8 +237,10 @@ async def my_driver_trips(message: types.Message):
 async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip_row
     status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
+    pos = get_driver_past_trip_position(driver_id, trip_id)
+    position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n" if pos else ""
     text = (
-        f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
+        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
         f"💰 {price} грн | 👥 {seats} місць\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
     )

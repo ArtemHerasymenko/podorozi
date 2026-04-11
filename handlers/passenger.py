@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, update_booking_status
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -83,6 +83,8 @@ async def my_past_trips(message: types.Message):
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points = booking_row
     status_label = STATUS_LABELS.get(status, status)
+    pos = get_passenger_past_booking_position(passenger_id, booking_id)
+    position_line = f"🗓 Бронювання #{pos[0]} з {pos[1]}\n" if pos else ""
     try:
         driver_chat = await bot.get_chat(driver_id)
         driver_name = driver_chat.full_name
@@ -90,7 +92,7 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         driver_chat = None
         driver_name = "Водій"
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
-    text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+    text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
 
     rows = []
     if driver_chat:

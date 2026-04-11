@@ -294,6 +294,20 @@ def get_next_driver_past_trip(driver_id: int, current_trip_id: int):
     """, (driver_id, current_trip_id))
     return cursor.fetchone()
 
+def get_driver_past_trip_position(driver_id: int, trip_id: int):
+    """Returns (rank, total) where rank=1 is most recent."""
+    cursor.execute("""
+        SELECT
+            (SELECT COUNT(*) FROM trips
+             WHERE driver_id = %s
+               AND arrival_time < CLOCK_TIMESTAMP()
+               AND departure_datetime >= (SELECT departure_datetime FROM trips WHERE id = %s)) AS rank,
+            (SELECT COUNT(*) FROM trips
+             WHERE driver_id = %s
+               AND arrival_time < CLOCK_TIMESTAMP()) AS total
+    """, (driver_id, trip_id, driver_id))
+    return cursor.fetchone()
+
 def get_driver_trip_by_id(trip_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
@@ -410,6 +424,23 @@ def get_next_passenger_past_booking(passenger_id: int, current_booking_id: int):
         ORDER BY t.departure_datetime ASC
         LIMIT 1
     """, (passenger_id, current_booking_id))
+    return cursor.fetchone()
+
+def get_passenger_past_booking_position(passenger_id: int, booking_id: int):
+    """Returns (rank, total) where rank=1 is most recent."""
+    cursor.execute("""
+        SELECT
+            (SELECT COUNT(*) FROM bookings b JOIN trips t ON b.trip_id = t.id
+             WHERE b.passenger_id = %s
+               AND t.arrival_time < CLOCK_TIMESTAMP()
+               AND t.departure_datetime >= (
+                   SELECT t2.departure_datetime FROM bookings b2
+                   JOIN trips t2 ON b2.trip_id = t2.id WHERE b2.id = %s
+               )) AS rank,
+            (SELECT COUNT(*) FROM bookings b JOIN trips t ON b.trip_id = t.id
+             WHERE b.passenger_id = %s
+               AND t.arrival_time < CLOCK_TIMESTAMP()) AS total
+    """, (passenger_id, booking_id, passenger_id))
     return cursor.fetchone()
 
 def get_trip_details(trip_id: int):
