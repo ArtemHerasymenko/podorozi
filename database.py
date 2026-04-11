@@ -242,6 +242,58 @@ def get_driver_trips(driver_id: int):
     """, (driver_id,))
     return cursor.fetchall()
 
+def get_latest_driver_past_trip(driver_id: int):
+    cursor.execute("""
+        SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
+               t.arrival_time, t.from_points, t.to_points
+        FROM trips t
+        LEFT JOIN bookings b ON b.trip_id = t.id
+        WHERE t.driver_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+        GROUP BY t.id
+        ORDER BY t.departure_datetime DESC
+        LIMIT 1
+    """, (driver_id,))
+    return cursor.fetchone()
+
+def get_prev_driver_past_trip(driver_id: int, current_trip_id: int):
+    """Trip that departed before the current one (older)."""
+    cursor.execute("""
+        SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
+               t.arrival_time, t.from_points, t.to_points
+        FROM trips t
+        LEFT JOIN bookings b ON b.trip_id = t.id
+        WHERE t.driver_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+          AND t.departure_datetime < (SELECT departure_datetime FROM trips WHERE id = %s)
+        GROUP BY t.id
+        ORDER BY t.departure_datetime DESC
+        LIMIT 1
+    """, (driver_id, current_trip_id))
+    return cursor.fetchone()
+
+def get_next_driver_past_trip(driver_id: int, current_trip_id: int):
+    """Trip that departed after the current one (newer, but still in the past)."""
+    cursor.execute("""
+        SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
+               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
+               t.arrival_time, t.from_points, t.to_points
+        FROM trips t
+        LEFT JOIN bookings b ON b.trip_id = t.id
+        WHERE t.driver_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+          AND t.departure_datetime > (SELECT departure_datetime FROM trips WHERE id = %s)
+        GROUP BY t.id
+        ORDER BY t.departure_datetime ASC
+        LIMIT 1
+    """, (driver_id, current_trip_id))
+    return cursor.fetchone()
+
 def get_driver_trip_by_id(trip_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,

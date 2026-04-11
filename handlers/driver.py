@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -74,6 +74,7 @@ driver_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Створити поїздку")],
         [KeyboardButton(text="📋 Мої поїздки водія")],
+        [KeyboardButton(text="📜 Минулі поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -235,6 +236,86 @@ async def my_driver_trips(message: types.Message):
             await message.answer("*\n*\n*")
         text, kb = await _build_driver_trip_details_msg(trip, message.bot)
         await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip_row
+    status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
+    text = (
+        f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
+        f"💰 {price} грн | 👥 {seats} місць\n"
+        f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
+    )
+    rows = []
+
+    pending_bookings = get_bookings_for_trip(trip_id, 'pending')
+    if pending_bookings:
+        text += "\n\n⏳ <b>Не підтверджені:</b>"
+        for booking_id, passenger_id, notes, pickup_at, booking_seats in pending_bookings:
+            try:
+                passenger_chat = await bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            notes_line = format_notes_details_for_driver(notes)
+            text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
+            msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
+            rows.append([InlineKeyboardButton(text="✉️", url=msg_url)])
+
+    confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
+    if confirmed_bookings:
+        text += "\n\n✅ <b>Підтверджені:</b>"
+        for booking_id, passenger_id, notes, pickup_at, booking_seats in confirmed_bookings:
+            try:
+                passenger_chat = await bot.get_chat(passenger_id)
+                passenger_name = passenger_chat.full_name
+            except:
+                passenger_name = "Пасажир"
+            notes_line = format_notes_details_for_driver(notes, pickup_at)
+            text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
+            msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
+            rows.append([InlineKeyboardButton(text="✉️", url=msg_url)])
+
+    nav_row = []
+    if get_prev_driver_past_trip(driver_id, trip_id):
+        nav_row.append(InlineKeyboardButton(text="⬅️ Попередня", callback_data=f"dh_prev:{trip_id}"))
+    if get_next_driver_past_trip(driver_id, trip_id):
+        nav_row.append(InlineKeyboardButton(text="Наступна ➡️", callback_data=f"dh_next:{trip_id}"))
+    if nav_row:
+        rows.append(nav_row)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
+    return text, kb
+
+
+@router.message(lambda m: m.text == "📜 Минулі поїздки")
+async def my_past_driver_trips(message: types.Message):
+    trip = get_latest_driver_past_trip(message.from_user.id)
+    if not trip:
+        await message.answer("У вас ще немає минулих поїздок.")
+        return
+    text, kb = await _build_past_driver_trip_details_msg(trip, message.bot, message.from_user.id)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(lambda c: c.data and (c.data.startswith("dh_prev:") or c.data.startswith("dh_next:")))
+async def driver_history_nav(callback: types.CallbackQuery, bot: Bot):
+    action, trip_id_str = callback.data.split(":")
+    current_trip_id = int(trip_id_str)
+    driver_id = callback.from_user.id
+
+    if action == "dh_prev":
+        trip = get_prev_driver_past_trip(driver_id, current_trip_id)
+    else:
+        trip = get_next_driver_past_trip(driver_id, current_trip_id)
+
+    if not trip:
+        await callback.answer()
+        return
+
+    text, kb = await _build_past_driver_trip_details_msg(trip, bot, driver_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))
