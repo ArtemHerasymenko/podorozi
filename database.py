@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS trips (
     price TEXT,
     seats TEXT,
     arrival_time TIMESTAMPTZ,
-    status TEXT DEFAULT 'active'
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 )
 """)
 conn.commit()
@@ -27,7 +28,8 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS cities (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    approved BOOLEAN DEFAULT TRUE
+    approved BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 )
 """)
 conn.commit()
@@ -69,6 +71,7 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
     user_id BIGINT NOT NULL,
     city_name TEXT NOT NULL,
     counter INT DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     last_updated TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     PRIMARY KEY (user_id, city_name)
 );
