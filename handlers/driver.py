@@ -103,7 +103,7 @@ async def from_city(message: types.Message, state: FSMContext):
     if not is_valid:
         await message.answer(error_msg)
         return
-    city = message.text.capitalize()
+    city = message.text.title()
     await state.update_data(from_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
@@ -128,7 +128,7 @@ async def to_city(message: types.Message, state: FSMContext):
     if not is_valid:
         await message.answer(error_msg)
         return
-    city = message.text.capitalize()
+    city = message.text.title()
     await state.update_data(to_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
