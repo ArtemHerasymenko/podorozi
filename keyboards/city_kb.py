@@ -8,6 +8,7 @@ def cities_keyboard(user_id=None):
         popular = []
         others = get_cities()
 
+    popular = popular[:4]
     keyboard = []
     if popular:
         keyboard.append([KeyboardButton(text="─── Нещодавно ти обирав ───")])
