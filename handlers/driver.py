@@ -96,6 +96,9 @@ async def create_trip(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
+    if message.text.startswith("───"):
+        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
         await message.answer(error_msg)
@@ -118,6 +121,9 @@ async def from_points(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
+    if message.text.startswith("───"):
+        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
         await message.answer(error_msg)
