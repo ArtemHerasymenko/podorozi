@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
     user_id BIGINT NOT NULL,
     city_name TEXT NOT NULL,
     counter INT DEFAULT 1,
+    last_updated TIMESTAMP DEFAULT CLOCK_TIMESTAMP(),
     PRIMARY KEY (user_id, city_name)
 );
 """)
@@ -197,19 +198,20 @@ def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuse
 
 def increment_city_popularity(user_id: int, city_name: str):
     cursor.execute("""
-        INSERT INTO city_popularity_per_user (user_id, city_name, counter)
-        VALUES (%s, %s, 1)
+        INSERT INTO city_popularity_per_user (user_id, city_name, counter, last_updated)
+        VALUES (%s, %s, 1, CLOCK_TIMESTAMP())
         ON CONFLICT (user_id, city_name)
-        DO UPDATE SET counter = city_popularity_per_user.counter + 1
+        DO UPDATE SET counter = city_popularity_per_user.counter + 1,
+                      last_updated = CLOCK_TIMESTAMP()
     """, (user_id, city_name))
     conn.commit()
 
 def get_cities_for_user_sorted(user_id: int):
-    # Get popular cities for the user, sorted by counter DESC
     cursor.execute("""
         SELECT city_name FROM city_popularity_per_user
         WHERE user_id = %s
-        ORDER BY counter DESC, city_name ASC
+        ORDER BY last_updated DESC
+        LIMIT 4
     """, (user_id,))
     popular = [r[0] for r in cursor.fetchall()]
 
