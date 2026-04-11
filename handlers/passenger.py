@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, update_booking_status
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, update_booking_status
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -27,6 +27,7 @@ passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
         [KeyboardButton(text="📋 Мої поїздки пасажира")],
+        [KeyboardButton(text="📜 Мої минулі поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -68,6 +69,65 @@ async def my_trips(message: types.Message):
         else:
             kb = None
         await message.answer(text, reply_markup=kb)
+
+@router.message(lambda m: m.text == "📜 Мої минулі поїздки")
+async def my_past_trips(message: types.Message):
+    booking = get_latest_passenger_past_booking(message.from_user.id)
+    if not booking:
+        await message.answer("У вас ще немає завершених поїздок.")
+        return
+    text, kb = await _build_past_passenger_booking_msg(booking, message.bot, message.from_user.id)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
+    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points = booking_row
+    status_label = STATUS_LABELS.get(status, status)
+    try:
+        driver_chat = await bot.get_chat(driver_id)
+        driver_name = driver_chat.full_name
+    except:
+        driver_chat = None
+        driver_name = "Водій"
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
+    text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+
+    rows = []
+    if driver_chat:
+        driver_url = f"https://t.me/{driver_chat.username}" if driver_chat.username else f"tg://user?id={driver_id}"
+        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
+
+    nav_row = []
+    if get_prev_passenger_past_booking(passenger_id, booking_id):
+        nav_row.append(InlineKeyboardButton(text="⬅️ Старіша", callback_data=f"ph_prev:{booking_id}"))
+    if get_next_passenger_past_booking(passenger_id, booking_id):
+        nav_row.append(InlineKeyboardButton(text="Новіша ➡️", callback_data=f"ph_next:{booking_id}"))
+    if nav_row:
+        rows.append(nav_row)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
+    return text, kb
+
+
+@router.callback_query(lambda c: c.data and (c.data.startswith("ph_prev:") or c.data.startswith("ph_next:")))
+async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
+    action, booking_id_str = callback.data.split(":")
+    current_booking_id = int(booking_id_str)
+    passenger_id = callback.from_user.id
+
+    if action == "ph_prev":
+        booking = get_prev_passenger_past_booking(passenger_id, current_booking_id)
+    else:
+        booking = get_next_passenger_past_booking(passenger_id, current_booking_id)
+
+    if not booking:
+        await callback.answer()
+        return
+
+    text, kb = await _build_past_passenger_booking_msg(booking, bot, passenger_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):

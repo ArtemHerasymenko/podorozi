@@ -366,6 +366,52 @@ def get_passenger_bookings(passenger_id: int):
     """, (passenger_id,))
     return cursor.fetchall()
 
+def get_latest_passenger_past_booking(passenger_id: int):
+    cursor.execute("""
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.passenger_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+        ORDER BY t.departure_datetime DESC
+        LIMIT 1
+    """, (passenger_id,))
+    return cursor.fetchone()
+
+def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
+    cursor.execute("""
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.passenger_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+          AND t.departure_datetime < (
+              SELECT t2.departure_datetime FROM bookings b2
+              JOIN trips t2 ON b2.trip_id = t2.id
+              WHERE b2.id = %s
+          )
+        ORDER BY t.departure_datetime DESC
+        LIMIT 1
+    """, (passenger_id, current_booking_id))
+    return cursor.fetchone()
+
+def get_next_passenger_past_booking(passenger_id: int, current_booking_id: int):
+    cursor.execute("""
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.passenger_id = %s
+          AND t.arrival_time < CLOCK_TIMESTAMP()
+          AND t.departure_datetime > (
+              SELECT t2.departure_datetime FROM bookings b2
+              JOIN trips t2 ON b2.trip_id = t2.id
+              WHERE b2.id = %s
+          )
+        ORDER BY t.departure_datetime ASC
+        LIMIT 1
+    """, (passenger_id, current_booking_id))
+    return cursor.fetchone()
+
 def get_trip_details(trip_id: int):
     cursor.execute("""
         SELECT from_city, to_city, departure_datetime, arrival_time, from_points, to_points
