@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending',
     passenger_id BIGINT NOT NULL,  -- Telegram user id
-    booked_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP(),
+    booked_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     notes TEXT,
     driver_notes TEXT,
     seats INT DEFAULT 1
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS trip_search_lists (
     user_id BIGINT PRIMARY KEY,
     trip_ids INT[],          -- список знайдених поїздок
     current_index INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CLOCK_TIMESTAMP()
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 );
 """)
 conn.commit()
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
     user_id BIGINT NOT NULL,
     city_name TEXT NOT NULL,
     counter INT DEFAULT 1,
-    last_updated TIMESTAMP DEFAULT CLOCK_TIMESTAMP(),
+    last_updated TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     PRIMARY KEY (user_id, city_name)
 );
 """)
