@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_driver_notes
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -29,7 +29,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Очікують:</b>"
-        for booking_id, passenger_id, notes, driver_notes, booking_seats in pending_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats in pending_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
@@ -49,13 +49,13 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, driver_notes, booking_seats in confirmed_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats in confirmed_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, driver_notes)
+            notes_line = format_notes_details_for_driver(notes, pickup_at)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             parts = passenger_name.split()
             first_name = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
@@ -329,6 +329,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     data = await state.get_data()
     booking_id = data["confirming_booking_id"]
 
+    pickup_dt = None
     trip = get_trip_details_by_booking(booking_id)
     if trip:
         dep_dt = trip[2]
@@ -346,12 +347,11 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     trip_id = data.get("confirming_trip_id")
     from_trips_view = data.get("confirming_from_trips_view", False)
     original_text = data["confirming_message_text"]
-    driver_notes = message.text
     await state.clear()
 
     prev_status, _ = update_booking_status(booking_id, "confirmed", ["pending"])
     if prev_status == "pending":
-        set_booking_driver_notes(booking_id, driver_notes)
+        set_booking_pickup_at(booking_id, pickup_dt)
         updated_trip = get_driver_trip_by_id(trip_id) if (trip_id and from_trips_view) else None
         if updated_trip:
             # if trip_id - we got here from my_driver_trips, so we need to rebuild the message with updated booking counts
@@ -363,7 +363,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
         if trip:
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], driver_notes, trip[5], trip[6], trip[7], trip[8])}\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8])}\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)

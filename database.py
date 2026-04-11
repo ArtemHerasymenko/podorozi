@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     passenger_id BIGINT NOT NULL,  -- Telegram user id
     booked_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     notes TEXT,
-    driver_notes TEXT,
+    pickup_at TIMESTAMPTZ,
     seats INT DEFAULT 1
 );
 """)
@@ -259,9 +259,10 @@ def get_trip_id_for_booking(booking_id: int):
 
 def get_bookings_for_trip(trip_id: int, status: str):
     cursor.execute("""
-        SELECT id, passenger_id, notes, driver_notes, seats
+        SELECT id, passenger_id, notes, pickup_at, seats
         FROM bookings
         WHERE trip_id = %s AND status = %s
+        ORDER BY CASE WHEN status = 'confirmed' THEN pickup_at ELSE booked_at END ASC NULLS LAST
     """, (trip_id, status))
     return cursor.fetchall()
 
@@ -300,7 +301,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.driver_notes, t.arrival_time, b.seats, t.from_points, t.to_points
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -320,17 +321,17 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.driver_notes, t.arrival_time, b.seats, t.from_points, t.to_points
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
     """, (booking_id,))
     return cursor.fetchone()
 
-def set_booking_driver_notes(booking_id: int, driver_notes: str):
+def set_booking_pickup_at(booking_id: int, pickup_at):
     cursor.execute("""
-        UPDATE bookings SET driver_notes = %s WHERE id = %s
-    """, (driver_notes, booking_id))
+        UPDATE bookings SET pickup_at = %s WHERE id = %s
+    """, (pickup_at, booking_id))
     conn.commit()
 
 def search_trips_ids(from_city, to_city, from_datetime, seats_needed=1):
