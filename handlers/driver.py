@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_route_tags
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -104,14 +104,28 @@ async def from_city(message: types.Message, state: FSMContext):
     await state.update_data(from_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
+    tags = get_route_tags(city, message.from_user.id)
+    suggestions = get_route_descriptions(city, True, message.from_user.id)
+    keyboard = []
+    if tags:
+        for i in range(0, len(tags), 3):
+            keyboard.append([KeyboardButton(text=t) for t in tags[i:i+3]])
+    for s in suggestions:
+        keyboard.append([KeyboardButton(text=s)])
+    if keyboard:
+        kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
+    else:
+        kb = ReplyKeyboardRemove()
     await message.answer(
-        "Введіть точки маршруту через кому:", 
-        reply_markup=ReplyKeyboardRemove()
+        "В довільній формі опишіть ваш маршрут в цьому населеному пункті, або виберіть зі списку:" if keyboard else "",
+        reply_markup=kb
     )
     await state.set_state(DriverStates.from_points)
 
 @router.message(DriverStates.from_points)
 async def from_points(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    save_route_description(message.from_user.id, data["from_city"], True, message.text)
     await state.update_data(from_points=message.text)
     await message.answer("Місто прибуття:",reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(DriverStates.to_city)
@@ -129,11 +143,28 @@ async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(to_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
-    await message.answer("Точки прибуття:", reply_markup=ReplyKeyboardRemove())
+    tags = get_route_tags(city, message.from_user.id)
+    suggestions = get_route_descriptions(city, False, message.from_user.id)
+    keyboard = []
+    if tags:
+        for i in range(0, len(tags), 3):
+            keyboard.append([KeyboardButton(text=t) for t in tags[i:i+3]])
+    for s in suggestions:
+        keyboard.append([KeyboardButton(text=s)])
+    if keyboard:
+        kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
+    else:
+        kb = ReplyKeyboardRemove()
+    await message.answer(
+        "В довільній формі опишіть ваш маршрут в цьому населеному пункті, або виберіть зі списку:" if keyboard else "",
+        reply_markup=kb
+    )
     await state.set_state(DriverStates.to_points)
 
 @router.message(DriverStates.to_points)
 async def to_points(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    save_route_description(message.from_user.id, data["to_city"], False, message.text)
     await state.update_data(to_points=message.text)
     await message.answer("Обери день:", reply_markup=quick_day_kb())
     await state.set_state(DriverStates.day)

@@ -1,6 +1,8 @@
 import psycopg2
 from config import DATABASE_URL
 from data.cities import CITIES
+from data.route_descriptions import ROUTE_DESCRIPTIONS
+from data.route_tags import ROUTE_TAGS
 from handlers.common import generate_datetime
 
 conn = psycopg2.connect(DATABASE_URL)
@@ -76,6 +78,48 @@ CREATE TABLE IF NOT EXISTS city_popularity_per_user (
     PRIMARY KEY (user_id, city_name)
 );
 """)
+conn.commit()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS route_descriptions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL DEFAULT 0, -- 0 для глобальних описів, інші для користувацьких
+    city_name TEXT NOT NULL,
+    is_departure BOOLEAN NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (user_id, city_name, is_departure, description)
+);
+""")
+conn.commit()
+
+for city_name, is_departure, description in ROUTE_DESCRIPTIONS:
+    cursor.execute("""
+        INSERT INTO route_descriptions (user_id, city_name, is_departure, description)
+        VALUES (0, %s, %s, %s)
+        ON CONFLICT DO NOTHING
+    """, (city_name, is_departure, description))
+conn.commit()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS route_tags (
+    id SERIAL PRIMARY KEY,
+    tag TEXT NOT NULL,
+    city_name TEXT NOT NULL,
+    driver_id BIGINT NOT NULL,
+    count INT NOT NULL DEFAULT 1,
+    last_updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (tag, city_name, driver_id)
+);
+""")
+conn.commit()
+
+for tag, city_name in ROUTE_TAGS:
+    cursor.execute("""
+        INSERT INTO route_tags (tag, city_name, driver_id)
+        VALUES (%s, %s, 0)
+        ON CONFLICT DO NOTHING
+    """, (tag, city_name))
 conn.commit()
 
 def save_trip_to_db(driver_id, data):
@@ -442,6 +486,62 @@ def get_passenger_past_booking_position(passenger_id: int, booking_id: int):
                AND t.arrival_time < CLOCK_TIMESTAMP()) AS total
     """, (passenger_id, booking_id, passenger_id))
     return cursor.fetchone()
+
+def get_route_tags(city_name: str, driver_id: int):
+    """Returns up to 8 tags: driver's own first (by count DESC), padded with global (driver_id=0) ones."""
+    cursor.execute("""
+        SELECT tag FROM route_tags
+        WHERE city_name = %s AND driver_id = %s
+        ORDER BY count DESC
+        LIMIT 6
+    """, (city_name, driver_id))
+    driver_tags = [row[0] for row in cursor.fetchall()]
+
+    needed = 8 - len(driver_tags)
+    cursor.execute("""
+        SELECT tag FROM route_tags
+        WHERE city_name = %s AND driver_id = 0
+          AND tag != ALL(%s)
+        ORDER BY count DESC
+        LIMIT %s
+    """, (city_name, driver_tags, needed))
+    global_tags = [row[0] for row in cursor.fetchall()]
+
+    return driver_tags + global_tags
+
+def save_route_description(user_id: int, city_name: str, is_departure: bool, description: str):
+    cursor.execute("""
+        INSERT INTO route_descriptions (user_id, city_name, is_departure, description)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (user_id, city_name, is_departure, description)
+        DO UPDATE SET created_at = CLOCK_TIMESTAMP()
+    """, (user_id, city_name, is_departure, description))
+    conn.commit()
+
+def get_route_descriptions(city_name: str, is_departure: bool, user_id: int):
+    """Returns up to 4 descriptions: user-specific first, padded with global (user_id=0) if needed."""
+    cursor.execute("""
+        SELECT description FROM route_descriptions
+        WHERE city_name = %s AND is_departure = %s AND user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 4
+    """, (city_name, is_departure, user_id))
+    user_results = [row[0] for row in cursor.fetchall()]
+
+    if len(user_results) >= 4:
+        return user_results
+
+    needed = 4 - len(user_results)
+    cursor.execute("""
+        SELECT description FROM route_descriptions
+        WHERE city_name = %s AND is_departure = %s AND user_id = 0
+          AND description != ALL(%s)
+        ORDER BY created_at DESC
+        LIMIT %s
+    """, (city_name, is_departure, user_results, needed))
+    global_results = [row[0] for row in cursor.fetchall()]
+
+    return user_results + global_results
 
 def get_trip_details(trip_id: int):
     cursor.execute("""
