@@ -30,18 +30,19 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS cities (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
+    modified_name TEXT,
     approved BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 )
 """)
 conn.commit()
 
-for city in CITIES:
+for city, modified_name in CITIES:
     cursor.execute("""
-        INSERT INTO cities (name)
-        VALUES (%s)
+        INSERT INTO cities (name, modified_name)
+        VALUES (%s, %s)
         ON CONFLICT (name) DO NOTHING
-    """, (city,))
+    """, (city, modified_name))
 conn.commit()
 
 cursor.execute("""
@@ -158,12 +159,17 @@ def get_cities():
     rows = cursor.fetchall()
     return [r[0] for r in rows]
 
+def get_city_modified_name(city_name: str):
+    cursor.execute("SELECT COALESCE(modified_name, name) FROM cities WHERE name = %s", (city_name,))
+    row = cursor.fetchone()
+    return row[0] if row else city_name
+
 def add_city_if_missing(city_name: str):
     cursor.execute("""
-        INSERT INTO cities (name, approved)
-        VALUES (%s, FALSE)
+        INSERT INTO cities (name, modified_name, approved)
+        VALUES (%s, %s, FALSE)
         ON CONFLICT (name) DO NOTHING
-    """, (city_name,))
+    """, (city_name, city_name))
     conn.commit()
 
 def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1):
