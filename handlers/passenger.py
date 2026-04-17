@@ -60,7 +60,7 @@ async def my_trips(message: types.Message):
             driver_chat = None
             driver_name = "Водій"
         booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
-        phone_line = f"\n📞 {driver_phone}" if status == "confirmed" and driver_phone else ""
+        phone_line = f"\n📞 Телефон водія: {driver_phone}" if status == "confirmed" and driver_phone else ""
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{phone_line}\n{status_label}"
         if status in ACTIVE_STATUSES:
             driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
@@ -83,7 +83,7 @@ async def my_past_trips(message: types.Message):
 
 
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
-    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points = booking_row
+    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone = booking_row
     status_label = STATUS_LABELS.get(status, status)
     pos = get_passenger_past_booking_position(passenger_id, booking_id)
     position_line = f"🗓 Бронювання #{pos[0]} з {pos[1]}\n" if pos else ""
@@ -94,7 +94,8 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         driver_chat = None
         driver_name = "Водій"
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
-    text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}\n{status_label}"
+    phone_line = f"\n📞 Телефон водія: {driver_phone}" if status == "confirmed" and driver_phone else ""
+    text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{phone_line}\n{status_label}"
 
     rows = []
     if driver_chat:
