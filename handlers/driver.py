@@ -153,7 +153,8 @@ async def to_city(message: types.Message, state: FSMContext):
     else:
         kb = ReplyKeyboardRemove()
     await message.answer(
-        f"Опишіть маршрут по {modified_city}:",
+        f"Опишіть маршрут по {modified_city} в довільній формі, " \
+        f"або виберіть готовий опис внизу:" if keyboard else f"Опишіть маршрут по {modified_city} в довільній формі:",
         reply_markup=kb
     )
     await state.set_state(DriverStates.to_points)
