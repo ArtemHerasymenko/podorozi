@@ -399,11 +399,11 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
     success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested)
 
     BOOK_ERRORS = {
-        "not_found": "❌ Поїздку не знайдено.",
-        "cancelled":  "❌ Водій скасував цю поїздку.",
-        "departed":   "❌ Ця поїздка вже відправилась.",
-        "no_seats":   "❌ На жаль, недостатньо вільних місць.",
-        "overlap":    "❌ У вас вже є активне бронювання на цей час.",
+        "not_found": "❌ Поїздку не знайдено. Спробуйте знайти іншу.",
+        "cancelled":  "❌ Водій скасував цю поїздку. Спробуйте знайти іншу.",
+        "departed":   "❌ Ця поїздка вже відправилась. Спробуйте знайти іншу.",
+        "no_seats":   "❌ На жаль, хтось щойно зайняв вільні місця. Спробуйте знайти іншу поїздку.",
+        "overlap":    "❌ У вас вже є активне бронювання на цей час. Можете його скасувати і спробувати ще раз.",
     }
     if not success:
         await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb)
