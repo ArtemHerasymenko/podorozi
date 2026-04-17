@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -234,6 +234,35 @@ async def price(message: types.Message, state: FSMContext):
 @router.message(DriverStates.seats)
 async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
+    phone_kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Поділитися номером", request_contact=True)],
+            [KeyboardButton(text="Пропустити")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+    await message.answer(
+        "Якщо хочете, поділіться номером телефону. Його бачитимуть лише пасажири, яких ви підтвердите.",
+        reply_markup=phone_kb,
+    )
+    await state.set_state(DriverStates.phone)
+
+
+@router.message(DriverStates.phone)
+async def driver_phone(message: types.Message, state: FSMContext):
+    phone = None
+    if message.text == "Пропустити":
+        phone = None
+    elif message.contact:
+        if message.contact.user_id and message.contact.user_id != message.from_user.id:
+            await message.answer("Будь ласка, надішліть ваш власний контакт.")
+            return
+        phone = message.contact.phone_number
+    else:
+        phone = (message.text or "").strip()
+
+    await state.update_data(driver_phone=phone)
     data = await state.get_data()
 
     saved = save_trip_to_db(message.from_user.id, data)
@@ -470,8 +499,10 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
             await bot.edit_message_text(original_text + "\n\n✅ Ви підтвердили бронювання", chat_id=chat_id, message_id=msg_id, reply_markup=None, parse_mode="HTML")
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
+        driver_phone = get_driver_phone_by_booking(booking_id)
         if trip:
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8])}\nВдалої поїздки!"
+            phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else ""
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8])}{phone_line}\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)

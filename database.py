@@ -12,6 +12,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS trips (
     id SERIAL PRIMARY KEY,
     driver_id BIGINT,
+    driver_phone TEXT,
     from_city TEXT,
     from_points TEXT,
     to_city TEXT,
@@ -137,8 +138,8 @@ def save_trip_to_db(driver_id, data):
             ) AS has_overlap
         ),
         inserted AS (
-            INSERT INTO trips (driver_id, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
-            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s
+            INSERT INTO trips (driver_id, driver_phone, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
+            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             FROM overlap WHERE NOT has_overlap
             RETURNING id
         )
@@ -146,6 +147,7 @@ def save_trip_to_db(driver_id, data):
     """, (
         driver_id, data["arrival_time"], data["datetime"],
         driver_id,
+        data.get("driver_phone"),
         data["from_city"], data["from_points"],
         data["to_city"],  data["to_points"],
         data["datetime"], data["price"], data["seats"], data["arrival_time"]
@@ -420,7 +422,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
+                SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -565,6 +567,16 @@ def get_trip_details_by_booking(booking_id: int):
         WHERE b.id = %s
     """, (booking_id,))
     return cursor.fetchone()
+
+def get_driver_phone_by_booking(booking_id: int):
+    cursor.execute("""
+        SELECT t.driver_phone
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.id = %s
+    """, (booking_id,))
+    row = cursor.fetchone()
+    return row[0] if row else None
 
 def set_booking_pickup_at(booking_id: int, pickup_at):
     cursor.execute("""
