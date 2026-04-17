@@ -283,7 +283,7 @@ def get_driver_trips(driver_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -299,7 +299,7 @@ def get_latest_driver_past_trip(driver_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -316,7 +316,7 @@ def get_prev_driver_past_trip(driver_id: int, current_trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -334,7 +334,7 @@ def get_next_driver_past_trip(driver_id: int, current_trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -365,7 +365,7 @@ def get_driver_trip_by_id(trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points
+               t.arrival_time, t.from_points, t.to_points, t.driver_phone
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.id = %s

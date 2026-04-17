@@ -18,10 +18,11 @@ router = Router()
 
 
 async def _build_driver_trip_details_msg(trip_row, bot):
-    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip_row
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone = trip_row
+    phone_line = f"\n📞 {driver_phone}" if driver_phone else ""
     text = (
         f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць\n"
+        f"💰 {price} грн | 👥 {seats} місць{phone_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
     )
     rows = []
@@ -293,13 +294,14 @@ async def my_driver_trips(message: types.Message):
 
 
 async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
-    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points = trip_row
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone = trip_row
     status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
     pos = get_driver_past_trip_position(driver_id, trip_id)
     position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n" if pos else ""
+    phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
     text = (
         f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць\n"
+        f"💰 {price} грн | 👥 {seats} місць{phone_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
     )
     rows = []
