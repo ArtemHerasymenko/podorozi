@@ -115,8 +115,8 @@ async def from_city(message: types.Message, state: FSMContext):
     else:
         kb = ReplyKeyboardRemove()
     await message.answer(
-        f"Допоможіть пасажирам зрозуміти ваш маршрут в {modified_city}: опишіть його в довільній формі " \
-        f"або виберіть готовий опис внизу:" if keyboard else f"Допоможіть пасажирам зрозуміти ваш маршрут в {modified_city}: опишіть його в довільній формі:",
+        f"Допоможіть пасажирам зрозуміти ваш маршрут по {modified_city}: опишіть його в довільній формі " \
+        f"або виберіть готовий опис внизу:" if keyboard else f"Допоможіть пасажирам зрозуміти ваш маршрут по {modified_city}: опишіть його в довільній формі:",
         reply_markup=kb
     )
     await state.set_state(DriverStates.from_points)
@@ -153,7 +153,7 @@ async def to_city(message: types.Message, state: FSMContext):
     else:
         kb = ReplyKeyboardRemove()
     await message.answer(
-        f"Опишіть маршрут в {modified_city}:",
+        f"Опишіть маршрут по {modified_city}:",
         reply_markup=kb
     )
     await state.set_state(DriverStates.to_points)
