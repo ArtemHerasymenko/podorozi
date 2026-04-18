@@ -96,7 +96,7 @@ def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_
     
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
-    phone_line = f"\n📞 Телефон пасажира: {passenger_phone}" if passenger_phone else ""
+    phone_line = f"\n📞 {passenger_phone}" if passenger_phone else ""
     if pickup_at:
         time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kiev")).strftime("%H:%M")
         driver_notes_line = f"\n⏱ Ви прибуде о: {time_str}"
