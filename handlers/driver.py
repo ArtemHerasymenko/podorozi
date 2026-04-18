@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_driver_recent_car_descriptions, save_or_update_driver_car_description
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -236,13 +236,20 @@ async def seats(message: types.Message, state: FSMContext):
 @router.message(DriverStates.price)
 async def price(message: types.Message, state: FSMContext):
     await state.update_data(price=message.text)
-    await message.answer("Опишіть ваше авто, наприклад: Чорна Мазда 3, 9746")
+    recent_cars = get_driver_recent_car_descriptions(message.from_user.id, limit=4)
+    if recent_cars:
+        keyboard = [[KeyboardButton(text=car)] for car in recent_cars]
+        kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
+        await message.answer("Опишіть ваше авто, або виберіть готовий опис:", reply_markup=kb)
+    else:
+        await message.answer("Опишіть ваше авто, наприклад: Чорна Мазда 3, 9746")
     await state.set_state(DriverStates.car_description)
 
 
 @router.message(DriverStates.car_description)
 async def car_description(message: types.Message, state: FSMContext):
     await state.update_data(car_description=message.text)
+    save_or_update_driver_car_description(message.from_user.id, message.text)
     phone_kb = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📱 Поділитися номером", request_contact=True)],

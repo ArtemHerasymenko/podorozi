@@ -126,6 +126,17 @@ for tag, city_name in ROUTE_TAGS:
     """, (tag, city_name))
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS driver_info (
+    id SERIAL PRIMARY KEY,
+    driver_id BIGINT NOT NULL,
+    car_description TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (driver_id, car_description)
+);
+""")
+conn.commit()
+
 def save_trip_to_db(driver_id, data):
     """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
     cursor.execute("BEGIN")
@@ -519,6 +530,26 @@ def get_route_tags(city_name: str, driver_id: int):
     global_tags = [row[0] for row in cursor.fetchall()]
 
     return driver_tags + global_tags
+
+def get_driver_recent_car_descriptions(driver_id: int, limit: int = 4):
+    """Get up to `limit` recent car descriptions for a driver, sorted by updated_at DESC."""
+    cursor.execute("""
+        SELECT car_description FROM driver_info
+        WHERE driver_id = %s
+        ORDER BY updated_at DESC
+        LIMIT %s
+    """, (driver_id, limit))
+    return [row[0] for row in cursor.fetchall()]
+
+def save_or_update_driver_car_description(driver_id: int, car_description: str):
+    """Insert car description if new, or update updated_at if exists."""
+    cursor.execute("""
+        INSERT INTO driver_info (driver_id, car_description, updated_at)
+        VALUES (%s, %s, CLOCK_TIMESTAMP())
+        ON CONFLICT (driver_id, car_description) DO UPDATE
+        SET updated_at = CLOCK_TIMESTAMP()
+    """, (driver_id, car_description))
+    conn.commit()
 
 def save_route_description(user_id: int, city_name: str, is_departure: bool, description: str):
     cursor.execute("""
