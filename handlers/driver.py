@@ -30,13 +30,13 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Очікують:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats in pending_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in pending_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes)
+            notes_line = format_notes_details_for_driver(notes, None, passenger_phone)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
@@ -48,13 +48,13 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats in confirmed_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in confirmed_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, pickup_at)
+            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
@@ -309,13 +309,13 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Не підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats in pending_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in pending_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes)
+            notes_line = format_notes_details_for_driver(notes, None, passenger_phone)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
@@ -323,13 +323,13 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats in confirmed_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in confirmed_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, pickup_at)
+            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
