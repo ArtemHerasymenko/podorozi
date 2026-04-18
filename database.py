@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS trips (
     id SERIAL PRIMARY KEY,
     driver_id BIGINT,
     driver_phone TEXT,
+    car_description TEXT,
     from_city TEXT,
     from_points TEXT,
     to_city TEXT,
@@ -139,8 +140,8 @@ def save_trip_to_db(driver_id, data):
             ) AS has_overlap
         ),
         inserted AS (
-            INSERT INTO trips (driver_id, driver_phone, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
-            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            INSERT INTO trips (driver_id, driver_phone, car_description, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
+            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             FROM overlap WHERE NOT has_overlap
             RETURNING id
         )
@@ -149,6 +150,7 @@ def save_trip_to_db(driver_id, data):
         driver_id, data["arrival_time"], data["datetime"],
         driver_id,
         data.get("driver_phone"),
+        data.get("car_description"),
         data["from_city"], data["from_points"],
         data["to_city"],  data["to_points"],
         data["datetime"], data["price"], data["seats"], data["arrival_time"]
@@ -284,7 +286,7 @@ def get_driver_trips(driver_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -300,7 +302,7 @@ def get_latest_driver_past_trip(driver_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
+                             t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -317,7 +319,7 @@ def get_prev_driver_past_trip(driver_id: int, current_trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
+                     t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -335,7 +337,7 @@ def get_next_driver_past_trip(driver_id: int, current_trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-                             t.arrival_time, t.from_points, t.to_points, t.driver_phone
+                     t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.driver_id = %s
@@ -366,7 +368,7 @@ def get_driver_trip_by_id(trip_id: int):
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
                COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
-               t.arrival_time, t.from_points, t.to_points, t.driver_phone
+               t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
         LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.id = %s
@@ -423,7 +425,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -435,7 +437,7 @@ def get_passenger_bookings(passenger_id: int):
 
 def get_latest_passenger_past_booking(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -447,7 +449,7 @@ def get_latest_passenger_past_booking(passenger_id: int):
 
 def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -464,7 +466,7 @@ def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
 
 def get_next_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -554,7 +556,7 @@ def get_route_descriptions(city_name: str, is_departure: bool, user_id: int):
 
 def get_trip_details(trip_id: int):
     cursor.execute("""
-        SELECT from_city, to_city, departure_datetime, arrival_time, from_points, to_points
+        SELECT from_city, to_city, departure_datetime, arrival_time, from_points, to_points, car_description
         FROM trips
         WHERE id = %s
     """, (trip_id,))
@@ -562,7 +564,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.car_description
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
@@ -647,7 +649,7 @@ def get_current_trip_from_search_list(user_id: int):
                    SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
                    WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
                ) AS free_seats,
-               t.arrival_time
+               t.arrival_time, t.car_description
         FROM trips t
         WHERE t.id = %s
     """, (trip_id,))

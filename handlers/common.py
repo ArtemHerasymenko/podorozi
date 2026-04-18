@@ -119,11 +119,12 @@ def format_notes_details_for_passenger(notes: str = None, pickup_at=None) -> str
         driver_notes_line = ""
     return f"{notes_line}{driver_notes_line}"
 
-def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None) -> str:
+def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None, car_description: str = None) -> str:
     trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
+    car_line = f"\n🚘 {car_description}" if car_description else ""
     notes_desc = format_notes_details_for_passenger(notes, pickup_at)
-    return f"{trip_desc}{seats_line}{notes_desc}"
+    return f"{trip_desc}{seats_line}{car_line}{notes_desc}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[

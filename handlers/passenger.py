@@ -51,7 +51,7 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
@@ -59,7 +59,7 @@ async def my_trips(message: types.Message):
         except:
             driver_chat = None
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
         driver_phone_line = f"\n📞 Телефон водія: {driver_phone}" if driver_phone else ""
         passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
@@ -84,7 +84,7 @@ async def my_past_trips(message: types.Message):
 
 
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
-    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone = booking_row
+    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description = booking_row
     status_label = STATUS_LABELS.get(status, status)
     pos = get_passenger_past_booking_position(passenger_id, booking_id)
     position_line = f"🗓 Бронювання #{pos[0]} з {pos[1]}\n" if pos else ""
@@ -94,7 +94,7 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     except:
         driver_chat = None
         driver_name = "Водій"
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
     driver_phone_line = f"\n📞 Телефон водія: {driver_phone}" if driver_phone else ""
     passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
@@ -218,12 +218,13 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
     if is_own:
         name_str += " (Ви)"
     driver_line = f"\n👤 {name_str}"
+    car_line = f"\n🚘 {trip[11]}" if trip[11] else ""
     return (
         f"📍 {position_text}\n"
         f"{driver_line}"
         f"{format_basic_details(trip[2], trip[4], trip[6], trip[10], trip[3], trip[5])}\n"
         f"💰 {trip[7]} грн\n"
-        f"👥 Вільних місць: {trip[9]}/{trip[8]}")
+        f"👥 Вільних місць: {trip[9]}/{trip[8]}{car_line}")
 
 @router.message(PassengerStates.datetime)
 async def search(message: types.Message, state: FSMContext):

@@ -9,6 +9,7 @@ class DriverStates(StatesGroup):
     datetime = State()
     arrival_time = State()
     price = State()
+    car_description = State()
     seats = State()
     phone = State()
     confirming_booking = State()

@@ -18,11 +18,12 @@ router = Router()
 
 
 async def _build_driver_trip_details_msg(trip_row, bot):
-    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone = trip_row
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone, car_description = trip_row
     phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
+    car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
         f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць{phone_line}\n"
+        f"💰 {price} грн | 👥 {seats} місць{phone_line}{car_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
     )
     rows = []
@@ -223,18 +224,25 @@ async def arrival_time(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(arrival_time=response)
-    await message.answer("Ціна:")
-    await state.set_state(DriverStates.price)
-
-@router.message(DriverStates.price)
-async def price(message: types.Message, state: FSMContext):
-    await state.update_data(price=message.text)
     await message.answer("Місця:")
     await state.set_state(DriverStates.seats)
 
 @router.message(DriverStates.seats)
 async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
+    await message.answer("Ціна за місце:")
+    await state.set_state(DriverStates.price)
+
+@router.message(DriverStates.price)
+async def price(message: types.Message, state: FSMContext):
+    await state.update_data(price=message.text)
+    await message.answer("Опишіть ваше авто, наприклад: Чорна Мазда 3, 9746")
+    await state.set_state(DriverStates.car_description)
+
+
+@router.message(DriverStates.car_description)
+async def car_description(message: types.Message, state: FSMContext):
+    await state.update_data(car_description=message.text)
     phone_kb = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📱 Поділитися номером", request_contact=True)],
@@ -294,14 +302,15 @@ async def my_driver_trips(message: types.Message):
 
 
 async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
-    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone = trip_row
+    trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone, car_description = trip_row
     status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
     pos = get_driver_past_trip_position(driver_id, trip_id)
     position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n" if pos else ""
     phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
+    car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
         f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць{phone_line}\n"
+        f"💰 {price} грн | 👥 {seats} місць{phone_line}{car_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
     )
     rows = []
@@ -506,7 +515,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         driver_phone = get_driver_phone_by_booking(booking_id)
         if trip:
             phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else ""
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8])}{phone_line}\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9])}{phone_line}\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)
