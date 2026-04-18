@@ -257,7 +257,7 @@ async def car_description(message: types.Message, state: FSMContext):
         phone_kb_buttons.extend([[KeyboardButton(text=phone)] for phone in recent_phones])
     phone_kb_buttons.extend([
         [KeyboardButton(text="📱 Поділитися моїм номером з телеграму", request_contact=True)],
-        [KeyboardButton(text="Пропустити")],
+        [KeyboardButton(text="Не ділитися")],
     ])
     
     phone_kb = ReplyKeyboardMarkup(
@@ -275,7 +275,7 @@ async def car_description(message: types.Message, state: FSMContext):
 @router.message(DriverStates.phone)
 async def driver_phone(message: types.Message, state: FSMContext):
     phone = None
-    if message.text == "Пропустити":
+    if message.text == "Не ділитися":
         phone = None
     elif message.contact:
         if message.contact.user_id and message.contact.user_id != message.from_user.id:
