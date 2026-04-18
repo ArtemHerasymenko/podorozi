@@ -1,7 +1,7 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -398,11 +398,17 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
     notes = message.text
     await state.update_data(booking_notes=notes)
 
+    recent_phones = get_recent_phone_numbers(message.from_user.id, limit=4)
+    phone_kb_buttons = []
+    if recent_phones:
+        phone_kb_buttons.extend([[KeyboardButton(text=phone)] for phone in recent_phones])
+    phone_kb_buttons.extend([
+        [KeyboardButton(text="📱 Поділитися моїм номером з телеграму", request_contact=True)],
+        [KeyboardButton(text="Пропустити")],
+    ])
+
     phone_kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Поділитися номером", request_contact=True)],
-            [KeyboardButton(text="Пропустити")],
-        ],
+        keyboard=phone_kb_buttons,
         resize_keyboard=True,
         one_time_keyboard=True,
     )
@@ -425,6 +431,8 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
         phone = message.contact.phone_number
     else:
         phone = (message.text or "").strip()
+        if phone:
+            save_or_update_phone_number(message.from_user.id, phone)
 
     data = await state.get_data()
     trip_id = data["booking_trip_id"]

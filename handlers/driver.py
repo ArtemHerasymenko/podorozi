@@ -8,7 +8,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_driver_recent_car_descriptions, save_or_update_driver_car_description
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -250,11 +250,18 @@ async def price(message: types.Message, state: FSMContext):
 async def car_description(message: types.Message, state: FSMContext):
     await state.update_data(car_description=message.text)
     save_or_update_driver_car_description(message.from_user.id, message.text)
+    
+    recent_phones = get_recent_phone_numbers(message.from_user.id, limit=4)
+    phone_kb_buttons = []
+    if recent_phones:
+        phone_kb_buttons.extend([[KeyboardButton(text=phone)] for phone in recent_phones])
+    phone_kb_buttons.extend([
+        [KeyboardButton(text="📱 Поділитися моїм номером з телеграму", request_contact=True)],
+        [KeyboardButton(text="Пропустити")],
+    ])
+    
     phone_kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Поділитися номером", request_contact=True)],
-            [KeyboardButton(text="Пропустити")],
-        ],
+        keyboard=phone_kb_buttons,
         resize_keyboard=True,
         one_time_keyboard=True,
     )
@@ -277,6 +284,8 @@ async def driver_phone(message: types.Message, state: FSMContext):
         phone = message.contact.phone_number
     else:
         phone = (message.text or "").strip()
+        if phone:
+            save_or_update_phone_number(message.from_user.id, phone)
 
     await state.update_data(driver_phone=phone)
     data = await state.get_data()

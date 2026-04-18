@@ -137,6 +137,17 @@ CREATE TABLE IF NOT EXISTS driver_info (
 """)
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS phones (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    phone_number TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (user_id, phone_number)
+);
+""")
+conn.commit()
+
 def save_trip_to_db(driver_id, data):
     """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
     cursor.execute("BEGIN")
@@ -549,6 +560,26 @@ def save_or_update_driver_car_description(driver_id: int, car_description: str):
         ON CONFLICT (driver_id, car_description) DO UPDATE
         SET updated_at = CLOCK_TIMESTAMP()
     """, (driver_id, car_description))
+    conn.commit()
+
+def get_recent_phone_numbers(user_id: int, limit: int = 4):
+    """Get up to `limit` recent phone numbers for a user, sorted by updated_at DESC."""
+    cursor.execute("""
+        SELECT phone_number FROM phones
+        WHERE user_id = %s
+        ORDER BY updated_at DESC
+        LIMIT %s
+    """, (user_id, limit))
+    return [row[0] for row in cursor.fetchall()]
+
+def save_or_update_phone_number(user_id: int, phone_number: str):
+    """Insert phone number if new, or update updated_at if exists."""
+    cursor.execute("""
+        INSERT INTO phones (user_id, phone_number, updated_at)
+        VALUES (%s, %s, CLOCK_TIMESTAMP())
+        ON CONFLICT (user_id, phone_number) DO UPDATE
+        SET updated_at = CLOCK_TIMESTAMP()
+    """, (user_id, phone_number))
     conn.commit()
 
 def save_route_description(user_id: int, city_name: str, is_departure: bool, description: str):
