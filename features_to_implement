@@ -1,6 +1,70 @@
-A → B в {trip_id} - справжні назви
 
 Підписка на пошук
+
+треба краще описати дефолтні маршрути по комсомольску
+
+look at every msg, maybe we don't need to include all he info, e.g. ehrn P cancels - no need to show casr details. Myabr just cities and time will be enough? + pickuo point.
+
+send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
+
+should we replace every msg with buttons with ... once user goes into so other activity?
+
+send review. ON bookings, trip, or general in P/D menu.
+
+good idea is ti have some pauses, e.g. on driver view:
+you have got 3 trips, 0.5 sec pause
+trip 1 - 0.5 pause
+
+driver should see their canceled rides in the history. 
+Maybe the button should say "Скасовані та попередні поїздки"
+
+feeback buttom
+
+there should be a default route description is users enter new city (school, center, atb, rail station)
+
+we should store every action user makes and every response we send to user. 
+This way we can replay user actions. E.g. we can then query what action did the user (or users)
+did after this time. Or what action were happening with this ride.
+
+analytics: make sure create trips, book, and search list have timestamps.
+also which departure time a passenger is looking for.
+
+when a passenger enter 18:00 today. Then come back and is looking for the same
+pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
+
+Де вас підібрат, і для кожного міста свій приклад
+
+Час виїзду з Полтави, час прибутя в Полтаву. Відмінки.
+
+назад має бути кругом
+
+P can choose to see A -> anythere, or anythere -> anywhere or anywhere -> A
+
+do not let to book own trip again.
+
+steps when filling in new trip or booking details
+
+
+======= TO test ========
+
+passenger phone number
+
+driver phone number
+
+sort approved and pending by pickup time?
+artem pickup is at 20:10
+anna 20:05 -> she should come before artem when drivers views a trip.
+
+P search: time, status, num of free seats. Do not let book if was 1 seat before booking, but during booking there is no seats.
+
+P and D shound not be able to change booking and trip status once it is started. Or after it is already finished -  check passnger ussing other device.
+before deaprture - both can cancel
+after dep but before arrival - both can cancel, p can't book?
+after arrival no cancleling
+
+===== ANSWERED/DONE ======
+
+car description
 
 Додати нотатки пасажира при бронюванні (буду біля куліничів)
 І нотатки водія при погодженні або відхиленні (чекайте в 10:10, сюди на заїжатиму)
@@ -10,8 +74,6 @@ A → B в {trip_id} - справжні назви
 
 implement "my rides" info for both.
 
-send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
-
 Show only 3 rides at the time?
 Have buttons like 'rides 1-3', 'rides 4-6', ...?
 or 'there are 23 more rides available, show 3 more?
@@ -20,17 +82,46 @@ or 'there are 23 more rides available, show 3 more?
 
 if a rider book an old ride or just. without seat - tell him to search again for available ones?
 
-Час від часу передтвлятися букінг таблицю і нагадувати водіям?
+-Час від часу передтвлятися букінг таблицю і нагадувати водіям?
 
 переводити в особистий чат коли щось не ясно
 
 Райониі орієнтира - це наша головна фіщка. ПОдумати як туу зайти сильно, щоб
 це було супер зручно і корисно.
 
-Мої попередні поздки, для обох.
+redesign my tripcs for drive? show already approved riders
+on the same view as the whole ride?
+test scenario where there are 3 waitng and driver confierms from my trips menu, how to handle
+provide time msg?
 
-P search: time, status, num of free seats. Do not let book if was 1 seat before booking, but during booking there is no seats.
+trips also should hace created at
+
+show only 3-4 poplar cities on the key board
+
+there is no pickup time on driver confirmartion
+
+driver can create a trip, cancel, 
+then create for the same time - no overlaps with deleted one.
+
+driver trips view - number of seat, not num of bookings'
+
+do not let driver enter departure time from the past or now
+
+do not show tirp if it is already over, no 2h check.
 
 P show trips: time
 
-P and D shound not be able to change booking and trip status once it is started. Or after it is already finished
+citqi name
+
+offered time to pickup should not exceed arrival 21:40 - 21:50 - no 22:00 offered
+
+driver cannot enter pickup time outside the dep-arri window
+
+How long does FSM keep the data in memory. - forever
+
+when user etnras some details, then we restart a service, user sees e.g. enter num of seats, he enters 3, what happens? 
+We have lost the im memory state.  - nothing happens, need to /start
+
+Approved city - check on the other device. - OK
+
+does "msg driver" opens a real chat - check using other device. - OK

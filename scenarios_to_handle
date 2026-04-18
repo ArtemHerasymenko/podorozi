@@ -3,6 +3,7 @@ SQL injection via citi name?
 IF there is 1 seat, 2 passenger requesed, driver approves first, then approves second
 we should notify both that there is no seats.
 
+(Offer different price for a passenger)
 WHen booking is created in pending, do we decrease seat count?
 If YES, no more bookings but the driver may not respond to a while, and then decline because 
 rider offers too low price, but if we were not dereasing, during this time maybe

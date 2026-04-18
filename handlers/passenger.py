@@ -389,7 +389,8 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(PassengerStates.booking_notes)
 
     await callback.message.answer(
-        "📝 Вкажіть місце де вас підібрати, наприклад: 'біля магазину Нектар'",
+        "📍 Вкажіть місце де вас підібрати. Рекомендуємо ввести орієнтир, який водій легко зможе " \
+        "знайти, наприклад: 'біля магазину Нектар'",
         reply_markup=ReplyKeyboardRemove()
     )
 
