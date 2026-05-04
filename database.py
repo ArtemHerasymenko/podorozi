@@ -706,7 +706,7 @@ def get_current_trip_from_search_list(user_id: int):
     trip_id = trip_ids[index]
 
     cursor.execute("""
-        SELECT t.id, t.driver_id, t.from_city, t.from_points, t.to_city, t.to_points, t.departure_datetime, t.price, t.seats,
+        SELECT t.id, t.driver_id, t.driver_phone, t.from_city, t.from_points, t.to_city, t.to_points, t.departure_datetime, t.price, t.seats,
                t.seats::int - (
                    SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
                    WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')

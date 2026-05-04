@@ -13,6 +13,11 @@ from aiogram import Bot
 import datetime
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
 
+def mask_phone(phone):
+    if not phone or len(phone) < 4:
+        return phone
+    return phone[:3] + '*' * (len(phone) - 4) + phone[-1]
+
 router = Router()
 
 STATUS_LABELS = {
@@ -60,7 +65,10 @@ async def my_trips(message: types.Message):
             driver_chat = None
             driver_name = "Водій"
         booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
-        driver_phone_line = f"\n📞 Телефон водія: {driver_phone}" if driver_phone else ""
+        if driver_phone:
+            driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
+        else:
+            driver_phone_line = "\n📞 Водій не вказав свій номер"
         passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
         if status in ACTIVE_STATUSES:
@@ -95,7 +103,10 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         driver_chat = None
         driver_name = "Водій"
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
-    driver_phone_line = f"\n📞 Телефон водія: {driver_phone}" if driver_phone else ""
+    if driver_phone:
+        driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
+    else:
+        driver_phone_line = "\n📞 Водій не вказав свій номер"
     passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
 
@@ -218,13 +229,18 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
     if is_own:
         name_str += " (Ви)"
     driver_line = f"\n👤 {name_str}"
-    car_line = f"\n🚘 {trip[11]}" if trip[11] else ""
+    if trip[2]:
+        phone_line = f"\n📞 {mask_phone(trip[2])}"
+    else:
+        phone_line = "\n📞 Водій не вказав свій номер"
+    car_line = f"\n🚘 {trip[12]}" if trip[12] else ""
     return (
         f"📍 {position_text}\n"
         f"{driver_line}"
-        f"{format_basic_details(trip[2], trip[4], trip[6], trip[10], trip[3], trip[5])}\n"
-        f"💰 {trip[7]} грн\n"
-        f"👥 Вільних місць: {trip[9]}/{trip[8]}{car_line}")
+        f"{phone_line}"
+        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n"
+        f"💰 {trip[8]} грн\n"
+        f"👥 Вільних місць: {trip[10]}/{trip[9]}{car_line}")
 
 @router.message(PassengerStates.datetime)
 async def search(message: types.Message, state: FSMContext):
