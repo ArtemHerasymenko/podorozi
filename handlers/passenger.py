@@ -65,10 +65,12 @@ async def my_trips(message: types.Message):
             driver_chat = None
             driver_name = "Водій"
         booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
-        if driver_phone:
+        if not driver_phone:
+            driver_phone_line = "\n📞 Водій не вказав свій номер"
+        elif status == "confirmed":
             driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
         else:
-            driver_phone_line = "\n📞 Водій не вказав свій номер"
+            driver_phone_line = f"\n📞 {mask_phone(driver_phone)}"
         passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
         text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
         if status in ACTIVE_STATUSES:
@@ -103,10 +105,12 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         driver_chat = None
         driver_name = "Водій"
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
-    if driver_phone:
+    if not driver_phone:
+        driver_phone_line = "\n📞 Водій не вказав свій номер"
+    elif status == "confirmed":
         driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
     else:
-        driver_phone_line = "\n📞 Водій не вказав свій номер"
+        driver_phone_line = f"\n📞 {mask_phone(driver_phone)}"
     passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
 
