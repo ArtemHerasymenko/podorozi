@@ -210,8 +210,35 @@ async def day_handler(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Введи бажаний час виїзду у форматі ГГ:ХХ", reply_markup=ReplyKeyboardRemove())
+    await message.answer(
+        "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
+        reply_markup=quick_time_kb()
+    )
     await state.set_state(PassengerStates.datetime)
+
+QUICK_TIME_OPTIONS = [10, 30, 60, 120]
+
+
+def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
+    rounded_minutes = ((dt.minute + 5) // 10) * 10
+    if rounded_minutes == 60:
+        dt = dt + datetime.timedelta(hours=1)
+        rounded_minutes = 0
+    return dt.replace(minute=rounded_minutes, second=0, microsecond=0)
+
+
+def quick_time_kb() -> ReplyKeyboardMarkup:
+    now = datetime.datetime.now()
+    base = round_to_nearest_10_minutes(now)
+    options = []
+    for minutes in QUICK_TIME_OPTIONS:
+        option_time = base + datetime.timedelta(minutes=minutes)
+        options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
+    return ReplyKeyboardMarkup(
+        keyboard=options,
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
     rows = []
