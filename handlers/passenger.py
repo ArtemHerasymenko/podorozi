@@ -299,7 +299,11 @@ async def search(message: types.Message, state: FSMContext):
 
     from_datetime = max(response - datetime.timedelta(minutes=30), now_utc)
     end_of_day = response.astimezone(ZoneInfo('Europe/Kyiv')).replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc)
-    to_datetime = end_of_day if show_all else min(response + datetime.timedelta(hours=1), end_of_day)
+    if show_all:
+        to_datetime = end_of_day
+    else:
+        rounded = round_to_nearest_10_minutes((response + datetime.timedelta(hours=1)).astimezone(ZoneInfo('Europe/Kyiv'))).astimezone(datetime.timezone.utc)
+        to_datetime = min(rounded, end_of_day)
     await state.update_data(search_from_datetime=from_datetime, search_to_datetime=to_datetime)
     await state.set_state(PassengerStates.seats_requested)
     await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
@@ -325,7 +329,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
         reply_markup=ReplyKeyboardRemove()
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(3)
     
     # if now is 19:43, we will say that we are looking for 19:43-XX:MM, 
     # but actually we look from 19:48, just to make sure we don't show already departed trips, 
