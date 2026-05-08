@@ -198,8 +198,7 @@ async def time(message: types.Message, state: FSMContext):
 
     await state.update_data(datetime=response)
 
-    now = datetime.datetime.now(tz=response.tzinfo)
-    if response <= now:
+    if response <= datetime.datetime.now(datetime.timezone.utc):
         await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
         return
 
@@ -408,7 +407,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
     trip_details = get_trip_details(trip_id)
     if trip_details:
         arrival_dt = trip_details[3]
-        if arrival_dt <= datetime.datetime.now(tz=arrival_dt.tzinfo):
+        if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
             await callback.answer("❌ Не можливо скасувати поїздку, вона вже відбулась.", show_alert=True)
             return
 
@@ -460,8 +459,8 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
         # trip is (from_city, to_city, dep_dt, notes)
         dep_dt = trip[2]
         arrival_dt = trip[5]
-        local_dt = dep_dt.astimezone(ZoneInfo("Europe/Kiev"))
-        arrival_local = arrival_dt.astimezone(ZoneInfo("Europe/Kiev"))
+        local_dt = dep_dt.astimezone(ZoneInfo("Europe/Kyiv"))
+        arrival_local = arrival_dt.astimezone(ZoneInfo("Europe/Kyiv"))
 
         def round_to_5(dt):
             total_mins = dt.hour * 60 + dt.minute
@@ -503,11 +502,11 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
     if trip:
         dep_dt = trip[2]
         arrival_dt = trip[5]
-        local_date = dep_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%Y-%m-%d")
+        local_date = dep_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%Y-%m-%d")
         ok, pickup_dt = generate_datetime(local_date, message.text)
         if ok and not (dep_dt <= pickup_dt <= arrival_dt):
-            dep_local = dep_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%H:%M")
-            arr_local = arrival_dt.astimezone(ZoneInfo("Europe/Kiev")).strftime("%H:%M")
+            dep_local = dep_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
+            arr_local = arrival_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
             await message.answer(f"❌ Час має бути між {dep_local} та {arr_local}. Введіть знову:")
             return
 
@@ -556,7 +555,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     trip = get_trip_details_by_booking(booking_id)
     if trip:
         arrival_dt = trip[5]
-        if arrival_dt <= datetime.datetime.now(tz=arrival_dt.tzinfo):
+        if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
             await callback.answer("❌ Не можливо відхилити бронювання, поїздка вже відбулась.", show_alert=True)
             return
 

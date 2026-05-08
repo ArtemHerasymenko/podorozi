@@ -34,7 +34,7 @@ uk_months = {
 }
 
 def generate_quick_days():
-    now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("Europe/Kiev"))
+    now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("Europe/Kyiv"))
     quick_days = []
     for d in range(2):
         day = now + datetime.timedelta(days=d)
@@ -74,16 +74,15 @@ def validate_time(time_str):
 def generate_datetime(date_str, time_str):
     # Parse into datetime with timezone conversion
     try:
-        local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+        kyiv_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
         naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str}")
-        local_dt = naive_dt.replace(tzinfo=local_tz)
-        utc_dt = local_dt.astimezone(datetime.timezone.utc)
-        return True, utc_dt
+        local_dt = naive_dt.replace(tzinfo=kyiv_tz)
+        return True, local_dt.astimezone(datetime.timezone.utc)
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
 def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_points: str = None, to_points: str = None) -> str:
-    local_tz = zoneinfo.ZoneInfo("Europe/Kiev")
+    local_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
     local_dt = dep_dt.astimezone(local_tz)
     arrival_local = arrival_dt.astimezone(local_tz)
     uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
@@ -98,7 +97,7 @@ def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger
     notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
     phone_line = f"\n📞 {passenger_phone}" if passenger_phone else ""
     if pickup_at:
-        time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kiev")).strftime("%H:%M")
+        time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
         driver_notes_line = f"\n⏱ Ви прибуде о: {time_str}"
     else:
         driver_notes_line = ""
@@ -113,7 +112,7 @@ def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, 
 def format_notes_details_for_passenger(notes: str = None, pickup_at=None) -> str:
     notes_line = f"\n📍 Місце посадки: {notes}" if notes else ""
     if pickup_at:
-        time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kiev")).strftime("%H:%M")
+        time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
         driver_notes_line = f"\n⏱ Водій прибуде о: {time_str}"
     else:
         driver_notes_line = ""

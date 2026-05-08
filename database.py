@@ -654,7 +654,7 @@ def set_booking_pickup_at(booking_id: int, pickup_at):
     """, (pickup_at, booking_id))
     conn.commit()
 
-def search_trips_ids(from_city, to_city, from_datetime, seats_needed=1):
+def search_trips_ids(from_city, to_city, time_from, time_to, seats_needed=1):
     cursor.execute("""
         SELECT t.id
         FROM trips t
@@ -662,6 +662,7 @@ def search_trips_ids(from_city, to_city, from_datetime, seats_needed=1):
           AND t.status = 'active'
           AND t.departure_datetime > CLOCK_TIMESTAMP()
           AND t.departure_datetime >= %s
+          AND t.departure_datetime <= %s
           AND (
             t.seats::int - COALESCE((
               SELECT SUM(b.seats) FROM bookings b
@@ -669,7 +670,7 @@ def search_trips_ids(from_city, to_city, from_datetime, seats_needed=1):
             ), 0)
           ) >= %s
         ORDER BY t.departure_datetime
-    """, (from_city, to_city, from_datetime, seats_needed))
+    """, (from_city, to_city, time_from, time_to, seats_needed))
 
     return [row[0] for row in cursor.fetchall()]
 

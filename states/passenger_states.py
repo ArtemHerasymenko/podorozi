@@ -4,7 +4,7 @@ class PassengerStates(StatesGroup):
     from_city = State()
     to_city = State()
     day = State()
-    datetime = State()
+    search_from_datetime = State()
     seats_requested = State()
     browsing_trips = State()
     booking_notes = State()

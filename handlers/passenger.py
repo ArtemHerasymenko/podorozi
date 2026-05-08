@@ -10,7 +10,9 @@ from keyboards.booking_kb import booking_actions_kb
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import Bot
+import asyncio
 import datetime
+from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
 
 def mask_phone(phone):
@@ -214,7 +216,7 @@ async def day_handler(message: types.Message, state: FSMContext):
         "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
         reply_markup=quick_time_kb()
     )
-    await state.set_state(PassengerStates.datetime)
+    await state.set_state(PassengerStates.search_from_datetime)
 
 QUICK_TIME_OPTIONS = [10, 30, 60, 120]
 
@@ -228,12 +230,14 @@ def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
 
 
 def quick_time_kb() -> ReplyKeyboardMarkup:
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     base = round_to_nearest_10_minutes(now)
     options = []
     for minutes in QUICK_TIME_OPTIONS:
         option_time = base + datetime.timedelta(minutes=minutes)
-        options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
+        if option_time.date() == base.date():
+            options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
+    options.append([KeyboardButton(text="Показати всі поїздки")])
     return ReplyKeyboardMarkup(
         keyboard=options,
         resize_keyboard=True,
@@ -273,9 +277,15 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         f"💰 {trip[8]} грн\n"
         f"👥 Вільних місць: {trip[10]}/{trip[9]}{car_line}")
 
-@router.message(PassengerStates.datetime)
+@router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
+
+    now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv')) + datetime.timedelta(minutes=10)
+    show_all = time_str == "Показати всі поїздки"
+    if show_all:
+        time_str = now_kyiv.strftime("%H:%M")
+    now_utc = now_kyiv.astimezone(datetime.timezone.utc)
 
     is_valid, error_msg = validate_time(time_str)
     if not is_valid:
@@ -287,7 +297,10 @@ async def search(message: types.Message, state: FSMContext):
         await message.answer(response)
         return
 
-    await state.update_data(datetime=response)
+    from_datetime = max(response - datetime.timedelta(minutes=30), now_utc)
+    end_of_day = response.astimezone(ZoneInfo('Europe/Kyiv')).replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc)
+    to_datetime = end_of_day if show_all else min(response + datetime.timedelta(hours=1), end_of_day)
+    await state.update_data(search_from_datetime=from_datetime, search_to_datetime=to_datetime)
     await state.set_state(PassengerStates.seats_requested)
     await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)]],
@@ -304,7 +317,15 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     await state.update_data(seats_requested=seats)
 
     data = await state.get_data()
-    trips_ids = search_trips_ids(data["from_city"], data["to_city"], data.get("datetime"), seats)
+    
+    search_from_datetime = data["search_from_datetime"]
+    search_to_datetime = data["search_to_datetime"]
+    await message.answer(
+        f"🔎 Шукаємо поїздки з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}...",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await asyncio.sleep(1)
+    trips_ids = search_trips_ids(data["from_city"], data["to_city"], search_from_datetime, search_to_datetime, seats)
 
     if not trips_ids:
         await message.answer("Нічого не знайдено", reply_markup=passenger_menu_kb)
@@ -539,7 +560,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     trip = get_trip_details_by_booking(booking_id)
     if trip:
         arrival_dt = trip[5]
-        if arrival_dt <= datetime.datetime.now(tz=arrival_dt.tzinfo):
+        if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
             await callback.answer("❌ Поїздка вже відбулась, скасування неможливе.", show_alert=True)
             return
 
