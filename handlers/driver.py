@@ -298,7 +298,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅", reply_markup=driver_menu_kb)
+    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню \"📋 Мої поїздки водія\"", reply_markup=driver_menu_kb)
     await state.clear()
 
 

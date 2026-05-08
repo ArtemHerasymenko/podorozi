@@ -281,7 +281,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
 
-    now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv')) + datetime.timedelta(minutes=10)
+    now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     show_all = time_str == "Показати всі поїздки"
     if show_all:
         time_str = now_kyiv.strftime("%H:%M")
@@ -321,7 +321,8 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     search_from_datetime = data["search_from_datetime"]
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
-        f"🔎 Шукаємо поїздки з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}...",
+        f"🔎 Шукаємо поїздки... \n"
+        f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
         reply_markup=ReplyKeyboardRemove()
     )
     await asyncio.sleep(1)
