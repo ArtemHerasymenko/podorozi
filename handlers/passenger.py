@@ -211,10 +211,11 @@ async def day_handler(message: types.Message, state: FSMContext):
     if message.text not in day_dict:
         await message.answer("Обери день зі списку.")
         return
-    await state.update_data(day=day_dict[message.text])
+    day = day_dict[message.text]
+    await state.update_data(day=day)
     await message.answer(
         "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
-        reply_markup=quick_time_kb()
+        reply_markup=quick_time_kb(day)
     )
     await state.set_state(PassengerStates.search_from_datetime)
 
@@ -229,20 +230,22 @@ def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
     return dt.replace(minute=rounded_minutes, second=0, microsecond=0)
 
 
-def quick_time_kb() -> ReplyKeyboardMarkup:
-    now = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
-    base = round_to_nearest_10_minutes(now)
-    options = []
-    for minutes in QUICK_TIME_OPTIONS:
-        option_time = base + datetime.timedelta(minutes=minutes)
-        if option_time.date() == base.date():
-            options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
+TOMORROW_TIME_OPTIONS = ["07:00", "08:00"]
+
+def quick_time_kb(day_str: str) -> ReplyKeyboardMarkup:
+    today = datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime("%Y-%m-%d")
+    if day_str != today:
+        options = [[KeyboardButton(text=t)] for t in TOMORROW_TIME_OPTIONS]
+    else:
+        now = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
+        base = round_to_nearest_10_minutes(now)
+        options = []
+        for minutes in QUICK_TIME_OPTIONS:
+            option_time = base + datetime.timedelta(minutes=minutes)
+            if option_time.date() == base.date():
+                options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
     options.append([KeyboardButton(text="Показати всі поїздки")])
-    return ReplyKeyboardMarkup(
-        keyboard=options,
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
+    return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
     rows = []

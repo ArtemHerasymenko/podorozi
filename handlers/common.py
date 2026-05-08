@@ -36,13 +36,14 @@ uk_months = {
 def generate_quick_days():
     now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("Europe/Kyiv"))
     quick_days = []
+    prefixes = ["Сьогодні", "Завтра"]
     for d in range(2):
         day = now + datetime.timedelta(days=d)
         english_day = day.strftime("%A")
         english_month = day.strftime("%B")
         uk_day = uk_days.get(english_day, english_day)
         uk_month = uk_months.get(english_month, english_month)
-        label = f"{uk_day}, {day.day} {uk_month}"
+        label = f"{prefixes[d]}, {uk_day}, {day.day} {uk_month}"
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 
