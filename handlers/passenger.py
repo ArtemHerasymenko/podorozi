@@ -326,6 +326,12 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
         reply_markup=ReplyKeyboardRemove()
     )
     await asyncio.sleep(1)
+    
+    # if now is 19:43, we will say that we are looking for 19:43-XX:MM, 
+    # but actually we look from 19:48, just to make sure we don't show already departed trips, 
+    # or close to departure ones.
+    min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
+    search_from_datetime = max(search_from_datetime, min_from)
     trips_ids = search_trips_ids(data["from_city"], data["to_city"], search_from_datetime, search_to_datetime, seats)
 
     if not trips_ids:
