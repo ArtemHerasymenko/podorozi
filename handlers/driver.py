@@ -219,7 +219,11 @@ async def arrival_time(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(arrival_time=response)
-    await message.answer("Крок 8/11\nКількість місць:", reply_markup=back_only_kb)
+    await message.answer("Крок 8/11\nКількість місць:", reply_markup=ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    ))
     await state.set_state(DriverStates.seats)
 
 @router.message(DriverStates.seats)

@@ -326,7 +326,7 @@ async def search(message: types.Message, state: FSMContext):
     await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
     await state.set_state(PassengerStates.seats_requested)
     await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)], [KeyboardButton(text="⬅️ Назад")]],
+        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True,
         one_time_keyboard=True
     ))
