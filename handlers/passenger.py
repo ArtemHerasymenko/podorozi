@@ -1,4 +1,5 @@
 from aiogram import Router, types
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
 from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number
@@ -152,6 +153,11 @@ async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
+
+@router.message(StateFilter(PassengerStates), lambda m: m.text == "⬅️ Назад")
+async def passenger_flow_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb)
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):

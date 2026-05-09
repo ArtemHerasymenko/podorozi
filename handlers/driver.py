@@ -1,4 +1,5 @@
 from aiogram import Router, types
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
 from database import save_trip_to_db
@@ -84,6 +85,11 @@ async def driver_menu(message: types.Message):
         "Меню водія:",
         reply_markup=driver_menu_kb
     )
+
+@router.message(StateFilter(DriverStates), lambda m: m.text == "⬅️ Назад")
+async def driver_flow_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Меню водія:", reply_markup=driver_menu_kb)
 
 @router.message(lambda m: m.text == "🚗 Створити поїздку")
 async def create_trip(message: types.Message, state: FSMContext):
