@@ -82,7 +82,7 @@ def generate_datetime(date_str, time_str):
     # Parse into datetime with timezone conversion
     try:
         kyiv_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
-        naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str}")
+        naive_dt = datetime.datetime.fromisoformat(f"{date_str}T{time_str.zfill(5)}")
         local_dt = naive_dt.replace(tzinfo=kyiv_tz)
         return True, local_dt.astimezone(datetime.timezone.utc)
     except ValueError as e:
