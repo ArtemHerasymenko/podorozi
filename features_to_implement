@@ -41,8 +41,6 @@ pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
 
 Час виїзду з Полтави, час прибутя в Полтаву. Відмінки.
 
-назад має бути кругом
-
 ======= TO test ========
 
 passenger phone number
@@ -61,6 +59,8 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+назад має бути кругом
 
 P can choose to see A -> anythere, or anythere -> anywhere or anywhere -> A 
 no need I guess

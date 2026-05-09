@@ -8,9 +8,9 @@ from handlers import driver, passenger, common
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-dp.include_router(common.router)
 dp.include_router(driver.router)
 dp.include_router(passenger.router)
+dp.include_router(common.router)
 
 async def main():
     await dp.start_polling(bot)
