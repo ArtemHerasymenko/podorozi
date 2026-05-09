@@ -1,3 +1,5 @@
+do not let to book own trip again.
+
 test and check logs, make sure no errors
 
 Підписка на пошук
@@ -10,7 +12,7 @@ send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
 
 should we replace every msg with buttons with ... once user goes into so other activity?
 
-send review. ON bookings, trip, or general in P/D menu.
+send feedback. ON bookings, trip, or general in P/D menu.
 
 good idea is ti have some pauses, e.g. on driver view:
 you have got 3 trips, 0.5 sec pause
@@ -18,6 +20,8 @@ trip 1 - 0.5 pause
 
 driver should see their canceled rides in the history. 
 Maybe the button should say "Скасовані та попередні поїздки"
+maybe just a separete button for "My canceled trips
+same for P
 
 feeback buttom
 
@@ -39,12 +43,6 @@ pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
 
 назад має бути кругом
 
-P can choose to see A -> anythere, or anythere -> anywhere or anywhere -> A
-
-do not let to book own trip again.
-
-steps when filling in new trip or booking details
-
 ======= TO test ========
 
 passenger phone number
@@ -63,6 +61,11 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+P can choose to see A -> anythere, or anythere -> anywhere or anywhere -> A 
+no need I guess
+
+steps when filling in new trip or booking details
 
 when passenger did not specify his number - show that as well
 

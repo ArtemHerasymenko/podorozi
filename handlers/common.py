@@ -47,9 +47,15 @@ def generate_quick_days():
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 
+back_only_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+    resize_keyboard=True
+)
+
 def quick_day_kb():
     quick_days = generate_quick_days()
     keyboard = [[KeyboardButton(text=label)] for label, _ in quick_days]
+    keyboard.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 def validate_city_name(city: str):

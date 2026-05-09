@@ -13,7 +13,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb
 
 def mask_phone(phone):
     if not phone or len(phone) < 4:
@@ -245,6 +245,7 @@ def quick_time_kb(day_str: str) -> ReplyKeyboardMarkup:
             if option_time.date() == base.date():
                 options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
     options.append([KeyboardButton(text="Показати всі поїздки")])
+    options.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
@@ -325,7 +326,7 @@ async def search(message: types.Message, state: FSMContext):
     await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
     await state.set_state(PassengerStates.seats_requested)
     await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)]],
+        keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)], [KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True,
         one_time_keyboard=True
     ))
@@ -488,7 +489,7 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "📍 Вкажіть місце де вас підібрати. Рекомендуємо ввести орієнтир, який водій легко зможе " \
         "знайти, наприклад: 'біля магазину Нектар'",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=back_only_kb
     )
 
 @router.message(PassengerStates.booking_notes)
@@ -503,6 +504,7 @@ async def booking_notes_handler(message: types.Message, state: FSMContext):
     phone_kb_buttons.extend([
         [KeyboardButton(text="📱 Поділитися моїм номером з телеграму", request_contact=True)],
         [KeyboardButton(text="Не ділитися")],
+        [KeyboardButton(text="⬅️ Назад")],
     ])
 
     phone_kb = ReplyKeyboardMarkup(
