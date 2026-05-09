@@ -284,30 +284,42 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
 async def search(message: types.Message, state: FSMContext):
     time_str = message.text
 
+    if time_str != "Показати всі поїздки":
+        is_valid, error_msg = validate_time(time_str)
+        if not is_valid:
+            await message.answer(error_msg)
+            return
+
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
-    show_all = time_str == "Показати всі поїздки"
-    if show_all:
-        time_str = now_kyiv.strftime("%H:%M")
-    now_utc = now_kyiv.astimezone(datetime.timezone.utc)
+    data = await state.get_data()
+    selected_day = data.get("day")
+    is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
+    kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)
+    kyiv_next_day = now_kyiv + datetime.timedelta(days=1)
 
-    is_valid, error_msg = validate_time(time_str)
-    if not is_valid:
-        await message.answer(error_msg)
-        return
-
-    success, response = generate_datetime((await state.get_data()).get("day"), time_str)
-    if not success:
-        await message.answer(response)
-        return
-
-    from_datetime = max(response - datetime.timedelta(minutes=30), now_utc)
-    end_of_day = response.astimezone(ZoneInfo('Europe/Kyiv')).replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc)
-    if show_all:
-        to_datetime = end_of_day
+    if message.text == "Показати всі поїздки":
+        if is_today:
+            kyiv_from = now_kyiv
+            kyiv_to = kyiv_end_of_day
+        else:
+            kyiv_from = kyiv_next_day.replace(hour=0, minute=0, second=0, microsecond=0)
+            kyiv_to = kyiv_next_day.replace(hour=23, minute=59, second=59, microsecond=0)
+        utc_from = kyiv_from.astimezone(datetime.timezone.utc)
+        utc_to = kyiv_to.astimezone(datetime.timezone.utc)
     else:
-        rounded = round_to_nearest_10_minutes((response + datetime.timedelta(hours=1)).astimezone(ZoneInfo('Europe/Kyiv'))).astimezone(datetime.timezone.utc)
-        to_datetime = min(rounded, end_of_day)
-    await state.update_data(search_from_datetime=from_datetime, search_to_datetime=to_datetime)
+        input_dt = generate_datetime(selected_day, time_str)
+        utc_from = round_to_nearest_10_minutes(input_dt - datetime.timedelta(minutes=30))
+        utc_to = round_to_nearest_10_minutes(input_dt + datetime.timedelta(hours=1))
+        if is_today:
+            utc_from = max(utc_from, now_kyiv.astimezone(datetime.timezone.utc))
+            utc_to = min(utc_to, kyiv_end_of_day.astimezone(datetime.timezone.utc))
+        else:
+            utc_from = max(utc_from, kyiv_next_day.replace(
+                hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc))
+            utc_to = min(utc_to, kyiv_next_day.replace(
+                hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc))
+
+    await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
     await state.set_state(PassengerStates.seats_requested)
     await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i)) for i in range(1, 5)]],
@@ -328,7 +340,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     search_from_datetime = data["search_from_datetime"]
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
-        f"🔎 Шукаємо поїздки... \n"
+        f"🔎 Шукаємо поїздки на { 'сьогодні' if data['day'] == datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime('%Y-%m-%d') else 'завтра' }\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
         reply_markup=ReplyKeyboardRemove()
     )
