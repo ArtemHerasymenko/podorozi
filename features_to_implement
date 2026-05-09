@@ -45,9 +45,6 @@ do not let to book own trip again.
 
 steps when filling in new trip or booking details
 
-when passenger did not specify his number - show that as well
-
-
 ======= TO test ========
 
 passenger phone number
@@ -66,6 +63,8 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+when passenger did not specify his number - show that as well
 
 make sure we use the same timezone everywhere. 
 Because now DB is server time, python is UTC time. Maybe
