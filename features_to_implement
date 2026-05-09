@@ -1,3 +1,4 @@
+test and check logs, make sure no errors
 
 Підписка на пошук
 
@@ -43,6 +44,16 @@ P can choose to see A -> anythere, or anythere -> anywhere or anywhere -> A
 do not let to book own trip again.
 
 steps when filling in new trip or booking details
+
+when passenger did not specify his number - show that as well
+
+make sure we use the same timezone everywhere. 
+Because now DB is server time, python is UTC time. Maybe
+kust update DB to use UTC and make dure in python it is always utc.
+can we just use Kyiv time everywhere. 
+
+continue: search for 3-min before and 1h after request
+when ANY - from now until the end of the day,
 
 
 ======= TO test ========

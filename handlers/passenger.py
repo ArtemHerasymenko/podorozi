@@ -307,7 +307,10 @@ async def search(message: types.Message, state: FSMContext):
         utc_from = kyiv_from.astimezone(datetime.timezone.utc)
         utc_to = kyiv_to.astimezone(datetime.timezone.utc)
     else:
-        input_dt = generate_datetime(selected_day, time_str)
+        success, input_dt = generate_datetime(selected_day, time_str)
+        if not success:
+            await message.answer(input_dt)
+            return
         utc_from = round_to_nearest_10_minutes(input_dt - datetime.timedelta(minutes=30))
         utc_to = round_to_nearest_10_minutes(input_dt + datetime.timedelta(hours=1))
         if is_today:
