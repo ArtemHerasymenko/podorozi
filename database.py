@@ -7,6 +7,7 @@ from handlers.common import generate_datetime
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
+cursor.execute("SET TIME ZONE 'UTC'")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS trips (

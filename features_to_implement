@@ -52,10 +52,6 @@ Because now DB is server time, python is UTC time. Maybe
 kust update DB to use UTC and make dure in python it is always utc.
 can we just use Kyiv time everywhere. 
 
-continue: search for 3-min before and 1h after request
-when ANY - from now until the end of the day,
-
-
 ======= TO test ========
 
 passenger phone number
@@ -74,6 +70,9 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+continue: search for 3-min before and 1h after request
+when ANY - from now until the end of the day,
 
 car description
 
