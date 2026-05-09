@@ -34,18 +34,20 @@ CREATE TABLE IF NOT EXISTS cities (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     modified_name TEXT,
+    modified_name_2 TEXT,
+    modified_name_3 TEXT,
     approved BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 )
 """)
 conn.commit()
 
-for city, modified_name in CITIES:
+for city, modified_name, modified_name_2, modified_name_3 in CITIES:
     cursor.execute("""
-        INSERT INTO cities (name, modified_name)
-        VALUES (%s, %s)
+        INSERT INTO cities (name, modified_name, modified_name_2, modified_name_3)
+        VALUES (%s, %s, %s, %s)
         ON CONFLICT (name) DO NOTHING
-    """, (city, modified_name))
+    """, (city, modified_name, modified_name_2, modified_name_3))
 conn.commit()
 
 cursor.execute("""
@@ -192,12 +194,22 @@ def get_city_modified_name(city_name: str):
     row = cursor.fetchone()
     return row[0] if row else city_name
 
+def get_city_modified_name_2(city_name: str):
+    cursor.execute("SELECT modified_name_2 FROM cities WHERE name = %s", (city_name,))
+    row = cursor.fetchone()
+    return row[0] if row else city_name
+
+def get_city_modified_name_3(city_name: str):
+    cursor.execute("SELECT modified_name_3 FROM cities WHERE name = %s", (city_name,))
+    row = cursor.fetchone()
+    return row[0] if row else city_name
+
 def add_city_if_missing(city_name: str):
     cursor.execute("""
-        INSERT INTO cities (name, modified_name, approved)
-        VALUES (%s, %s, FALSE)
+        INSERT INTO cities (name, modified_name, modified_name_2, modified_name_3, approved)
+        VALUES (%s, %s, %s, %s, FALSE)
         ON CONFLICT (name) DO NOTHING
-    """, (city_name, city_name))
+    """, (city_name, city_name, city_name, city_name))
     conn.commit()
 
 def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1, passenger_phone: str = None):

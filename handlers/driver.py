@@ -9,7 +9,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_city_modified_name_2, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
@@ -179,7 +179,9 @@ async def day(message: types.Message, state: FSMContext):
         await message.answer("Обери день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
-    await message.answer("Крок 6/11\nВведи запланований час виїзду у форматі ГГ:ХХ:", reply_markup=back_only_kb)
+    data = await state.get_data()
+    from_city_label = get_city_modified_name_2(data["from_city"]) or data["from_city"]
+    await message.answer(f"Крок 6/11\nВведи запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
     await state.set_state(DriverStates.datetime)
 
 @router.message(DriverStates.datetime)
@@ -204,7 +206,8 @@ async def time(message: types.Message, state: FSMContext):
         await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
         return
 
-    await message.answer(f"Крок 7/11\nВкажіть приблизний час прибуття в {data.get('to_city')} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
+    to_city_label = get_city_modified_name_3(data.get('to_city')) or data.get('to_city')
+    await message.answer(f"Крок 7/11\nВкажіть приблизний час прибуття в {to_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
     await state.set_state(DriverStates.arrival_time)
 
 @router.message(DriverStates.arrival_time)
