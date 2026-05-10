@@ -186,7 +186,7 @@ async def day(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.datetime)
 async def time(message: types.Message, state: FSMContext):
-    time_str = message.text
+    time_str = message.text.zfill(5)
 
     # Validate time format and values
     is_valid, error_msg = validate_time(time_str)
@@ -212,13 +212,14 @@ async def time(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.arrival_time)
 async def arrival_time(message: types.Message, state: FSMContext):
-    is_valid, error_msg = validate_time(message.text)
+    time_str = message.text.zfill(5)
+    is_valid, error_msg = validate_time(time_str)
     if not is_valid:
         await message.answer(error_msg)
         return
 
     data = await state.get_data()
-    is_valid, response = generate_datetime(data.get("day"), message.text)
+    is_valid, response = generate_datetime(data.get("day"), time_str)
     if not is_valid:
         await message.answer(response)
         return

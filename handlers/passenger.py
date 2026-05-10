@@ -303,7 +303,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
 
 @router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
-    time_str = message.text
+    time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
 
     if time_str != "Показати всі поїздки":
         is_valid, error_msg = validate_time(time_str)
