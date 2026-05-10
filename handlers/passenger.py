@@ -408,7 +408,7 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
         reply_markup=passenger_menu_kb
     )
 
-@router.callquery(lambda c: c.data == "next")
+@router.callback_query(lambda c: c.data == "next")
 async def next_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
