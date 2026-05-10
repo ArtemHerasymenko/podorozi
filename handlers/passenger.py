@@ -352,7 +352,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     await message.answer(
         f"🔎 Шукаємо поїздки на { 'сьогодні' if data['day'] == datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime('%Y-%m-%d') else 'завтра' }\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=passenger_menu_kb
     )
     await asyncio.sleep(3)
     
