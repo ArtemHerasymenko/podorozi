@@ -252,7 +252,8 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
                 if now_kyiv.replace(hour=h, minute=m, second=0, microsecond=0) <= now_kyiv + datetime.timedelta(minutes=10):
                     continue
             options.append([KeyboardButton(text=t)])
-    
+    options.sort(key=lambda row: row[0].text)
+
     if not options:
         if not is_today:
             options = [[KeyboardButton(text=t)] for t in TOMORROW_TIME_OPTIONS]
