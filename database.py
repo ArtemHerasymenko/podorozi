@@ -151,6 +151,21 @@ CREATE TABLE IF NOT EXISTS phones (
 """)
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS recent_searches (
+    id SERIAL PRIMARY KEY,
+    passenger_id BIGINT NOT NULL,
+    from_city TEXT NOT NULL,
+    to_city TEXT NOT NULL,
+    time_str TEXT NOT NULL,
+    search_for_day TEXT NOT NULL,
+    searched_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (passenger_id, from_city, to_city, time_str, search_for_day)
+);
+""")
+cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
+conn.commit()
+
 def save_trip_to_db(driver_id, data):
     """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
     cursor.execute("BEGIN")
@@ -750,7 +765,7 @@ def decrease_trip_search_list_index(user_id: int):
     cursor.execute("""
         UPDATE trip_search_lists
         SET current_index = (
-            CASE 
+            CASE
                 WHEN current_index = 0 THEN cardinality(trip_ids) - 1
                 ELSE current_index - 1
             END
@@ -759,3 +774,21 @@ def decrease_trip_search_list_index(user_id: int):
     """, (user_id,))
     conn.commit()
 
+
+def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str):
+    cursor.execute("""
+        INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at)
+        VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP())
+        ON CONFLICT (passenger_id, from_city, to_city, time_str, search_for_day)
+        DO UPDATE SET searched_at = CLOCK_TIMESTAMP()
+    """, (passenger_id, from_city, to_city, time_str, search_for_day))
+    conn.commit()
+
+def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 4):
+    cursor.execute("""
+        SELECT time_str FROM recent_searches
+        WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s
+        ORDER BY searched_at DESC
+        LIMIT %s
+    """, (passenger_id, from_city, to_city, search_for_day, limit))
+    return [row[0] for row in cursor.fetchall()]

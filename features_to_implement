@@ -37,10 +37,6 @@ also which departure time a passenger is looking for.
 when a passenger enter 18:00 today. Then come back and is looking for the same
 pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
 
-Де вас підібрат, і для кожного міста свій приклад
-
-Час виїзду з Полтави, час прибутя в Полтаву. Відмінки.
-
 ======= TO test ========
 
 passenger phone number
@@ -59,6 +55,13 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+Де вас підібрат, і для кожного міста свій приклад - no need for now
+
+when we present a list of rides to a passenger - theier no BACK button,
+alos they should not see the regular keyboard.
+
+Час виїзду з Полтави, час прибутя в Полтаву. Відмінки.
 
 назад має бути кругом
 

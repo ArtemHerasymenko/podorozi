@@ -2,7 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -219,9 +219,11 @@ async def day_handler(message: types.Message, state: FSMContext):
         return
     day = day_dict[message.text]
     await state.update_data(day=day)
+    data = await state.get_data()
+    recent_times = get_recent_search_times(message.from_user.id, data["from_city"], data["to_city"], day)
     await message.answer(
         "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
-        reply_markup=quick_time_kb(day)
+        reply_markup=quick_time_kb(day, recent_times)
     )
     await state.set_state(PassengerStates.search_from_datetime)
 
@@ -238,18 +240,29 @@ def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
 
 TOMORROW_TIME_OPTIONS = ["07:00", "08:00"]
 
-def quick_time_kb(day_str: str) -> ReplyKeyboardMarkup:
-    today = datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime("%Y-%m-%d")
-    if day_str != today:
-        options = [[KeyboardButton(text=t)] for t in TOMORROW_TIME_OPTIONS]
-    else:
-        now = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
-        base = round_to_nearest_10_minutes(now)
+def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarkup:
+    now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
+    today = now_kyiv.strftime("%Y-%m-%d")
+    is_today = day_str == today
+    if recent_times:
         options = []
-        for minutes in QUICK_TIME_OPTIONS:
-            option_time = base + datetime.timedelta(minutes=minutes)
-            if option_time.date() == base.date():
-                options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
+        for t in recent_times:
+            if is_today:
+                h, m = map(int, t.split(":"))
+                if now_kyiv.replace(hour=h, minute=m, second=0, microsecond=0) <= now_kyiv + datetime.timedelta(minutes=10):
+                    continue
+            options.append([KeyboardButton(text=t)])
+    
+    if not options:
+        if not is_today:
+            options = [[KeyboardButton(text=t)] for t in TOMORROW_TIME_OPTIONS]
+        else:
+            base = round_to_nearest_10_minutes(now_kyiv)
+            options = []
+            for minutes in QUICK_TIME_OPTIONS:
+                option_time = base + datetime.timedelta(minutes=minutes)
+                if option_time.date() == base.date():
+                    options.append([KeyboardButton(text=option_time.strftime("%H:%M"))])
     options.append([KeyboardButton(text="Показати всі поїздки")])
     options.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
@@ -299,6 +312,8 @@ async def search(message: types.Message, state: FSMContext):
 
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
+    if time_str != "Показати всі поїздки":
+        save_recent_search(message.from_user.id, data["from_city"], data["to_city"], time_str, data["day"])
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)
@@ -494,7 +509,7 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.answer(
         "📍 Вкажіть місце де вас підібрати. Рекомендуємо ввести орієнтир, який водій легко зможе " \
-        "знайти, наприклад: 'біля магазину Нектар'",
+        "знайти, наприклад: біля школи",
         reply_markup=back_only_kb
     )
 
