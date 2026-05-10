@@ -244,8 +244,8 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     today = now_kyiv.strftime("%Y-%m-%d")
     is_today = day_str == today
+    options = []
     if recent_times:
-        options = []
         for t in recent_times:
             if is_today:
                 h, m = map(int, t.split(":"))
