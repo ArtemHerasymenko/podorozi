@@ -352,7 +352,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     await message.answer(
         f"🔎 Шукаємо поїздки на { 'сьогодні' if data['day'] == datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime('%Y-%m-%d') else 'завтра' }\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
-        reply_markup=back_only_kb()
+        reply_markup=back_only_kb
     )
     await asyncio.sleep(3)
     
@@ -408,7 +408,7 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
         reply_markup=passenger_menu_kb
     )
 
-@router.callback_query(lambda c: c.data == "next")
+@router.callquery(lambda c: c.data == "next")
 async def next_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
