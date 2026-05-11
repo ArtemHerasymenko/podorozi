@@ -682,25 +682,22 @@ def set_booking_pickup_at(booking_id: int, pickup_at):
     """, (pickup_at, booking_id))
     conn.commit()
 
-def search_trips_ids(from_city, to_city, time_from, time_to, seats_needed=1):
+def search_trips_ids(from_city, to_city, time_from, time_to):
     cursor.execute("""
-        SELECT t.id
+        SELECT t.id,
+               t.seats::int - COALESCE((
+                   SELECT SUM(b.seats) FROM bookings b
+                   WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
+               ), 0) AS free_seats
         FROM trips t
         WHERE t.from_city = %s AND t.to_city = %s
           AND t.status = 'active'
           AND t.departure_datetime > CLOCK_TIMESTAMP()
           AND t.departure_datetime >= %s
           AND t.departure_datetime <= %s
-          AND (
-            t.seats::int - COALESCE((
-              SELECT SUM(b.seats) FROM bookings b
-              WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
-            ), 0)
-          ) >= %s
         ORDER BY t.departure_datetime
-    """, (from_city, to_city, time_from, time_to, seats_needed))
-
-    return [row[0] for row in cursor.fetchall()]
+    """, (from_city, to_city, time_from, time_to))
+    return cursor.fetchall()
 
 def create_trip_search_list(user_id: int, trips: list[int]):
     cursor.execute("""
