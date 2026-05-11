@@ -381,15 +381,25 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     total = len(all_trips)
     trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
 
+    def trip_word(n):
+        last2, last1 = n % 100, n % 10
+        if 11 <= last2 <= 14:
+            return "Поїздок"
+        if last1 == 1:
+            return "Поїздку"
+        if 2 <= last1 <= 4:
+            return "Поїздки"
+        return "Поїздок"
+
     if not trips_ids:
         if total == 0:
             await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=passenger_menu_kb)
         else:
-            await message.answer(f"Знайдено {total} поїздок, але вільних місць вже немає.", reply_markup=passenger_menu_kb)
+            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=passenger_menu_kb)
         await state.clear()
         return
 
-    await message.answer(f"Знайдено {total} поїздок, {len(trips_ids)} з них мають вільні місця.")
+    await message.answer(f"Знайдено {total} {trip_word(total)}, {len(trips_ids)} з них мають вільні місця.")
     create_trip_search_list(message.from_user.id, trips_ids)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
