@@ -9,13 +9,27 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, get_route_descriptions, save_route_description, get_city_modified_name, get_city_modified_name_2, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_2, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks
 from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb
 
 router = Router()
+
+def route_points_kb(landmarks: list, selected: list, prefix: str) -> InlineKeyboardMarkup:
+    rows = []
+    for i in range(0, len(landmarks), 2):
+        row = []
+        for j in range(i, min(i + 2, len(landmarks))):
+            icon = "✅" if j in selected else "☐"
+            row.append(InlineKeyboardButton(
+                text=f"{icon} {landmarks[j]}",
+                callback_data=f"route_points:{prefix}:{j}"
+            ))
+        rows.append(row)
+    rows.append([InlineKeyboardButton(text="✅ Готово", callback_data=f"route_points_ok:{prefix}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _build_driver_trip_details_msg(trip_row, bot):
@@ -113,27 +127,44 @@ async def from_city(message: types.Message, state: FSMContext):
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
-    suggestions = get_route_descriptions(city, True, message.from_user.id)
-    keyboard = []
-    if suggestions:
-        for s in suggestions:
-            keyboard.append([KeyboardButton(text=s)])
-    keyboard.append([KeyboardButton(text="⬅️ Назад")])
-    kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
-    await message.answer(
-        f"Крок 2/11\nДопоможіть пасажирам зрозуміти ваш маршрут по {modified_city}: опишіть його в довільній формі " \
-        f"або виберіть готовий опис внизу:" if len(keyboard) > 1 else f"Крок 2/11\nДопоможіть пасажирам зрозуміти ваш маршрут по {modified_city}: опишіть його в довільній формі:",
-        reply_markup=kb
-    )
+    landmarks = get_city_landmarks(city)
+    await message.answer(f"Крок 2/11\nВиберіть  орієнтири по {modified_city} зі списку. Можете також доповнити вручну", reply_markup=route_points_kb(landmarks, [], "from"))
+    await state.update_data(from_points_sel=[], from_landmarks=landmarks, from_custom=[])
     await state.set_state(DriverStates.from_points)
+
+async def _finish_from_points(state: FSMContext, answer, user_id: int):
+    data = await state.get_data()
+    selected = data.get("from_points_sel", [])
+    landmarks = data.get("from_landmarks", [])
+    custom = data.get("from_custom", [])
+    selected_str = ", ".join([landmarks[i] for i in sorted(selected) if i < len(landmarks)])
+    points_str = ", ".join(filter(None, [selected_str] + custom))
+    await state.update_data(from_points=points_str)
+    if points_str:
+        save_route_description(user_id, data["from_city"], True, points_str)
+    await answer("Крок 3/11\nМісто прибуття:", reply_markup=cities_keyboard(user_id))
+    await state.set_state(DriverStates.to_city)
+
+async def _finish_to_points(state: FSMContext, answer, user_id: int):
+    data = await state.get_data()
+    selected = data.get("to_points_sel", [])
+    landmarks = data.get("to_landmarks", [])
+    custom = data.get("to_custom", [])
+    selected_str = ", ".join([landmarks[i] for i in sorted(selected) if i < len(landmarks)])
+    points_str = ", ".join(filter(None, [selected_str] + custom))
+    await state.update_data(to_points=points_str)
+    if points_str:
+        save_route_description(user_id, data["to_city"], False, points_str)
+    await answer("Крок 5/11\nОбери день:", reply_markup=quick_day_kb())
+    await state.set_state(DriverStates.day)
 
 @router.message(DriverStates.from_points)
 async def from_points(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    save_route_description(message.from_user.id, data["from_city"], True, message.text)
-    await state.update_data(from_points=message.text)
-    await message.answer("Крок 3/11\nМісто прибуття:", reply_markup=cities_keyboard(message.from_user.id))
-    await state.set_state(DriverStates.to_city)
+    custom = list(data.get("from_custom", []))
+    custom.append(message.text.strip())
+    await state.update_data(from_custom=custom)
+    await _finish_from_points(state, message.answer, message.from_user.id)
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
@@ -149,27 +180,45 @@ async def to_city(message: types.Message, state: FSMContext):
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
-    suggestions = get_route_descriptions(city, False, message.from_user.id)
-    keyboard = []
-    if suggestions:
-        for s in suggestions:
-            keyboard.append([KeyboardButton(text=s)])
-    keyboard.append([KeyboardButton(text="⬅️ Назад")])
-    kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
-    await message.answer(
-        f"Крок 4/11\nОпишіть маршрут по {modified_city} в довільній формі, " \
-        f"або виберіть готовий опис внизу:" if len(keyboard) > 1 else f"Крок 4/11\nОпишіть маршрут по {modified_city} в довільній формі:",
-        reply_markup=kb
-    )
+    landmarks = get_city_landmarks(city)
+    await message.answer(f"Крок 4/11\Виберіть орієнтири по {modified_city} зі списку. Можете також доповнити вручну.", reply_markup=route_points_kb(landmarks, [], "to"))
+    await state.update_data(to_points_sel=[], to_landmarks=landmarks, to_custom=[])
     await state.set_state(DriverStates.to_points)
 
 @router.message(DriverStates.to_points)
 async def to_points(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    save_route_description(message.from_user.id, data["to_city"], False, message.text)
-    await state.update_data(to_points=message.text)
-    await message.answer("Крок 5/11\nОбери день:", reply_markup=quick_day_kb())
-    await state.set_state(DriverStates.day)
+    custom = list(data.get("to_custom", []))
+    custom.append(message.text.strip())
+    await state.update_data(to_custom=custom)
+    await _finish_to_points(state, message.answer, message.from_user.id)
+
+@router.callback_query(lambda c: c.data and c.data.startswith("route_points:"))
+async def toggle_route_point(callback: types.CallbackQuery, state: FSMContext):
+    _, prefix, idx_str = callback.data.split(":")
+    idx = int(idx_str)
+    sel_key = "from_points_sel" if prefix == "from" else "to_points_sel"
+    lm_key = "from_landmarks" if prefix == "from" else "to_landmarks"
+    data = await state.get_data()
+    selected = list(data.get(sel_key, []))
+    landmarks = data.get(lm_key, [])
+    if idx in selected:
+        selected.remove(idx)
+    else:
+        selected.append(idx)
+    await state.update_data(**{sel_key: selected})
+    await callback.message.edit_reply_markup(reply_markup=route_points_kb(landmarks, selected, prefix))
+    await callback.answer()
+
+@router.callback_query(lambda c: c.data and c.data.startswith("route_points_ok:"))
+async def confirm_route_points(callback: types.CallbackQuery, state: FSMContext):
+    prefix = callback.data.split(":")[1]
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if prefix == "from":
+        await _finish_from_points(state, callback.message.answer, callback.from_user.id)
+    else:
+        await _finish_to_points(state, callback.message.answer, callback.from_user.id)
+    await callback.answer()
 
 @router.message(DriverStates.day)
 async def day(message: types.Message, state: FSMContext):

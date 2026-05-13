@@ -3,6 +3,7 @@ from config import DATABASE_URL
 from data.cities import CITIES
 from data.route_descriptions import ROUTE_DESCRIPTIONS
 from data.route_tags import ROUTE_TAGS
+from data.city_landmarks import CITY_LANDMARKS
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 cursor.execute("SET TIME ZONE 'UTC'")
@@ -175,6 +176,24 @@ CREATE TABLE IF NOT EXISTS recent_searches (
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS city_landmarks (
+    id SERIAL PRIMARY KEY,
+    city_name TEXT NOT NULL,
+    landmark TEXT NOT NULL,
+    UNIQUE (city_name, landmark)
+)
+""")
+conn.commit()
+
+for city_name, landmark in CITY_LANDMARKS:
+    cursor.execute("""
+        INSERT INTO city_landmarks (city_name, landmark)
+        VALUES (%s, %s)
+        ON CONFLICT DO NOTHING
+    """, (city_name, landmark))
+conn.commit()
+
 def save_trip_to_db(driver_id, data):
     """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
     cursor.execute("BEGIN")
@@ -227,6 +246,11 @@ def get_city_modified_name_3(city_name: str):
     cursor.execute("SELECT modified_name_3 FROM cities WHERE name = %s", (city_name,))
     row = cursor.fetchone()
     return row[0] if row else city_name
+
+def get_city_landmarks(city_name: str) -> list[str]:
+    cursor.execute("SELECT landmark FROM city_landmarks WHERE city_name = %s ORDER BY id", (city_name,))
+    rows = cursor.fetchall()
+    return [row[0] for row in rows]
 
 def add_city_if_missing(city_name: str):
     cursor.execute("""
