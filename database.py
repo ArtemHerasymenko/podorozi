@@ -188,6 +188,28 @@ CREATE TABLE IF NOT EXISTS city_landmarks (
 """)
 cursor.execute("ALTER TABLE city_landmarks ADD COLUMN IF NOT EXISTS user_id BIGINT NOT NULL DEFAULT 0")
 cursor.execute("ALTER TABLE city_landmarks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()")
+cursor.execute("""
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'city_landmarks_city_name_landmark_key'
+        ) THEN
+            ALTER TABLE city_landmarks DROP CONSTRAINT city_landmarks_city_name_landmark_key;
+        END IF;
+    END $$
+""")
+cursor.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'city_landmarks_user_id_city_name_landmark_key'
+        ) THEN
+            ALTER TABLE city_landmarks ADD CONSTRAINT city_landmarks_user_id_city_name_landmark_key UNIQUE (user_id, city_name, landmark);
+        END IF;
+    END $$
+""")
 conn.commit()
 
 for city_name, landmark in CITY_LANDMARKS:

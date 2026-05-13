@@ -28,10 +28,8 @@ def route_points_kb(landmarks: list, selected: list, prefix: str) -> InlineKeybo
                 callback_data=f"route_points:{prefix}:{j}"
             ))
         rows.append(row)
-    rows.append([
-        InlineKeyboardButton(text="➕ Додати новий орієнтир", callback_data=f"add_landmark:{prefix}"),
-        InlineKeyboardButton(text="✅ Готово", callback_data=f"route_points_ok:{prefix}"),
-    ])
+    rows.append([InlineKeyboardButton(text="🆕 Додати новий орієнтир", callback_data=f"add_landmark:{prefix}")])
+    rows.append([InlineKeyboardButton(text="✅ Готово", callback_data=f"route_points_ok:{prefix}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
