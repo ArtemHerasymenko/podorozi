@@ -2,6 +2,8 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from states.feedback_states import FeedbackStates
+from database import save_feedback
 import datetime
 import zoneinfo
 
@@ -135,7 +137,8 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Я водій")],
-        [KeyboardButton(text="👤 Я пасажир")]
+        [KeyboardButton(text="👤 Я пасажир")],
+        [KeyboardButton(text="📝 Залишити відгук")]
     ],
     resize_keyboard=True
 )
@@ -155,6 +158,17 @@ async def start(message: types.Message, state: FSMContext):
             pass
     await state.clear()
     await message.answer("Оберіть роль:", reply_markup=role_menu)
+
+@router.message(lambda m: m.text == "📝 Залишити відгук")
+async def feedback_start(message: types.Message, state: FSMContext):
+    await state.set_state(FeedbackStates.writing)
+    await message.answer("Напишіть відгук в довільній формі:", reply_markup=back_only_kb)
+
+@router.message(FeedbackStates.writing, lambda m: m.text != "⬅️ Назад")
+async def feedback_write(message: types.Message, state: FSMContext):
+    save_feedback(message.from_user.id, "general", message.text)
+    await state.clear()
+    await message.answer("Дякуємо за ваш відгук! 🙏", reply_markup=role_menu)
 
 @router.message(lambda m: m.text == "⬅️ Назад")
 async def back(message: types.Message, state: FSMContext):

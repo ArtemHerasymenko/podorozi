@@ -152,6 +152,17 @@ CREATE TABLE IF NOT EXISTS phones (
 conn.commit()
 
 cursor.execute("""
+CREATE TABLE IF NOT EXISTS feedbacks (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    mode TEXT NOT NULL,
+    feedback_text TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
+);
+""")
+conn.commit()
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS recent_searches (
     id SERIAL PRIMARY KEY,
     passenger_id BIGINT NOT NULL,
@@ -789,3 +800,10 @@ def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, sea
         LIMIT %s
     """, (passenger_id, from_city, to_city, search_for_day, limit))
     return [row[0] for row in cursor.fetchall()]
+
+def save_feedback(user_id: int, mode: str, feedback_text: str):
+    cursor.execute("""
+        INSERT INTO feedbacks (user_id, mode, feedback_text)
+        VALUES (%s, %s, %s)
+    """, (user_id, mode, feedback_text))
+    conn.commit()

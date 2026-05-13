@@ -23,8 +23,6 @@ Maybe the button should say "Скасовані та попередні поїз
 maybe just a separete button for "My canceled trips
 same for P
 
-feeback buttom
-
 there should be a default route description is users enter new city (school, center, atb, rail station)
 
 we should store every action user makes and every response we send to user. 
@@ -34,8 +32,7 @@ did after this time. Or what action were happening with this ride.
 analytics: make sure create trips, book, and search list have timestamps.
 also which departure time a passenger is looking for.
 
-when a passenger enter 18:00 today. Then come back and is looking for the same
-pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
+feeback buttom
 
 ======= TO test ========
 
@@ -55,6 +52,14 @@ after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
 ===== ANSWERED/DONE ======
+
+if no results -  ми знайшли 7 поїздок, але вільних місць вже немає. 
+if there are results - ми знайшли 7 поїздок, вільні місця є в 3-х:
+Ми не знайшли поїздок на цей час.
+to give passengers feeling of high D presence nad that they should search earlier next time.
+
+when a passenger enter 18:00 today. Then come back and is looking for the same
+pair of cities and it is not 18:00 yet, we should show 18:00 as a shortcut.
 
 Де вас підібрат, і для кожного міста свій приклад - no need for now
 
