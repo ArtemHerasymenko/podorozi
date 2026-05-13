@@ -128,7 +128,8 @@ async def from_city(message: types.Message, state: FSMContext):
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
     landmarks = get_city_landmarks(city)
-    await message.answer(f"Крок 2/11\nВиберіть  орієнтири по {modified_city} зі списку. Можете також доповнити вручну", reply_markup=route_points_kb(landmarks, [], "from"))
+    await message.answer(f"Крок 2/11\nВиберіть орієнтири по {modified_city} зі списку.", reply_markup=back_only_kb)
+    await message.answer("Можете також доповнити вручну.", reply_markup=route_points_kb(landmarks, [], "from"))
     await state.update_data(from_points_sel=[], from_landmarks=landmarks, from_custom=[])
     await state.set_state(DriverStates.from_points)
 
@@ -181,7 +182,8 @@ async def to_city(message: types.Message, state: FSMContext):
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
     landmarks = get_city_landmarks(city)
-    await message.answer(f"Крок 4/11\Виберіть орієнтири по {modified_city} зі списку. Можете також доповнити вручну.", reply_markup=route_points_kb(landmarks, [], "to"))
+    await message.answer(f"Крок 4/11\nВиберіть орієнтири по {modified_city} зі списку.", reply_markup=back_only_kb)
+    await message.answer("Можете також доповнити вручну.", reply_markup=route_points_kb(landmarks, [], "to"))
     await state.update_data(to_points_sel=[], to_landmarks=landmarks, to_custom=[])
     await state.set_state(DriverStates.to_points)
 
