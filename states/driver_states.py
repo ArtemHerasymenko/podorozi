@@ -13,3 +13,4 @@ class DriverStates(StatesGroup):
     seats = State()
     phone = State()
     confirming_booking = State()
+    entering_landmark = State()

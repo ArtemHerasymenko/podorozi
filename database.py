@@ -179,17 +179,21 @@ conn.commit()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS city_landmarks (
     id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL DEFAULT 0,
     city_name TEXT NOT NULL,
     landmark TEXT NOT NULL,
-    UNIQUE (city_name, landmark)
+    updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    UNIQUE (user_id, city_name, landmark)
 )
 """)
+cursor.execute("ALTER TABLE city_landmarks ADD COLUMN IF NOT EXISTS user_id BIGINT NOT NULL DEFAULT 0")
+cursor.execute("ALTER TABLE city_landmarks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()")
 conn.commit()
 
 for city_name, landmark in CITY_LANDMARKS:
     cursor.execute("""
-        INSERT INTO city_landmarks (city_name, landmark)
-        VALUES (%s, %s)
+        INSERT INTO city_landmarks (user_id, city_name, landmark)
+        VALUES (0, %s, %s)
         ON CONFLICT DO NOTHING
     """, (city_name, landmark))
 conn.commit()
@@ -247,10 +251,28 @@ def get_city_modified_name_3(city_name: str):
     row = cursor.fetchone()
     return row[0] if row else city_name
 
-def get_city_landmarks(city_name: str) -> list[str]:
-    cursor.execute("SELECT landmark FROM city_landmarks WHERE city_name = %s ORDER BY id", (city_name,))
-    rows = cursor.fetchall()
-    return [row[0] for row in rows]
+def get_city_landmarks(city_name: str, user_id: int = 0) -> list[str]:
+    cursor.execute("""
+        SELECT landmark FROM city_landmarks
+        WHERE city_name = %s AND user_id = %s
+        ORDER BY updated_at DESC
+    """, (city_name, user_id))
+    user_rows = [row[0] for row in cursor.fetchall()]
+    cursor.execute("""
+        SELECT landmark FROM city_landmarks
+        WHERE city_name = %s AND user_id = 0
+        ORDER BY updated_at DESC
+    """, (city_name,))
+    general_rows = [row[0] for row in cursor.fetchall() if row[0] not in user_rows]
+    return (user_rows + general_rows)[:16]
+
+def save_user_landmark(user_id: int, city_name: str, landmark: str):
+    cursor.execute("""
+        INSERT INTO city_landmarks (user_id, city_name, landmark)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id, city_name, landmark) DO UPDATE SET updated_at = CLOCK_TIMESTAMP()
+    """, (user_id, city_name, landmark))
+    conn.commit()
 
 def add_city_if_missing(city_name: str):
     cursor.execute("""
