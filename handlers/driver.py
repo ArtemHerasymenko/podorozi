@@ -14,6 +14,7 @@ from aiogram import Bot
 import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb
+from data.route_intermediates import get_intermediates
 
 router = Router()
 
@@ -288,7 +289,7 @@ async def time(message: types.Message, state: FSMContext):
 @router.message(DriverStates.seats)
 async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
-    await message.answer("Крок 8/10\nЦіна за місце:", reply_markup=ReplyKeyboardMarkup(
+    await message.answer("Крок 8/10\nЦіна за місце (виберіть або введіть свою):", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=p)] for p in ["50", "60", "80", "100"]] + [[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True,
         one_time_keyboard=True
@@ -361,6 +362,13 @@ async def driver_phone(message: types.Message, state: FSMContext):
         return
 
     await message.answer("Поїздка збережена ✅. Можете переглянути її в меню \"📋 Мої поїздки водія\"", reply_markup=driver_menu_kb)
+
+    intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
+    if intermediates:
+        names = [get_city_modified_name_2(c) or c for c in intermediates]
+        cities_str = " та ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " та " + names[-1]
+        await message.answer(f"ℹ️ Вашу поїздку також бачитимуть пасажирам з {cities_str}.")
+
     await state.clear()
 
 

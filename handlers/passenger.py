@@ -15,6 +15,7 @@ import asyncio
 import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb
+from data.route_intermediates import get_search_city_pairs
 
 def mask_phone(phone):
     if not phone or len(phone) < 4:
@@ -377,7 +378,8 @@ async def search(message: types.Message, state: FSMContext):
     # or close to departure ones.
     min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
     search_from_datetime = max(search_from_datetime, min_from)
-    all_trips = search_trips_ids(data["from_city"], data["to_city"], search_from_datetime, search_to_datetime)
+    extra_from, extra_to = get_search_city_pairs(data["from_city"], data["to_city"])
+    all_trips = search_trips_ids(data["from_city"], data["to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
     total = len(all_trips)
     trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
 
