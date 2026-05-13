@@ -219,11 +219,25 @@ async def day_handler(message: types.Message, state: FSMContext):
         return
     day = day_dict[message.text]
     await state.update_data(day=day)
+    await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    ))
+    await state.set_state(PassengerStates.seats_requested)
+
+@router.message(PassengerStates.seats_requested)
+async def seats_requested_handler(message: types.Message, state: FSMContext):
+    if not message.text.isdigit() or int(message.text) < 1:
+        await message.answer("Введіть ціле число, наприклад 1:")
+        return
+    seats = int(message.text)
+    await state.update_data(seats_requested=seats)
     data = await state.get_data()
-    recent_times = get_recent_search_times(message.from_user.id, data["from_city"], data["to_city"], day)
+    recent_times = get_recent_search_times(message.from_user.id, data["from_city"], data["to_city"], data["day"])
     await message.answer(
         "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
-        reply_markup=quick_time_kb(day, recent_times)
+        reply_markup=quick_time_kb(data["day"], recent_times)
     )
     await state.set_state(PassengerStates.search_from_datetime)
 
@@ -346,23 +360,9 @@ async def search(message: types.Message, state: FSMContext):
                 hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc))
 
     await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
-    await state.set_state(PassengerStates.seats_requested)
-    await message.answer("👥 Скільки місць вам потрібно?", reply_markup=ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    ))
-
-@router.message(PassengerStates.seats_requested)
-async def seats_requested_handler(message: types.Message, state: FSMContext):
-    if not message.text.isdigit() or int(message.text) < 1:
-        await message.answer("Введіть ціле число, наприклад 1:")
-        return
-    seats = int(message.text)
-    await state.update_data(seats_requested=seats)
 
     data = await state.get_data()
-    
+    seats = data.get("seats_requested", 1)
     search_from_datetime = data["search_from_datetime"]
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
