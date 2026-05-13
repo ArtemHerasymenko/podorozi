@@ -3,8 +3,6 @@ from config import DATABASE_URL
 from data.cities import CITIES
 from data.route_descriptions import ROUTE_DESCRIPTIONS
 from data.route_tags import ROUTE_TAGS
-from handlers.common import generate_datetime
-
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 cursor.execute("SET TIME ZONE 'UTC'")
