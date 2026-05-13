@@ -212,7 +212,8 @@ async def entering_landmark(message: types.Message, state: FSMContext):
         except:
             pass
 
-    new_msg = await message.answer("Оберіть орієнтири:", reply_markup=route_points_kb(landmarks, selected, prefix))
+    await message.answer("Оберіть орієнтири:", reply_markup=back_only_kb)
+    new_msg = await message.answer("⬇️", reply_markup=route_points_kb(landmarks, selected, prefix))
     await state.update_data(**{msg_id_key: new_msg.message_id})
 
 @router.callback_query(lambda c: c.data and c.data.startswith("route_points:"))
