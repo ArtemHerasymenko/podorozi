@@ -1,3 +1,5 @@
+from email import message
+
 from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -298,23 +300,24 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
-    position_text = f"Варіант номер {index + 1}/{total_cnt}"
+    position_text = f"Поїздка № {index + 1}/{total_cnt}"
     name_str = driver_name or "Водій"
     if is_own:
         name_str += " (Ви)"
-    driver_line = f"\n👤 {name_str}"
+    driver_line = f"👤 {name_str}"
     if trip[2]:
-        phone_line = f"\n📞 {mask_phone(trip[2])}"
+        phone_line = f"📞 {mask_phone(trip[2])}"
     else:
-        phone_line = "\n📞 Водій не вказав свій номер"
-    car_line = f"\n🚘 {trip[12]}" if trip[12] else ""
+        phone_line = "📞 Водій не вказав свій номер"
+    car_line = f"🚘 {trip[12]}" if trip[12] else ""
     return (
-        f"📍 {position_text}\n"
-        f"{driver_line}"
-        f"{phone_line}"
+        f"📍 {position_text}\n\n"
         f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n"
         f"💰 {trip[8]} грн\n"
-        f"👥 Вільних місць: {trip[10]}/{trip[9]}{car_line}")
+        f"{driver_line}\n"
+        f"{car_line}\n"
+        f"{phone_line}\n"
+        f"👥 Вільних місць: {trip[10]}/{trip[9]}")
 
 @router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
@@ -386,12 +389,12 @@ async def search(message: types.Message, state: FSMContext):
     def trip_word(n):
         last2, last1 = n % 100, n % 10
         if 11 <= last2 <= 14:
-            return "Поїздок"
+            return "поїздок"
         if last1 == 1:
-            return "Поїздку"
+            return "поїздку"
         if 2 <= last1 <= 4:
-            return "Поїздки"
-        return "Поїздок"
+            return "поїздки"
+        return "поїздок"
 
     if not trips_ids:
         if total == 0:
@@ -401,7 +404,10 @@ async def search(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer(f"Знайдено {total} {trip_word(total)}, {len(trips_ids)} з них мають вільні місця.")
+    if len(total ) == len(trips_ids):
+        await message.answer(f"Знайдено {total} {trip_word(total)}.")
+    else:
+        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}")
     create_trip_search_list(message.from_user.id, trips_ids)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
