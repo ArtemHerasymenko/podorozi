@@ -87,7 +87,7 @@ async def my_trips(message: types.Message):
             ])
         else:
             kb = None
-        await message.answer(text, reply_markup=kb)
+        await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(lambda m: m.text == "📜 Мої минулі поїздки")
 async def my_past_trips(message: types.Message):
@@ -619,7 +619,8 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     await message.bot.send_message(
         driver_id,
         text,
-        reply_markup=booking_actions_kb(booking_id, passenger_id, message.from_user.username)
+        reply_markup=booking_actions_kb(booking_id, passenger_id, message.from_user.username),
+        parse_mode="HTML"
     )
 
 @router.callback_query(lambda c: c.data == "cancel_search")
@@ -660,7 +661,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
                 booking_from_city=trip[10], booking_to_city=trip[11],
             ) if trip else ""
         )
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}")
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}", parse_mode="HTML")
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)

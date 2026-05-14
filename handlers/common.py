@@ -98,8 +98,8 @@ def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_
     dep_time = local_dt.strftime("%H:%M")
     arr_time = arrival_local.strftime("%H:%M")
     date_str = local_dt.strftime("%d.%m.%Y")
-    from_str = f"{from_city} ({from_points})" if from_points else from_city
-    to_str = f"{to_city} ({to_points})" if to_points else to_city
+    from_str = f"<b>{from_city}</b> ({from_points})" if from_points else f"<b>{from_city}</b>"
+    to_str = f"<b>{to_city}</b> ({to_points})" if to_points else f"<b>{to_city}</b>"
     return f"🕐 {dep_time}, {uk_day}\n➡️ {from_str}\n🏁 {to_str}"
     
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
