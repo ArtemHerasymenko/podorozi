@@ -2,7 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -526,9 +526,9 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(booking_trip_id=trip_id)
     await state.set_state(PassengerStates.booking_notes)
 
-    await callback.message.answer(
-        "📍 Вкажіть місце де вас підібрати. Рекомендуємо ввести орієнтир, який водій легко зможе " \
-        "знайти, наприклад: біля школи",
+    data = await state.get_data()
+    city = get_city_modified_name(data.get("booking_from_city", ""))
+    await callback.message.answer(f"📍 Вкажіть місце де вас підібрати у {city}: ",
         reply_markup=back_only_kb
     )
 
