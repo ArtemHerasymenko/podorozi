@@ -367,7 +367,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
     if intermediates:
         names = [get_city_modified_name_2(c) or c for c in intermediates]
         cities_str = " та ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " та " + names[-1]
-        await message.answer(f"ℹ️ Вашу поїздку також бачитимуть пасажирам з {cities_str}.")
+        await message.answer(f"ℹ️ Вашу поїздку також бачитимуть пасажири з {cities_str}.")
 
     await state.clear()
 
