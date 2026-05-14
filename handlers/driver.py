@@ -48,13 +48,13 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Очікують:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in pending_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in pending_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, None, passenger_phone)
+            notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
@@ -66,13 +66,13 @@ async def _build_driver_trip_details_msg(trip_row, bot):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in confirmed_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in confirmed_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone)
+            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
@@ -403,13 +403,13 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Не підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in pending_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in pending_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, None, passenger_phone)
+            notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
@@ -417,13 +417,13 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone in confirmed_bookings:
+        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in confirmed_bookings:
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
             except:
                 passenger_name = "Пасажир"
-            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone)
+            notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
             text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
@@ -492,7 +492,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                 passenger_id = get_passenger_id(booking_id)
                 trip = get_trip_details_by_booking(booking_id)
                 booking_desc = (
-                    f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9])}"
+                    f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}"
                     if trip else ""
                 )
                 driver_phone = get_driver_phone_by_booking(booking_id) if prev_status == "confirmed" else None
@@ -603,7 +603,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         driver_phone = get_driver_phone_by_booking(booking_id)
         if trip:
             phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else ""
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9])}{phone_line}\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}{phone_line}\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg)
@@ -650,7 +650,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         await _rebuild_or_append("\n\n❌ Ви відмовили цьому пасажиру")
         passenger_id = get_passenger_id(booking_id)
         booking_desc = (
-            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9])}"
+            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}"
             if trip else ""
         )
         await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.{booking_desc}")
@@ -660,7 +660,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
         booking_desc = (
-            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9])}"
+            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}"
             if trip else ""
         )
         phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else ""

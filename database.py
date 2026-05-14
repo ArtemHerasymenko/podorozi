@@ -54,14 +54,20 @@ CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
     trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending',
-    passenger_id BIGINT NOT NULL,  -- Telegram user id
+    passenger_id BIGINT NOT NULL,
     booked_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
     notes TEXT,
     passenger_phone TEXT,
     pickup_at TIMESTAMPTZ,
-    seats INT DEFAULT 1
+    seats INT DEFAULT 1,
+    from_city TEXT,
+    to_city TEXT
 );
 """)
+conn.commit()
+
+cursor.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS from_city TEXT")
+cursor.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS to_city TEXT")
 conn.commit()
 
 cursor.execute("""
@@ -304,7 +310,7 @@ def add_city_if_missing(city_name: str):
     """, (city_name, city_name, city_name, city_name))
     conn.commit()
 
-def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1, passenger_phone: str = None):
+def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1, passenger_phone: str = None, from_city: str = None, to_city: str = None):
     cursor.execute("BEGIN")
     # Lock the trip row so concurrent bookings can't race past the seat check
     cursor.execute("SELECT id FROM trips WHERE id = %s FOR UPDATE", (trip_id,))
@@ -328,8 +334,8 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             FROM trips WHERE id = %s
         ),
         inserted AS (
-            INSERT INTO bookings (trip_id, passenger_id, status, notes, seats, passenger_phone)
-            SELECT %s, %s, 'pending', %s, %s, %s
+            INSERT INTO bookings (trip_id, passenger_id, status, notes, seats, passenger_phone, from_city, to_city)
+            SELECT %s, %s, 'pending', %s, %s, %s, %s, %s
             FROM trip
             WHERE status = 'active'
               AND not_departed
@@ -343,7 +349,7 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             (SELECT has_seats     FROM trip),
             (SELECT overlap_count FROM trip),
             (SELECT id            FROM inserted)
-    """, (trip_id, seats_requested, passenger_id, trip_id, trip_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone))
+    """, (trip_id, seats_requested, passenger_id, trip_id, trip_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone, from_city, to_city))
     conn.commit()
     row = cursor.fetchone()
 
@@ -510,7 +516,7 @@ def get_trip_id_for_booking(booking_id: int):
 
 def get_bookings_for_trip(trip_id: int, status: str):
     cursor.execute("""
-        SELECT id, passenger_id, notes, pickup_at, seats, passenger_phone
+        SELECT id, passenger_id, notes, pickup_at, seats, passenger_phone, from_city, to_city
         FROM bookings
         WHERE trip_id = %s AND status = %s
         ORDER BY CASE WHEN status = 'confirmed' THEN pickup_at ELSE booked_at END ASC NULLS LAST
@@ -552,7 +558,7 @@ def get_passenger_id(booking_id: int) -> int:
 
 def get_passenger_bookings(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -564,7 +570,7 @@ def get_passenger_bookings(passenger_id: int):
 
 def get_latest_passenger_past_booking(passenger_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -576,7 +582,7 @@ def get_latest_passenger_past_booking(passenger_id: int):
 
 def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -593,7 +599,7 @@ def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
 
 def get_next_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
-        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description
+        SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
@@ -731,7 +737,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.car_description
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.car_description, b.from_city, b.to_city
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s

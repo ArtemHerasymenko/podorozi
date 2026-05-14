@@ -60,7 +60,7 @@ async def my_trips(message: types.Message):
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
     for trip in trips:
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description = trip
+        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = trip
         status_label = STATUS_LABELS.get(status, status)
         try:
             driver_chat = await message.bot.get_chat(driver_id)
@@ -68,7 +68,7 @@ async def my_trips(message: types.Message):
         except:
             driver_chat = None
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
         if not driver_phone:
             driver_phone_line = "\n📞 Водій не вказав свій номер"
         elif status == "confirmed":
@@ -98,7 +98,7 @@ async def my_past_trips(message: types.Message):
 
 
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
-    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description = booking_row
+    booking_id, from_city, to_city, dep_dt, price, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = booking_row
     status_label = STATUS_LABELS.get(status, status)
     pos = get_passenger_past_booking_position(passenger_id, booking_id)
     position_line = f"🗓 Бронювання #{pos[0]} з {pos[1]}\n" if pos else ""
@@ -108,7 +108,7 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     except:
         driver_chat = None
         driver_name = "Водій"
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
     if not driver_phone:
         driver_phone_line = "\n📞 Водій не вказав свій номер"
     elif status == "confirmed":
@@ -189,7 +189,7 @@ async def from_city(message: types.Message, state: FSMContext):
         await message.answer(error_msg)
         return
     city = message.text.title()
-    await state.update_data(from_city=city)
+    await state.update_data(booking_from_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
     await message.answer("Місто прибуття:", reply_markup=cities_keyboard(message.from_user.id))
@@ -205,7 +205,7 @@ async def to_city(message: types.Message, state: FSMContext):
         await message.answer(error_msg)
         return
     city = message.text.title()
-    await state.update_data(to_city=city)
+    await state.update_data(booking_to_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
     await message.answer("Обери день:", reply_markup=quick_day_kb())
@@ -235,7 +235,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     seats = int(message.text)
     await state.update_data(seats_requested=seats)
     data = await state.get_data()
-    recent_times = get_recent_search_times(message.from_user.id, data["from_city"], data["to_city"], data["day"])
+    recent_times = get_recent_search_times(message.from_user.id, data["booking_from_city"], data["booking_to_city"], data["day"])
     await message.answer(
         "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
         reply_markup=quick_time_kb(data["day"], recent_times)
@@ -329,7 +329,7 @@ async def search(message: types.Message, state: FSMContext):
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
     if time_str != "Показати всі поїздки":
-        save_recent_search(message.from_user.id, data["from_city"], data["to_city"], time_str, data["day"])
+        save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str, data["day"])
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)
@@ -378,8 +378,8 @@ async def search(message: types.Message, state: FSMContext):
     # or close to departure ones.
     min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
     search_from_datetime = max(search_from_datetime, min_from)
-    extra_from, extra_to = get_search_city_pairs(data["from_city"], data["to_city"])
-    all_trips = search_trips_ids(data["from_city"], data["to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
+    extra_from, extra_to = get_search_city_pairs(data["booking_from_city"], data["booking_to_city"])
+    all_trips = search_trips_ids(data["booking_from_city"], data["booking_to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
     total = len(all_trips)
     trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
 
@@ -581,7 +581,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     passenger_id = message.from_user.id
     passenger_name = message.from_user.full_name
 
-    success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested, phone)
+    success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested, phone, from_city=data.get("booking_from_city"), to_city=data.get("booking_to_city"))
 
     BOOK_ERRORS = {
         "not_found": "❌ Поїздку не знайдено. Спробуйте знайти іншу.",
@@ -602,7 +602,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)
-    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone) if trip_details else "N/A"
+    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
     text = (
         f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
@@ -650,6 +650,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
                 notes=trip[3], pickup_at=trip[4], arrival_dt=trip[5],
                 seats=trip[6], from_points=trip[7], to_points=trip[8],
                 passenger_phone=passenger_phone,
+                booking_from_city=trip[10], booking_to_city=trip[11],
             ) if trip else ""
         )
         await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}")
