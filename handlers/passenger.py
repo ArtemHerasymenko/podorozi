@@ -300,7 +300,8 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
-    position_text = f"Поїздка № {index + 1}/{total_cnt}"
+    position_text = f"Поїздка № {index + 1}/{total_cnt}" if total_cnt > 1 else ""
+    position_line = f"{position_text}\n\n" if position_text else ""
     name_str = driver_name or "Водій"
     if is_own:
         name_str += " (Ви)"
@@ -311,7 +312,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         phone_line = "📞 Водій не вказав свій номер"
     car_line = f"🚘 {trip[12]}" if trip[12] else ""
     return (
-        f"📍 {position_text}\n\n"
+        f"{position_line}"
         f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n"
         f"💰 {trip[8]} грн\n"
         f"{driver_line}\n"
@@ -404,7 +405,7 @@ async def search(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    if len(total ) == len(trips_ids):
+    if total == len(trips_ids):
         await message.answer(f"Знайдено {total} {trip_word(total)}.")
     else:
         await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}")
