@@ -88,7 +88,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
 driver_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Створити поїздку")],
-        [KeyboardButton(text="📋 Мої заплановані поїздки")],
+        [KeyboardButton(text="📋 Заплановані поїздки")],
         [KeyboardButton(text="📜 Минулі поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
@@ -361,7 +361,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Мої заплановані поїздки\"", reply_markup=driver_menu_kb)
+    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
 
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:
@@ -372,7 +372,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
+@router.message(lambda m: m.text == "📋 Заплановані поїздки")
 async def my_driver_trips(message: types.Message):
     trips = get_driver_trips(message.from_user.id)
     if not trips:
@@ -601,7 +601,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
         if trip:
-            msg = f"✅ Водій підтвердив вашу бронь!{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12], driver_name=message.from_user.full_name)}\n\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12], driver_name=message.from_user.full_name)}\n\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg, parse_mode="HTML")

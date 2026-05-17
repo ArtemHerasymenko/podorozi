@@ -37,8 +37,8 @@ STATUS_LABELS = {
 passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
-        [KeyboardButton(text="📋 Мої заплановані поїздки")],
-        [KeyboardButton(text="📜 Мої минулі поїздки")],
+        [KeyboardButton(text="📋 Поточні бронювання")],
+        [KeyboardButton(text="📜 Минулі бронювання")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -51,7 +51,7 @@ async def passenger_menu(message: types.Message):
         reply_markup=passenger_menu_kb
     )
 
-@router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
+@router.message(lambda m: m.text == "📋 Поточні бронювання")
 async def my_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(PassengerStates.viewing_bookings)
@@ -95,7 +95,7 @@ async def my_trips(message: types.Message, state: FSMContext):
             kb = None
         await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
-@router.message(lambda m: m.text == "📜 Мої минулі поїздки")
+@router.message(lambda m: m.text == "📜 Минулі бронювання")
 async def my_past_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(PassengerStates.viewing_bookings)
@@ -628,7 +628,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
     text = (
-        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n\n"
+        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
         f"{booking_desc}"
     )
 

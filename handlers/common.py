@@ -112,7 +112,7 @@ def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger
     phone_line = f"\n📞 {passenger_phone}" if passenger_phone else "\n📞 Пасажир не вказав свій номер"
     if pickup_at:
         time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
-        driver_notes_line = f"\n⏱ Ви прибуде о: {time_str}"
+        driver_notes_line = f"\n⏱ Ви підбере о: {time_str}"
     else:
         driver_notes_line = ""
     return f"{notes_line}{phone_line}{driver_notes_line}"
@@ -130,7 +130,7 @@ def format_notes_details_for_passenger(notes: str = None, pickup_at=None, bookin
     notes_line += f"\n📍 Місце висадки: <b> {booking_to_city}</b>"
     if pickup_at:
         time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
-        driver_notes_line = f"\n⏱ Прибуде о: <b> {time_str}</b>"
+        driver_notes_line = f"\n⏱ Підбере вас о: <b> {time_str}</b>"
     else:
         driver_notes_line = ""
     return f"{driver_notes_line}{notes_line}"
