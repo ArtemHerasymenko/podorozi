@@ -1,7 +1,7 @@
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.methods import SendMessage
+from aiogram.methods import SendMessage, EditMessageText
 from database import save_event
 
 
@@ -17,6 +17,6 @@ class IncomingLoggingMiddleware(BaseMiddleware):
 class LoggingSession(AiohttpSession):
     async def make_request(self, bot, method, timeout=None):
         result = await super().make_request(bot, method, timeout)
-        if isinstance(method, SendMessage):
+        if isinstance(method, (SendMessage, EditMessageText)):
             save_event(None, method.chat_id, method.text or "")
         return result
