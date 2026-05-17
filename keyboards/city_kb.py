@@ -10,7 +10,7 @@ def cities_keyboard(user_id=None):
 
     keyboard = []
     if popular:
-        keyboard.append([KeyboardButton(text="─── Нещодавно ти обирав ───")])
+        keyboard.append([KeyboardButton(text="─── Нещодавно ви обирали ───")])
         for i in range(0, len(popular), 1):
             row = [KeyboardButton(text=city) for city in popular[i:i+1]]
             keyboard.append(row)

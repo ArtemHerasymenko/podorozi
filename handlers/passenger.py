@@ -70,15 +70,15 @@ async def my_trips(message: types.Message):
         except:
             driver_chat = None
             driver_name = "Водій"
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-        if not driver_phone:
-            driver_phone_line = "\n📞 Водій не вказав свій номер"
-        elif status == "confirmed":
-            driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
+        if driver_phone and status == "confirmed":
+            display_phone = driver_phone
+        elif driver_phone:
+            display_phone = mask_phone(driver_phone)
         else:
-            driver_phone_line = f"\n📞 {mask_phone(driver_phone)}"
+            display_phone = None
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone)
         passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-        text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
+        text = f"{booking_desc}\n💰 {price} грн\n👤 {driver_name}{passenger_phone_line}\n{status_label}"
         if status in ACTIVE_STATUSES:
             driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -110,15 +110,15 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     except:
         driver_chat = None
         driver_name = "Водій"
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-    if not driver_phone:
-        driver_phone_line = "\n📞 Водій не вказав свій номер"
-    elif status == "confirmed":
-        driver_phone_line = f"\n📞 Телефон водія: {driver_phone}"
+    if driver_phone and status == "confirmed":
+        display_phone = driver_phone
+    elif driver_phone:
+        display_phone = mask_phone(driver_phone)
     else:
-        driver_phone_line = f"\n📞 {mask_phone(driver_phone)}"
+        display_phone = None
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone)
     passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-    text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{driver_phone_line}{passenger_phone_line}\n{status_label}"
+    text = f"{position_line}{booking_desc}\n💰 {price} грн\n👤 {driver_name}{passenger_phone_line}\n{status_label}"
 
     rows = []
     if driver_chat:
@@ -375,6 +375,7 @@ async def search(message: types.Message, state: FSMContext):
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
         f"🔎 Шукаємо поїздки на { 'сьогодні' if data['day'] == datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime('%Y-%m-%d') else 'завтра' }\n"
+        f"{data['booking_from_city']} → {data['booking_to_city']}\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
         reply_markup=back_only_kb
     )
