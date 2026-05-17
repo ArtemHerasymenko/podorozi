@@ -53,6 +53,8 @@ async def passenger_menu(message: types.Message):
 
 @router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
 async def my_trips(message: types.Message):
+    await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await asyncio.sleep(3)
     trips = get_passenger_bookings(message.from_user.id)
     if not trips:
         await message.answer("У вас ще немає заброньованих поїздок.")
@@ -60,6 +62,7 @@ async def my_trips(message: types.Message):
 
     ACTIVE_STATUSES = ("pending", "confirmed")
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
+
 
     total = len(trips)
     for i, trip in enumerate(trips):
@@ -93,6 +96,8 @@ async def my_trips(message: types.Message):
 
 @router.message(lambda m: m.text == "📜 Мої минулі поїздки")
 async def my_past_trips(message: types.Message):
+    await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await asyncio.sleep(3)
     booking = get_latest_passenger_past_booking(message.from_user.id)
     if not booking:
         await message.answer("У вас ще немає завершених поїздок.")
