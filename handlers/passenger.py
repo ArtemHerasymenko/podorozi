@@ -61,9 +61,11 @@ async def my_trips(message: types.Message):
     ACTIVE_STATUSES = ("pending", "confirmed")
     trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
 
-    for trip in trips:
+    total = len(trips)
+    for i, trip in enumerate(trips):
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = trip
         status_label = STATUS_LABELS.get(status, status)
+        position_line = f"🗓 Бронювання #{i + 1} з {total}\n" if total > 1 else ""
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
@@ -77,8 +79,8 @@ async def my_trips(message: types.Message):
         else:
             display_phone = None
         booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
-        passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-        text = f"{booking_desc}{passenger_phone_line}\n{status_label}"
+        # passenger_phone_line: str = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
+        text = f"{position_line}\n{status_label}\n{booking_desc}"
         if status in ACTIVE_STATUSES:
             driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -117,8 +119,8 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     else:
         display_phone = None
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
-    passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-    text = f"{position_line}{booking_desc}{passenger_phone_line}\n{status_label}"
+    # passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
+    text = f"{position_line}\n{status_label}{booking_desc}"
 
     rows = []
     if driver_chat:
