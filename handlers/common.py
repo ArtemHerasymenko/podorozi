@@ -140,7 +140,7 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
     car_line = f"\n🚘 {car_description}" if car_description else ""
     phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else "\n📞 Водій не вказав свій номер"
     notes_desc = format_notes_details_for_passenger(notes, pickup_at, booking_from_city, booking_to_city)
-    return f"\n{notes_desc}{seats_line}{car_line}{phone_line} \nМаршрут водія:\n {trip_desc}"
+    return f"\n{notes_desc}{seats_line}{car_line}{phone_line} \n\nМаршрут водія:\n {trip_desc}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
