@@ -49,8 +49,10 @@ async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
 
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
-        text += "\n\n⏳ <b>Очікують:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in pending_bookings:
+        text += "\n\n⏳ <b>Очікують:</b>\n"
+        for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(pending_bookings):
+            if idx > 0:
+                text += "\n— — —"
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
@@ -67,8 +69,10 @@ async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
 
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
-        text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in confirmed_bookings:
+        text += "\n\n✅ <b>Підтверджені:</b>\n"
+        for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(confirmed_bookings):
+            if idx > 0:
+                text += "\n— — —"
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name

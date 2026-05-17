@@ -67,6 +67,8 @@ async def my_trips(message: types.Message, state: FSMContext):
 
     total = len(trips)
     for i, trip in enumerate(trips):
+        if i > 0:
+            await asyncio.sleep(2)
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = trip
         status_label = STATUS_LABELS.get(status, status)
         position_line = f"🗓 Бронювання #{i + 1} з {total}\n" if total > 1 else ""
