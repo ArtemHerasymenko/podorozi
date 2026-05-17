@@ -631,7 +631,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
     text = (
-        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
+        f"🚨 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:\n"
         f"{booking_desc}"
     )
 
