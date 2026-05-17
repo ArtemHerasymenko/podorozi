@@ -125,7 +125,7 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         display_phone = mask_phone(driver_phone)
     else:
         display_phone = None
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name, show_date=True)
     # passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{status_label}\n{booking_desc}"
 
