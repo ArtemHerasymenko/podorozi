@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -175,6 +175,7 @@ async def passenger_flow_back(message: types.Message, state: FSMContext):
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
+    upsert_user_details(message.from_user.id, message.from_user.full_name)
     data = await state.get_data()
     trip_message_id = data.get("trip_message_id")
     if trip_message_id:

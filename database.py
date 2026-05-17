@@ -218,6 +218,16 @@ cursor.execute("""
 """)
 conn.commit()
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_details (
+        user_id BIGINT,
+        user_name TEXT,
+        updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        UNIQUE (user_id, user_name)
+    )
+""")
+conn.commit()
+
 for city_name, landmark in CITY_LANDMARKS:
     cursor.execute("""
         INSERT INTO city_landmarks (user_id, city_name, landmark)
@@ -899,6 +909,14 @@ def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, sea
         LIMIT %s
     """, (passenger_id, from_city, to_city, search_for_day, limit))
     return [row[0] for row in cursor.fetchall()]
+
+def upsert_user_details(user_id: int, user_name: str):
+    cursor.execute("""
+        INSERT INTO user_details (user_id, user_name)
+        VALUES (%s, %s)
+        ON CONFLICT (user_id, user_name) DO UPDATE SET updated_at = CLOCK_TIMESTAMP()
+    """, (user_id, user_name))
+    conn.commit()
 
 def save_feedback(user_id: int, mode: str, feedback_text: str):
     cursor.execute("""
