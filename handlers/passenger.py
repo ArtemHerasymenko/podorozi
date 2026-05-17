@@ -422,7 +422,8 @@ async def search(message: types.Message, state: FSMContext):
 
     trip_message = await message.answer(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        parse_mode="HTML"
     )
 
     await state.set_state(PassengerStates.browsing_trips)
@@ -475,7 +476,8 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        parse_mode="HTML"
     )
 
     await callback.answer()
@@ -506,7 +508,8 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None)
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        parse_mode="HTML"
     )
 
     await callback.answer()
