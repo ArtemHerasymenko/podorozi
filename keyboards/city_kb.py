@@ -9,6 +9,7 @@ def cities_keyboard(user_id=None):
         others = get_cities()
 
     keyboard = []
+    keyboard.append([KeyboardButton(text="⬅️ Назад")])
     if popular:
         keyboard.append([KeyboardButton(text="─── Нещодавно ви обирали ───")])
         for i in range(0, len(popular), 1):
@@ -18,8 +19,6 @@ def cities_keyboard(user_id=None):
     for i in range(0, len(others), 1):
         row = [KeyboardButton(text=city) for city in others[i:i+1]]
         keyboard.append(row)
-
-    keyboard.append([KeyboardButton(text="⬅️ Назад")])
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
