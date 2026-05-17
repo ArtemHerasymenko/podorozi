@@ -228,6 +228,17 @@ cursor.execute("""
 """)
 conn.commit()
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+        id BIGSERIAL PRIMARY KEY,
+        from_user_id BIGINT,
+        to_user_id BIGINT,
+        text TEXT,
+        created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
+    )
+""")
+conn.commit()
+
 for city_name, landmark in CITY_LANDMARKS:
     cursor.execute("""
         INSERT INTO city_landmarks (user_id, city_name, landmark)
@@ -909,6 +920,13 @@ def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, sea
         LIMIT %s
     """, (passenger_id, from_city, to_city, search_for_day, limit))
     return [row[0] for row in cursor.fetchall()]
+
+def save_event(from_user_id, to_user_id, text: str):
+    cursor.execute("""
+        INSERT INTO events (from_user_id, to_user_id, text)
+        VALUES (%s, %s, %s)
+    """, (from_user_id, to_user_id, text))
+    conn.commit()
 
 def upsert_user_details(user_id: int, user_name: str):
     cursor.execute("""
