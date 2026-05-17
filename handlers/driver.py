@@ -401,11 +401,11 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone, car_description = trip_row
     status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
     pos = get_driver_past_trip_position(driver_id, trip_id)
-    position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n" if pos else ""
+    position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n\n" if pos else ""
     phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
-        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n\n"
+        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points, show_date=True)}\n"
         f"💰 {price} грн | 👥 {seats} {seats_word(seats)}{phone_line}{car_line}\n"
         f"✅ Підтверджено: {confirmed_count} \n⏳ Не підтверджено: {pending_count} \n{status_label}"
     )
@@ -414,7 +414,9 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
         text += "\n\n⏳ <b>Не підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in pending_bookings:
+        for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(pending_bookings):
+            if idx > 0:
+                text += "\n— — —"
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
@@ -428,7 +430,9 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
         text += "\n\n✅ <b>Підтверджені:</b>"
-        for booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city in confirmed_bookings:
+        for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(confirmed_bookings):
+            if idx > 0:
+                text += "\n— — —"
             try:
                 passenger_chat = await bot.get_chat(passenger_id)
                 passenger_name = passenger_chat.full_name
