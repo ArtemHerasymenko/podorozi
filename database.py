@@ -499,8 +499,8 @@ def get_driver_past_trip_position(driver_id: int, trip_id: int):
              WHERE driver_id = %s
                AND arrival_time < CLOCK_TIMESTAMP()
                AND (
-                   departure_datetime > current.departure_datetime
-                   OR (departure_datetime = current.departure_datetime AND id >= current.id)
+                   trips.departure_datetime > current.departure_datetime
+                   OR (trips.departure_datetime = current.departure_datetime AND trips.id >= current.id)
                )) AS rank,
             (SELECT COUNT(*) FROM trips
              WHERE driver_id = %s
