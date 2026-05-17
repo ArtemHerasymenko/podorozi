@@ -493,7 +493,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                 trip = get_trip_details_by_booking(booking_id)
                 driver_phone = get_driver_phone_by_booking(booking_id) if prev_status == "confirmed" else None
                 booking_desc = (
-                    f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone)}"
+                    f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12])}"
                     if trip else ""
                 )
                 await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.{booking_desc}", parse_mode="HTML")
@@ -601,7 +601,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
         if trip:
-            msg = f"✅ Водій підтвердив вашу бронь!\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone)}\nВдалої поїздки!"
+            msg = f"✅ Водій підтвердив вашу бронь!{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12])}\n\nВдалої поїздки!"
         else:
             msg = "✅ Водій підтвердив вашу бронь! Вдалої поїздки!"
         await bot.send_message(passenger_id, msg, parse_mode="HTML")
@@ -648,7 +648,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         await _rebuild_or_append("\n\n❌ Ви відмовили цьому пасажиру")
         passenger_id = get_passenger_id(booking_id)
         booking_desc = (
-            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}"
+            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], price=trip[12])}"
             if trip else ""
         )
         await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.{booking_desc}", parse_mode="HTML")
@@ -658,11 +658,10 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
         booking_desc = (
-            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11])}"
+            f"\n{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12])}"
             if trip else ""
         )
-        phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else ""
-        await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання.{booking_desc}{phone_line}", parse_mode="HTML")
+        await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання.{booking_desc}", parse_mode="HTML")
     elif prev_status == "rejected":
         await callback.answer("❌ Ви вже відхилили це бронювання раніше", show_alert=True)
     elif prev_status == "trip_cancelled":

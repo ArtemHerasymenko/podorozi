@@ -737,7 +737,7 @@ def get_trip_details(trip_id: int):
 
 def get_trip_details_by_booking(booking_id: int):
     cursor.execute("""
-        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.car_description, b.from_city, b.to_city
+        SELECT t.from_city, t.to_city, t.departure_datetime, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.car_description, b.from_city, b.to_city, t.price
         FROM bookings b
         JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
