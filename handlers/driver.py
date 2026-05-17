@@ -11,9 +11,10 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
 from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_2, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks, save_user_landmark
 from aiogram import Bot
+import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb, seats_word
 from data.route_intermediates import get_intermediates
 
 router = Router()
@@ -34,13 +35,14 @@ def route_points_kb(landmarks: list, selected: list, prefix: str) -> InlineKeybo
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-async def _build_driver_trip_details_msg(trip_row, bot):
+async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
     trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone, car_description = trip_row
-    phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
+    # phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
+    position_line = f"Поїздка №{index}/{total}\n\n" if index is not None and total is not None and total > 1 else ""
     text = (
-        f"{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць{phone_line}{car_line}\n"
+        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
+        f"💰 {price} грн | 👥 {seats} {seats_word(seats)}{car_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Очікують: {pending_count}"
     )
     rows = []
@@ -55,7 +57,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"✅ {passenger_name}", callback_data=f"confirm_booking:{booking_id}"),
@@ -73,10 +75,10 @@ async def _build_driver_trip_details_msg(trip_row, bot):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
-                InlineKeyboardButton(text=f"❌ Скасувати {passenger_name}", callback_data=f"reject_booking:{booking_id}"),
+                InlineKeyboardButton(text=f"❌ {passenger_name}", callback_data=f"reject_booking:{booking_id}"),
                 InlineKeyboardButton(text="✉️", url=msg_url),
             ])
 
@@ -373,16 +375,21 @@ async def driver_phone(message: types.Message, state: FSMContext):
 
 
 @router.message(lambda m: m.text == "📋 Заплановані поїздки")
-async def my_driver_trips(message: types.Message):
+async def my_driver_trips(message: types.Message, state: FSMContext):
+    await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await state.set_state(DriverStates.viewing_trips)
+    await asyncio.sleep(1)
     trips = get_driver_trips(message.from_user.id)
     if not trips:
         await message.answer("У вас ще немає запланованих поїздок.")
         return
 
+    total = len(trips)
     for i, trip in enumerate(trips):
         if i > 0:
+            await asyncio.sleep(2)
             await message.answer("*\n*\n*")
-        text, kb = await _build_driver_trip_details_msg(trip, message.bot)
+        text, kb = await _build_driver_trip_details_msg(trip, message.bot, index=i + 1, total=total)
         await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
@@ -395,7 +402,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
         f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
-        f"💰 {price} грн | 👥 {seats} місць{phone_line}{car_line}\n"
+        f"💰 {price} грн | 👥 {seats} {seats_word(seats)}{phone_line}{car_line}\n"
         f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
     )
     rows = []
@@ -410,7 +417,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} міс.) {notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}) {notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
 
@@ -424,7 +431,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} міс.){notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}){notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
 
@@ -441,7 +448,10 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
 
 
 @router.message(lambda m: m.text == "📜 Минулі поїздки")
-async def my_past_driver_trips(message: types.Message):
+async def my_past_driver_trips(message: types.Message, state: FSMContext):
+    await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await state.set_state(DriverStates.viewing_trips)
+    await asyncio.sleep(3)
     trip = get_latest_driver_past_trip(message.from_user.id)
     if not trip:
         await message.answer("У вас ще немає минулих поїздок.")

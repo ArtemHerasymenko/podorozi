@@ -60,6 +60,17 @@ def quick_day_kb():
     keyboard.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
+def seats_word(n: int) -> str:
+    n = abs(n)
+    if 11 <= n % 100 <= 14:
+        return "місць"
+    last = n % 10
+    if last == 1:
+        return "місце"
+    if 2 <= last <= 4:
+        return "місця"
+    return "місць"
+
 def validate_city_name(city: str):
     import re
     if not city or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", city):
