@@ -2,12 +2,19 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
 from database import save_feedback
 import datetime
 import zoneinfo
 
 router = Router()
+
+async def safe_answer(callback, *args, **kwargs):
+    try:
+        await callback.answer(*args, **kwargs)
+    except TelegramBadRequest:
+        pass
 
 # Hardcoded Ukrainian translations
 uk_days = {

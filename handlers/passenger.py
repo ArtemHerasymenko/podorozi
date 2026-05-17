@@ -16,7 +16,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer
 from data.route_intermediates import get_search_city_pairs
 
 def mask_phone(phone):
@@ -160,12 +160,12 @@ async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
         booking = get_next_passenger_past_booking(passenger_id, current_booking_id)
 
     if not booking:
-        await callback.answer()
+        await safe_answer(callback)
         return
 
     text, kb = await _build_past_passenger_booking_msg(booking, bot, passenger_id)
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer()
+    await safe_answer(callback)
 
 
 @router.message(StateFilter(PassengerStates), lambda m: m.text == "⬅️ Назад")
@@ -477,11 +477,11 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
         await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, почніть новий!", reply_markup=passenger_menu_kb)
-        await callback.answer()
+        await safe_answer(callback)
         return
 
     if not result:
-        await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
+        await safe_answer(callback, "❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
         return
 
     trip, index, total_cnt = result
@@ -497,7 +497,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         parse_mode="HTML"
     )
 
-    await callback.answer()
+    await safe_answer(callback)
 
 @router.callback_query(lambda c: c.data == "prev")
 async def prev_handler(callback: types.CallbackQuery, bot: Bot):
@@ -509,11 +509,11 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
         await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
-        await callback.answer()
+        await safe_answer(callback)
         return
 
     if not result:
-        await callback.answer("❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
+        await safe_answer(callback, "❌ Виникла помилка, спробуйте знайти поїздку ще раз", show_alert=True)
         return
 
     trip, index, total_cnt = result
@@ -529,7 +529,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         parse_mode="HTML"
     )
 
-    await callback.answer()
+    await safe_answer(callback)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
@@ -540,15 +540,15 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
         await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
-        await callback.answer()
+        await safe_answer(callback)
         return
 
     trip, _, _ = result
     # if trip[1] == callback.from_user.id:
-    #     await callback.answer("❌ Ви не можете забронювати власну поїздку.", show_alert=True)
+    #     await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
     #     return
 
-    await callback.answer()
+    await safe_answer(callback)
     await callback.message.edit_reply_markup()
     await state.update_data(booking_trip_id=trip_id)
     await state.set_state(PassengerStates.booking_notes)
@@ -648,7 +648,7 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.clear()
     await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
-    await callback.answer()
+    await safe_answer(callback)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
@@ -660,7 +660,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     if trip:
         arrival_dt = trip[5]
         if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
-            await callback.answer("❌ Поїздка вже відбулась, скасування неможливе.", show_alert=True)
+            await safe_answer(callback, "❌ Поїздка вже відбулась, скасування неможливе.", show_alert=True)
             return
 
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
@@ -668,7 +668,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     if prev_status in ("pending", "confirmed"):
         new_text = lines[0] + "\n\n" + STATUS_LABELS["cancelled_by_passenger"]
         await callback.message.edit_text(new_text, reply_markup=None)
-        await callback.answer("")
+        await safe_answer(callback)
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
         passenger_phone = get_passenger_phone_by_booking(booking_id)
@@ -685,16 +685,16 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
-        await callback.answer("")
+        await safe_answer(callback)
     elif prev_status == "rejected":
         new_text = lines[0] + "\n" + "🚫 Водій вже відхилив вашу бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
-        await callback.answer("")
+        await safe_answer(callback)
     elif prev_status == "trip_cancelled":
         new_text = lines[0] + "\n" + STATUS_LABELS["trip_cancelled"]
         await callback.message.edit_text(new_text, reply_markup=None)
-        await callback.answer("")
+        await safe_answer(callback)
     else:
         new_text = lines[0] + "\n" + "🚫 Не вдалося скасувати бронь. Виникла помилка, спробуйте ще."
         await callback.message.edit_text(new_text, reply_markup=None)
-        await callback.answer()
+        await safe_answer(callback)

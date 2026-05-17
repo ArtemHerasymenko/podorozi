@@ -14,7 +14,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb, seats_word
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb, seats_word, safe_answer
 from data.route_intermediates import get_intermediates
 
 router = Router()
@@ -191,7 +191,7 @@ async def add_landmark(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(adding_landmark_prefix=prefix)
     await state.set_state(DriverStates.entering_landmark)
     await callback.message.answer("Введіть назву орієнтира:", reply_markup=back_only_kb)
-    await callback.answer()
+    await safe_answer(callback)
 
 @router.message(DriverStates.entering_landmark)
 async def entering_landmark(message: types.Message, state: FSMContext):
@@ -239,7 +239,7 @@ async def toggle_route_point(callback: types.CallbackQuery, state: FSMContext):
         selected.append(idx)
     await state.update_data(**{sel_key: selected})
     await callback.message.edit_reply_markup(reply_markup=route_points_kb(landmarks, selected, prefix))
-    await callback.answer()
+    await safe_answer(callback)
 
 @router.callback_query(lambda c: c.data and c.data.startswith("route_points_ok:"))
 async def confirm_route_points(callback: types.CallbackQuery, state: FSMContext):
@@ -249,7 +249,7 @@ async def confirm_route_points(callback: types.CallbackQuery, state: FSMContext)
         await _finish_from_points(state, callback.message.answer, callback.from_user.id)
     else:
         await _finish_to_points(state, callback.message.answer, callback.from_user.id)
-    await callback.answer()
+    await safe_answer(callback)
 
 @router.message(DriverStates.day)
 async def day(message: types.Message, state: FSMContext):
@@ -415,7 +415,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
 
     pending_bookings = get_bookings_for_trip(trip_id, 'pending')
     if pending_bookings:
-        text += "\n\n⏳ <b>Не підтверджені:</b>"
+        text += "\n\n⏳ <b>Не підтверджені:</b>\n"
         for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(pending_bookings):
             if idx > 0:
                 text += "\n— — —"
@@ -431,7 +431,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
 
     confirmed_bookings = get_bookings_for_trip(trip_id, 'confirmed')
     if confirmed_bookings:
-        text += "\n\n✅ <b>Підтверджені:</b>"
+        text += "\n\n✅ <b>Підтверджені:</b>\n"
         for idx, (booking_id, passenger_id, notes, pickup_at, booking_seats, passenger_phone, booking_from_city, booking_to_city) in enumerate(confirmed_bookings):
             if idx > 0:
                 text += "\n— — —"
@@ -482,12 +482,12 @@ async def driver_history_nav(callback: types.CallbackQuery, bot: Bot):
         trip = get_next_driver_past_trip(driver_id, current_trip_id)
 
     if not trip:
-        await callback.answer()
+        await safe_answer(callback)
         return
 
     text, kb = await _build_past_driver_trip_details_msg(trip, bot, driver_id)
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer()
+    await safe_answer(callback)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_trip:"))
@@ -498,14 +498,14 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
     if trip_details:
         arrival_dt = trip_details[3]
         if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
-            await callback.answer("❌ Не можливо скасувати поїздку, вона вже відбулась.", show_alert=True)
+            await safe_answer(callback, "❌ Не можливо скасувати поїздку, вона вже відбулась.", show_alert=True)
             return
 
     success, booking_ids = cancel_trip(trip_id, callback.from_user.id)
 
     if success:
         await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", reply_markup=None, parse_mode="HTML")
-        await callback.answer("")
+        await safe_answer(callback)
         for booking_id in booking_ids:
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])
             if prev_status in ("pending", "confirmed"):
@@ -519,13 +519,13 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                 await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.\n{booking_desc}", parse_mode="HTML")
     else:
         await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None, parse_mode="HTML")
-        await callback.answer("")
+        await safe_answer(callback)
 
 @router.callback_query(lambda c: c.data.startswith("confirm_booking:"))
 async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
     booking_id = int(callback.data.split(":")[1])
 
-    await callback.answer()
+    await safe_answer(callback)
     trip_id = get_trip_id_for_booking(booking_id)
     # Use cancel_trip do distinguish if we are confirming from view trip or P msg.
     from_trips_view = any(
@@ -644,7 +644,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
     if trip:
         arrival_dt = trip[5]
         if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
-            await callback.answer("❌ Не можливо відхилити бронювання, поїздка вже відбулась.", show_alert=True)
+            await safe_answer(callback, "❌ Не можливо відхилити бронювання, поїздка вже відбулась.", show_alert=True)
             return
 
     trip_id = get_trip_id_for_booking(booking_id)
@@ -664,7 +664,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
             await callback.message.edit_text(callback.message.html_text + suffix, reply_markup=None, parse_mode="HTML")
 
     if prev_status == "pending":
-        await callback.answer()
+        await safe_answer(callback)
         await _rebuild_or_append("\n\n❌ Ви відмовили цьому пасажиру")
         passenger_id = get_passenger_id(booking_id)
         booking_desc = (
@@ -673,7 +673,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         )
         await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.\n{booking_desc}", parse_mode="HTML")
     elif prev_status == "confirmed":
-        await callback.answer()
+        await safe_answer(callback)
         await _rebuild_or_append("\n\n❌ Ви скасували це бронювання")
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
@@ -683,11 +683,11 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         )
         await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання.{booking_desc}", parse_mode="HTML")
     elif prev_status == "rejected":
-        await callback.answer("❌ Ви вже відхилили це бронювання раніше", show_alert=True)
+        await safe_answer(callback, "❌ Ви вже відхилили це бронювання раніше", show_alert=True)
     elif prev_status == "trip_cancelled":
-        await callback.answer("❌ Ви вже скасували цю поїздку раніше", show_alert=True)
+        await safe_answer(callback, "❌ Ви вже скасували цю поїздку раніше", show_alert=True)
     elif prev_status == "cancelled_by_passenger":
-        await callback.answer("❌ Пасажир вже скасував це бронювання раніше", show_alert=True)
+        await safe_answer(callback, "❌ Пасажир вже скасував це бронювання раніше", show_alert=True)
     else:
-        await callback.answer(f"❌ Бронювання недоступне ({prev_status})", show_alert=True)
+        await safe_answer(callback, f"❌ Бронювання недоступне ({prev_status})", show_alert=True)
 
