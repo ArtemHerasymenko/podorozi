@@ -60,8 +60,8 @@ def quick_day_kb():
     keyboard.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
-def seats_word(n: int) -> str:
-    n = abs(n)
+def seats_word(n) -> str:
+    n = abs(int(n))
     if 11 <= n % 100 <= 14:
         return "місць"
     last = n % 10
