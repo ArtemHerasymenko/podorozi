@@ -88,7 +88,7 @@ async def _build_driver_trip_details_msg(trip_row, bot):
 driver_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Створити поїздку")],
-        [KeyboardButton(text="📋 Мої поїздки водія")],
+        [KeyboardButton(text="📋 Мої заплановані поїздки")],
         [KeyboardButton(text="📜 Минулі поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
@@ -361,7 +361,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню \"📋 Мої поїздки водія\"", reply_markup=driver_menu_kb)
+    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Мої заплановані поїздкиі\"", reply_markup=driver_menu_kb)
 
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:
@@ -372,7 +372,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(lambda m: m.text == "📋 Мої поїздки водія")
+@router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
 async def my_driver_trips(message: types.Message):
     trips = get_driver_trips(message.from_user.id)
     if not trips:
