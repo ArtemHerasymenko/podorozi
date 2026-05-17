@@ -401,13 +401,13 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     trip_id, from_city, to_city, dep_dt, price, seats, status, confirmed_count, pending_count, arrival_time, from_points, to_points, driver_phone, car_description = trip_row
     status_label = "🚫 Скасована" if status == "cancelled" else "✅ Завершена"
     pos = get_driver_past_trip_position(driver_id, trip_id)
-    position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n\n" if pos else ""
+    position_line = f"🗓 Поїздка #{pos[0]} з {pos[1]}\n" if pos else ""
     phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
-        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points, show_date=True)}\n"
+        f"{position_line}{status_label}\n\n{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points, show_date=True)}\n"
         f"💰 {price} грн | 👥 {seats} {seats_word(seats)}{phone_line}{car_line}\n"
-        f"✅ Підтверджено: {confirmed_count} \n⏳ Не підтверджено: {pending_count} \n{status_label}"
+        f"✅ Підтверджено: {confirmed_count} \n⏳ Не підтверджено: {pending_count}"
     )
     rows = []
 
