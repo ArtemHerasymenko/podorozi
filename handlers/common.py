@@ -11,13 +11,13 @@ router = Router()
 
 # Hardcoded Ukrainian translations
 uk_days = {
-    'Monday': 'Понеділок',
-    'Tuesday': 'Вівторок',
-    'Wednesday': 'Середа',
-    'Thursday': 'Четвер',
-    'Friday': 'Пʼятниця',
-    'Saturday': 'Субота',
-    'Sunday': 'Неділя'
+    'Monday': 'понеділок',
+    'Tuesday': 'вівторок',
+    'Wednesday': 'середа',
+    'Thursday': 'четвер',
+    'Friday': 'пʼятниця',
+    'Saturday': 'субота',
+    'Sunday': 'неділя'
 }
 
 uk_months = {
@@ -45,7 +45,7 @@ def generate_quick_days():
         english_month = day.strftime("%B")
         uk_day = uk_days.get(english_day, english_day)
         uk_month = uk_months.get(english_month, english_month)
-        label = f"{prefixes[d]}, {uk_day}, {day.day} {uk_month}"
+        label = f"{prefixes[d]} ({uk_day})"
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 

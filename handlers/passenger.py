@@ -37,7 +37,7 @@ STATUS_LABELS = {
 passenger_menu_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔎 Знайти поїздку")],
-        [KeyboardButton(text="📋 Мої поїздки пасажира")],
+        [KeyboardButton(text="📋 Мої заплановані поїздки")],
         [KeyboardButton(text="📜 Мої минулі поїздки")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
@@ -51,7 +51,7 @@ async def passenger_menu(message: types.Message):
         reply_markup=passenger_menu_kb
     )
 
-@router.message(lambda m: m.text == "📋 Мої поїздки пасажира")
+@router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
 async def my_trips(message: types.Message):
     trips = get_passenger_bookings(message.from_user.id)
     if not trips:
@@ -285,18 +285,21 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
     options.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
 
-def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None):
+def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0):
     rows = []
     if total_cnt > 1:
-        rows.append([
-            InlineKeyboardButton(text="⬅️", callback_data="prev"),
-            InlineKeyboardButton(text="➡️", callback_data="next"),
-        ])
+        nav = []
+        if index > 0:
+            nav.append(InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"))
+        if index < total_cnt - 1:
+            nav.append(InlineKeyboardButton(text="Наступна ➡️", callback_data="next"))
+        if nav:
+            rows.append(nav)
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
     rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
-    rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
+    # rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
@@ -422,7 +425,7 @@ async def search(message: types.Message, state: FSMContext):
 
     trip_message = await message.answer(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
         parse_mode="HTML"
     )
 
@@ -476,7 +479,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
         parse_mode="HTML"
     )
 
@@ -508,7 +511,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = None
     await callback.message.edit_text(
         format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None),
+        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
         parse_mode="HTML"
     )
 
