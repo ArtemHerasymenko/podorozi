@@ -396,8 +396,7 @@ async def search(message: types.Message, state: FSMContext):
     # if now is 19:43, we will say that we are looking for 19:43-XX:MM, 
     # but actually we look from 19:48, just to make sure we don't show already departed trips, 
     # or close to departure ones.
-    # min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
-    min_from = datetime.datetime.now(datetime.timezone.utc)
+    min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
     search_from_datetime = max(search_from_datetime, min_from)
     extra_from, extra_to = get_search_city_pairs(data["booking_from_city"], data["booking_to_city"])
     all_trips = search_trips_ids(data["booking_from_city"], data["booking_to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
@@ -544,9 +543,9 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
         return
 
     trip, _, _ = result
-    # if trip[1] == callback.from_user.id:
-    #     await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
-    #     return
+    if trip[1] == callback.from_user.id:
+        await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
+        return
 
     await safe_answer(callback)
     await callback.message.edit_reply_markup()

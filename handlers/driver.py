@@ -221,7 +221,7 @@ async def entering_landmark(message: types.Message, state: FSMContext):
             pass
 
     await message.answer("Додано!", reply_markup=back_only_kb)
-    new_msg = await message.answer("Продожіть вибір орієнтирів:", reply_markup=route_points_kb(landmarks, selected, prefix))
+    new_msg = await message.answer("Продовжіть вибір орієнтирів:", reply_markup=route_points_kb(landmarks, selected, prefix))
     await state.update_data(**{msg_id_key: new_msg.message_id})
 
 @router.callback_query(lambda c: c.data and c.data.startswith("route_points:"))
@@ -284,8 +284,7 @@ async def time(message: types.Message, state: FSMContext):
         await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
         return
 
-    # arrival = response + datetime.timedelta(minutes=30)
-    arrival = response + datetime.timedelta(minutes=1)
+    arrival = response + datetime.timedelta(minutes=30)
     await state.update_data(datetime=response, arrival_time=arrival)
     await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
@@ -369,7 +368,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
+    await message.answer("Поїздка збережена ✅.\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
 
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:

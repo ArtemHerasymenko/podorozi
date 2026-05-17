@@ -1,38 +1,17 @@
-do not let to book own trip again.
-
 test and check logs, make sure no errors
-
-Підписка на пошук
 
 треба краще описати дефолтні маршрути по комсомольску
 
-look at every msg, maybe we don't need to include all he info, e.g. ehrn P cancels - no need to show casr details. Myabr just cities and time will be enough? + pickuo point.
+=== Maybe in teh future ===
 
-send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
+Підписка на пошук
 
 should we replace every msg with buttons with ... once user goes into so other activity?
 
-send feedback. ON bookings, trip, or general in P/D menu.
-
-good idea is ti have some pauses, e.g. on driver view:
-you have got 3 trips, 0.5 sec pause
-trip 1 - 0.5 pause
-
-driver should see their canceled rides in the history. 
+driver should see their canceled rides in the history. Х
 Maybe the button should say "Скасовані та попередні поїздки"
 maybe just a separete button for "My canceled trips
 same for P
-
-there should be a default route description is users enter new city (school, center, atb, rail station)
-
-we should store every action user makes and every response we send to user. 
-This way we can replay user actions. E.g. we can then query what action did the user (or users)
-did after this time. Or what action were happening with this ride.
-
-analytics: make sure create trips, book, and search list have timestamps.
-also which departure time a passenger is looking for.
-
-feeback buttom
 
 ======= TO test ========
 
@@ -51,7 +30,52 @@ before deaprture - both can cancel
 after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
+create 2 rides (from diff driver) with the same dep and arrival. Properly search view, can be booked. Proper driver gets notificatoin.
+P books, driver refuses, P can book again and dirver can accept
+
 ===== ANSWERED/DONE ======
+
+make sure BE is ready, e.g. enough resources.
+
+do not let to book own trip again.
+search only tris from 5 mon from now
+
+make ride last 30min again
+
+look at every msg, maybe we don't need to include all he info, e.g. ehrn P cancels - no need to show casr details. Myabr just cities and time will be enough? + pickuo point.
+
+send rides with 0.3 sec delay? otherwise too many are thrown at. the same time
+
+send feedback. ON bookings, trip, or general in P/D menu.
+
+good idea is ti have some pauses, e.g. on driver view:
+you have got 3 trips, 0.5 sec pause
+trip 1 - 0.5 pause
+
+there should be a default route description is users enter new city (school, center, atb, rail station)
+
+what happen when driver enter new city?
+we should not show any landmarks? Or myabe it-is fine as is: they need to enter.
+
+we should store every action user makes and every response we send to user. 
+This way we can replay user actions. E.g. we can then query what action did the user (or users)
+did after this time. Or what action were happening with this ride.
+
+analytics: make sure create trips, book, and search list have timestamps.
+also which departure time a passenger is looking for.
+
+test notofication when phone is locked (both P an d D)
+
+no need for cancel search button.
+
+store user names per user id
+
+Де вас підібрати в Галещині?
+
+when we send  amsg to driver or driver views rides - we should show FROM and TO from
+booking, not from a ride. Bevause maybe someones want todo a dropoff in Haleshyna but driver did not want to go there, so driver should see upfrom P's destination.
+
+feeback buttom
 
 if no results -  ми знайшли 7 поїздок, але вільних місць вже немає. 
 if there are results - ми знайшли 7 поїздок, вільні місця є в 3-х:
