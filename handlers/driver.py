@@ -405,9 +405,9 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
     phone_line = f"\n📞 Ваш телефон: {driver_phone}" if driver_phone else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
     text = (
-        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n"
+        f"{position_line}{format_basic_details(from_city, to_city, dep_dt, arrival_time, from_points, to_points)}\n\n"
         f"💰 {price} грн | 👥 {seats} {seats_word(seats)}{phone_line}{car_line}\n"
-        f"✅ Підтверджено: {confirmed_count} | ⏳ Не підтверджено: {pending_count} | {status_label}"
+        f"✅ Підтверджено: {confirmed_count} \n⏳ Не підтверджено: {pending_count} \n{status_label}"
     )
     rows = []
 
