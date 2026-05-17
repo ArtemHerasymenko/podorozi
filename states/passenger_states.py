@@ -9,3 +9,4 @@ class PassengerStates(StatesGroup):
     browsing_trips = State()
     booking_notes = State()
     booking_phone = State()
+    viewing_bookings = State()

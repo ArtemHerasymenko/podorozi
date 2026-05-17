@@ -52,8 +52,9 @@ async def passenger_menu(message: types.Message):
     )
 
 @router.message(lambda m: m.text == "📋 Мої заплановані поїздки")
-async def my_trips(message: types.Message):
+async def my_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await state.set_state(PassengerStates.viewing_bookings)
     await asyncio.sleep(3)
     trips = get_passenger_bookings(message.from_user.id)
     if not trips:
@@ -95,8 +96,9 @@ async def my_trips(message: types.Message):
         await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(lambda m: m.text == "📜 Мої минулі поїздки")
-async def my_past_trips(message: types.Message):
+async def my_past_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
+    await state.set_state(PassengerStates.viewing_bookings)
     await asyncio.sleep(3)
     booking = get_latest_passenger_past_booking(message.from_user.id)
     if not booking:
