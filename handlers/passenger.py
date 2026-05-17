@@ -185,7 +185,7 @@ async def find_trip(message: types.Message, state: FSMContext):
         except:
             pass
     await message.answer(
-    "Обери місто відправлення зі списку. Не знайшлось? Введи вручну:",
+    "Оберіть місто відправлення зі списку. Не знайшлось? Введіть вручну:",
     reply_markup=cities_keyboard(message.from_user.id)
 )
     await state.set_state(PassengerStates.from_city)
@@ -193,7 +193,7 @@ async def find_trip(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
@@ -209,7 +209,7 @@ async def from_city(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
@@ -219,7 +219,7 @@ async def to_city(message: types.Message, state: FSMContext):
     await state.update_data(booking_to_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
-    await message.answer("Обери день:", reply_markup=quick_day_kb())
+    await message.answer("Оберіть день:", reply_markup=quick_day_kb())
     await state.set_state(PassengerStates.day)
 
 @router.message(PassengerStates.day)
@@ -227,7 +227,7 @@ async def day_handler(message: types.Message, state: FSMContext):
     quick_days = generate_quick_days()
     day_dict = {label: date_str for label, date_str in quick_days}
     if message.text not in day_dict:
-        await message.answer("Обери день зі списку.")
+        await message.answer("Оберіть день зі списку.")
         return
     day = day_dict[message.text]
     await state.update_data(day=day)
@@ -248,7 +248,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
     recent_times = get_recent_search_times(message.from_user.id, data["booking_from_city"], data["booking_to_city"], data["day"])
     await message.answer(
-        "Введи бажаний час виїзду у форматі ГГ:ХХ або обери один із варіантів:",
+        "Введіть бажаний час виїзду у форматі ГГ:ХХ або оберіть один із варіантів:",
         reply_markup=quick_time_kb(data["day"], recent_times)
     )
     await state.set_state(PassengerStates.search_from_datetime)
@@ -628,7 +628,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
     text = (
-        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n"
+        f"🚨 Пасажир {passenger_name} хоче поїхати з вами:\n\n"
         f"{booking_desc}"
     )
 

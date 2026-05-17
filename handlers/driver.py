@@ -118,7 +118,7 @@ async def create_trip(message: types.Message, state: FSMContext):
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
@@ -160,7 +160,7 @@ async def _finish_to_points(state: FSMContext, answer, user_id: int):
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
     if message.text.startswith("───"):
-        await message.answer("Будь ласка, обери місто зі списку або введи вручну.")
+        await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
     is_valid, error_msg = validate_city_name(message.text)
     if not is_valid:
@@ -249,7 +249,7 @@ async def day(message: types.Message, state: FSMContext):
     quick_days = generate_quick_days()
     day_dict = {label: date_str for label, date_str in quick_days}
     if message.text not in day_dict:
-        await message.answer("Обери день зі списку.")
+        await message.answer("Оберіть день зі списку.")
         return
     await state.update_data(day=day_dict[message.text])
     data = await state.get_data()
@@ -361,7 +361,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Мої заплановані поїздкиі\"", reply_markup=driver_menu_kb)
+    await message.answer("Поїздка збережена ✅. Можете переглянути її в меню\n\"📋 Мої заплановані поїздки\"", reply_markup=driver_menu_kb)
 
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:

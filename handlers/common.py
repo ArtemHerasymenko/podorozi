@@ -106,9 +106,9 @@ def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: <b> {booking_from_city}</b>"
     if notes:
-        notes_line += f", {notes}"
+        notes_line += f"<b>, {notes}</b>"
     if booking_to_city:
-        notes_line += f"\n📍 Місце висадки: {booking_to_city}"
+        notes_line += f"\n📍 Місце висадки: <b>{booking_to_city}</b>"
     phone_line = f"\n📞 {passenger_phone}" if passenger_phone else "\n📞 Пасажир не вказав свій номер"
     if pickup_at:
         time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
@@ -121,7 +121,7 @@ def format_booking_description_for_driver(from_city: str, to_city: str, dep_dt, 
     trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
     notes_desc = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-    return f"{trip_desc}{seats_line}{notes_desc}"
+    return f"{notes_desc}{seats_line} \n\nВаш маршрут:\n{trip_desc}"
 
 def format_notes_details_for_passenger(notes: str = None, pickup_at=None, booking_from_city: str = None, booking_to_city: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: <b> {booking_from_city}</b>"
