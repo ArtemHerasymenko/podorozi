@@ -69,7 +69,7 @@ async def my_trips(message: types.Message, state: FSMContext):
     for i, trip in enumerate(trips):
         booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = trip
         status_label = STATUS_LABELS.get(status, status)
-        position_line = f"🗓 Бронювання #{i + 1} з {total}\n\n" if total > 1 else ""
+        position_line = f"🗓 Бронювання #{i + 1} з {total}\n" if total > 1 else ""
         try:
             driver_chat = await message.bot.get_chat(driver_id)
             driver_name = driver_chat.full_name
@@ -89,7 +89,7 @@ async def my_trips(message: types.Message, state: FSMContext):
             driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)],
-                [InlineKeyboardButton(text="Скасувати замовлення ❌", callback_data=f"cancel_booking:{booking_id}")]
+                [InlineKeyboardButton(text="Скасувати бронювання ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
         else:
             kb = None
@@ -127,7 +127,7 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         display_phone = None
     booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
     # passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-    text = f"{position_line}\n{status_label}{booking_desc}"
+    text = f"{position_line}{status_label}\n{booking_desc}"
 
     rows = []
     if driver_chat:
@@ -136,9 +136,9 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
 
     nav_row = []
     if get_prev_passenger_past_booking(passenger_id, booking_id):
-        nav_row.append(InlineKeyboardButton(text="⬅️ Старіша", callback_data=f"ph_prev:{booking_id}"))
+        nav_row.append(InlineKeyboardButton(text="⬅️ Попереднє", callback_data=f"ph_prev:{booking_id}"))
     if get_next_passenger_past_booking(passenger_id, booking_id):
-        nav_row.append(InlineKeyboardButton(text="Новіша ➡️", callback_data=f"ph_next:{booking_id}"))
+        nav_row.append(InlineKeyboardButton(text="Наступне ➡️", callback_data=f"ph_next:{booking_id}"))
     if nav_row:
         rows.append(nav_row)
 

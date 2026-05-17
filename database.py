@@ -575,60 +575,73 @@ def get_latest_passenger_past_booking(passenger_id: int):
         JOIN trips t ON b.trip_id = t.id
         WHERE b.passenger_id = %s
           AND t.arrival_time < CLOCK_TIMESTAMP()
-        ORDER BY t.departure_datetime DESC
+        ORDER BY t.departure_datetime DESC, b.id DESC
         LIMIT 1
     """, (passenger_id,))
     return cursor.fetchone()
 
 def get_prev_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
+        WITH current AS (
+            SELECT t2.departure_datetime, b2.id
+            FROM bookings b2 JOIN trips t2 ON b2.trip_id = t2.id
+            WHERE b2.id = %s
+        )
         SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
-        JOIN trips t ON b.trip_id = t.id
+        JOIN trips t ON b.trip_id = t.id, current
         WHERE b.passenger_id = %s
           AND t.arrival_time < CLOCK_TIMESTAMP()
-          AND t.departure_datetime < (
-              SELECT t2.departure_datetime FROM bookings b2
-              JOIN trips t2 ON b2.trip_id = t2.id
-              WHERE b2.id = %s
+          AND (
+              t.departure_datetime < current.departure_datetime
+              OR (t.departure_datetime = current.departure_datetime AND b.id < current.id)
           )
-        ORDER BY t.departure_datetime DESC
+        ORDER BY t.departure_datetime DESC, b.id DESC
         LIMIT 1
-    """, (passenger_id, current_booking_id))
+    """, (current_booking_id, passenger_id))
     return cursor.fetchone()
 
 def get_next_passenger_past_booking(passenger_id: int, current_booking_id: int):
     cursor.execute("""
+        WITH current AS (
+            SELECT t2.departure_datetime, b2.id
+            FROM bookings b2 JOIN trips t2 ON b2.trip_id = t2.id
+            WHERE b2.id = %s
+        )
         SELECT b.id, t.from_city, t.to_city, t.departure_datetime, t.price, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
         FROM bookings b
-        JOIN trips t ON b.trip_id = t.id
+        JOIN trips t ON b.trip_id = t.id, current
         WHERE b.passenger_id = %s
           AND t.arrival_time < CLOCK_TIMESTAMP()
-          AND t.departure_datetime > (
-              SELECT t2.departure_datetime FROM bookings b2
-              JOIN trips t2 ON b2.trip_id = t2.id
-              WHERE b2.id = %s
+          AND (
+              t.departure_datetime > current.departure_datetime
+              OR (t.departure_datetime = current.departure_datetime AND b.id > current.id)
           )
-        ORDER BY t.departure_datetime ASC
+        ORDER BY t.departure_datetime ASC, b.id ASC
         LIMIT 1
-    """, (passenger_id, current_booking_id))
+    """, (current_booking_id, passenger_id))
     return cursor.fetchone()
 
 def get_passenger_past_booking_position(passenger_id: int, booking_id: int):
     """Returns (rank, total) where rank=1 is most recent."""
     cursor.execute("""
+        WITH current AS (
+            SELECT t2.departure_datetime, b2.id
+            FROM bookings b2 JOIN trips t2 ON b2.trip_id = t2.id
+            WHERE b2.id = %s
+        )
         SELECT
-            (SELECT COUNT(*) FROM bookings b JOIN trips t ON b.trip_id = t.id
+            (SELECT COUNT(*) FROM bookings b JOIN trips t ON b.trip_id = t.id, current
              WHERE b.passenger_id = %s
                AND t.arrival_time < CLOCK_TIMESTAMP()
-               AND t.departure_datetime >= (
-                   SELECT t2.departure_datetime FROM bookings b2
-                   JOIN trips t2 ON b2.trip_id = t2.id WHERE b2.id = %s
+               AND (
+                   t.departure_datetime > current.departure_datetime
+                   OR (t.departure_datetime = current.departure_datetime AND b.id >= current.id)
                )) AS rank,
             (SELECT COUNT(*) FROM bookings b JOIN trips t ON b.trip_id = t.id
              WHERE b.passenger_id = %s
                AND t.arrival_time < CLOCK_TIMESTAMP()) AS total
-    """, (passenger_id, booking_id, passenger_id))
+    """, (booking_id, passenger_id, passenger_id))
     return cursor.fetchone()
 
 def get_route_tags(city_name: str, driver_id: int):
