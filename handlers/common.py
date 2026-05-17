@@ -129,19 +129,20 @@ def format_notes_details_for_passenger(notes: str = None, pickup_at=None, bookin
     notes_line += f"\n📍 Місце висадки: <b> {booking_to_city}</b>"
     if pickup_at:
         time_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
-        driver_notes_line = f"\n⏱ Водій прибуде о: <b> {time_str}</b>"
+        driver_notes_line = f"\n⏱ Прибуде о: <b> {time_str}</b>"
     else:
         driver_notes_line = ""
     return f"{driver_notes_line}{notes_line}"
 
-def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None, car_description: str = None, booking_from_city: str = None, booking_to_city: str = None, driver_phone: str = None, price=None) -> str:
+def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None, car_description: str = None, booking_from_city: str = None, booking_to_city: str = None, driver_phone: str = None, price=None, driver_name: str = None) -> str:
     trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
     phone_line = f"\n📞 Номер водія: {driver_phone}" if driver_phone else "\n📞 Водій не вказав свій номер"
     price_line = f"\n💰 {price} грн за місце" if price is not None else ""
+    driver_line = f"\n👤 {driver_name}" if driver_name else ""
     notes_desc = format_notes_details_for_passenger(notes, pickup_at, booking_from_city, booking_to_city)
-    return f"\n{notes_desc}{seats_line}{price_line}{car_line}{phone_line} \n\nМаршрут водія:\n{trip_desc}"
+    return f"\n{driver_line}{notes_desc}{seats_line}{price_line}{car_line}{phone_line}\n\nМаршрут водія:\n{trip_desc}"
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[
