@@ -283,7 +283,8 @@ async def time(message: types.Message, state: FSMContext):
         await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
         return
 
-    arrival = response + datetime.timedelta(minutes=30)
+    # arrival = response + datetime.timedelta(minutes=30)
+    arrival = response + datetime.timedelta(minutes=1)
     await state.update_data(datetime=response, arrival_time=arrival)
     await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
@@ -514,7 +515,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
                     f"{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12], driver_name=callback.from_user.full_name)}"
                     if trip else ""
                 )
-                await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.{booking_desc}", parse_mode="HTML")
+                await bot.send_message(passenger_id, f"❌ На жаль, водій скасував цю поїздку.\n{booking_desc}", parse_mode="HTML")
     else:
         await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви вже скасували цю поїздку раніше", reply_markup=None, parse_mode="HTML")
         await callback.answer("")
