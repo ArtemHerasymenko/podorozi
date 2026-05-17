@@ -110,7 +110,7 @@ async def driver_flow_back(message: types.Message, state: FSMContext):
 @router.message(lambda m: m.text == "🚗 Створити поїздку")
 async def create_trip(message: types.Message, state: FSMContext):
     await message.answer(
-    "Крок 1/10\nОберіть місто відправлення:",
+    "Оберіть місто відправлення:",
     reply_markup=cities_keyboard(message.from_user.id)
     )
     await state.set_state(DriverStates.from_city)
@@ -130,7 +130,7 @@ async def from_city(message: types.Message, state: FSMContext):
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
     landmarks = get_city_landmarks(city, message.from_user.id)
-    await message.answer(f"Крок 2/10\nВиберіть орієнтири у {modified_city}:", reply_markup=back_only_kb)
+    await message.answer(f"Виберіть орієнтири у {modified_city}:", reply_markup=back_only_kb)
     rp_msg = await message.answer("Можете додати нові.", reply_markup=route_points_kb(landmarks, [], "from"))
     await state.update_data(from_points_sel=[], from_landmarks=landmarks, rp_msg_id_from=rp_msg.message_id)
     await state.set_state(DriverStates.from_points)
@@ -143,7 +143,7 @@ async def _finish_from_points(state: FSMContext, answer, user_id: int):
     await state.update_data(from_points=points_str)
     if points_str:
         save_route_description(user_id, data["from_city"], True, points_str)
-    await answer("Крок 3/10\nМісто прибуття:", reply_markup=cities_keyboard(user_id))
+    await answer("Місто прибуття:", reply_markup=cities_keyboard(user_id))
     await state.set_state(DriverStates.to_city)
 
 async def _finish_to_points(state: FSMContext, answer, user_id: int):
@@ -154,7 +154,7 @@ async def _finish_to_points(state: FSMContext, answer, user_id: int):
     await state.update_data(to_points=points_str)
     if points_str:
         save_route_description(user_id, data["to_city"], False, points_str)
-    await answer("Крок 5/10\nОбери день:", reply_markup=quick_day_kb())
+    await answer("Оберіть день:", reply_markup=quick_day_kb())
     await state.set_state(DriverStates.day)
 
 @router.message(DriverStates.to_city)
@@ -172,7 +172,7 @@ async def to_city(message: types.Message, state: FSMContext):
     add_city_if_missing(city)
     modified_city = get_city_modified_name(city)
     landmarks = get_city_landmarks(city, message.from_user.id)
-    await message.answer(f"Крок 4/10\nВиберіть орієнтири у {modified_city}:", reply_markup=back_only_kb)
+    await message.answer(f"Виберіть орієнтири у {modified_city}:", reply_markup=back_only_kb)
     rp_msg = await message.answer("Можете додати нові.", reply_markup=route_points_kb(landmarks, [], "to"))
     await state.update_data(to_points_sel=[], to_landmarks=landmarks, rp_msg_id_to=rp_msg.message_id)
     await state.set_state(DriverStates.to_points)
@@ -254,7 +254,7 @@ async def day(message: types.Message, state: FSMContext):
     await state.update_data(day=day_dict[message.text])
     data = await state.get_data()
     from_city_label = get_city_modified_name_2(data["from_city"]) or data["from_city"]
-    await message.answer(f"Крок 6/10\nВведи запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
+    await message.answer(f"Введи запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
     await state.set_state(DriverStates.datetime)
 
 @router.message(DriverStates.datetime)
@@ -279,7 +279,7 @@ async def time(message: types.Message, state: FSMContext):
 
     arrival = response + datetime.timedelta(minutes=30)
     await state.update_data(datetime=response, arrival_time=arrival)
-    await message.answer("Крок 7/10\nКількість місць:", reply_markup=ReplyKeyboardMarkup(
+    await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True,
         one_time_keyboard=True
@@ -289,7 +289,7 @@ async def time(message: types.Message, state: FSMContext):
 @router.message(DriverStates.seats)
 async def seats(message: types.Message, state: FSMContext):
     await state.update_data(seats=message.text)
-    await message.answer("Крок 8/10\nЦіна за місце (виберіть або введіть свою):", reply_markup=ReplyKeyboardMarkup(
+    await message.answer("Ціна за місце (виберіть або введіть свою):", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=p)] for p in ["50", "60", "80", "100"]] + [[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True,
         one_time_keyboard=True
@@ -303,7 +303,7 @@ async def price(message: types.Message, state: FSMContext):
     keyboard = [[KeyboardButton(text=car)] for car in recent_cars] if recent_cars else []
     keyboard.append([KeyboardButton(text="⬅️ Назад")])
     kb = ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
-    await message.answer("Крок 9/10\nОпишіть ваше авто, або виберіть готовий опис:" if recent_cars else "Крок 9/10\nОпишіть ваше авто, наприклад: Чорна Мазда 3, 9746", reply_markup=kb)
+    await message.answer("Опишіть ваше авто, або виберіть готовий опис:" if recent_cars else "Опишіть ваше авто, наприклад: Чорна Мазда 3, 9746", reply_markup=kb)
     await state.set_state(DriverStates.car_description)
 
 
@@ -328,7 +328,7 @@ async def car_description(message: types.Message, state: FSMContext):
         one_time_keyboard=True,
     )
     await message.answer(
-        "Крок 10/10\nЯкщо хочете, поділіться номером телефону або напишіть вручну. Його бачитимуть лише пасажири, яких ви підтвердите.",
+        "Якщо хочете, поділіться номером телефону або напишіть вручну. Його бачитимуть лише пасажири, яких ви підтвердите.",
         reply_markup=phone_kb,
     )
     await state.set_state(DriverStates.phone)
@@ -651,7 +651,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
             f"{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], price=trip[12], driver_name=callback.from_user.full_name)}"
             if trip else ""
         )
-        await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.{booking_desc}", parse_mode="HTML")
+        await bot.send_message(passenger_id, f"❌ Вибачте, водій відмовив у бронюванні поїздки.\n{booking_desc}", parse_mode="HTML")
     elif prev_status == "confirmed":
         await callback.answer()
         await _rebuild_or_append("\n\n❌ Ви скасували це бронювання")

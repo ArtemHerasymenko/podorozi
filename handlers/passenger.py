@@ -662,7 +662,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
     lines = callback.message.text.rsplit("\n", 1)
     if prev_status in ("pending", "confirmed"):
-        new_text = lines[0] + "\n" + STATUS_LABELS["cancelled_by_passenger"]
+        new_text = lines[0] + "\n\n" + STATUS_LABELS["cancelled_by_passenger"]
         await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("")
         driver_id = get_driver_id_by_booking(booking_id)
