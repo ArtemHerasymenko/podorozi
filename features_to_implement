@@ -1,5 +1,7 @@
 test and check logs, make sure no errors
 
+=== Maybe in teh future ===
+
 АІ введеня голосом.
 
 повторити/зкопіювати минули поїздки. Також коли люди стоврила "До речіб після завершення поїздки ви зможете знайти її в минулих поїздках
@@ -7,18 +9,7 @@ test and check logs, make sure no errors
 
 шаблони. КОли створив поздку зберешти її скелет. І далі можна зайти і почати прм яз шблону, залишається лише день і чвс.
 
-менше варіантів для часу, щоб "Показати всі поїздки" було шуидше знайти
-
-своє фото в телеграм
-
-дозволити час не тіьки через :
-
-залишіть будь-ласка відкуг, якщо щось буде не зручно.
-
-
-треба краще описати дефолтні маршрути по комсомольску і кобеляках
-
-=== Maybe in teh future ===
+якщо водій на кроці вибору коли підбере, він ен може пропустити або піти назад.
 
 Підписка на пошук
 
@@ -31,25 +22,39 @@ same for P
 
 ======= TO test ========
 
-passenger phone number
+===== ANSWERED/DONE ======
 
-driver phone number
+own trip
 
-sort approved and pending by pickup time?
-artem pickup is at 20:10
-anna 20:05 -> she should come before artem when drivers views a trip.
+менше варіантів для часу, щоб "Показати всі поїздки" було шуидше знайти
 
-P search: time, status, num of free seats. Do not let book if was 1 seat before booking, but during booking there is no seats.
+дозволити час не тіьки через :
 
 P and D shound not be able to change booking and trip status once it is started. Or after it is already finished -  check passnger ussing other device.
 before deaprture - both can cancel
 after dep but before arrival - both can cancel, p can't book?
 after arrival no cancleling
 
-create 2 rides (from diff driver) with the same dep and arrival. Properly search view, can be booked. Proper driver gets notificatoin.
 P books, driver refuses, P can book again and dirver can accept
 
-===== ANSWERED/DONE ======
+
+create 2 rides (from diff driver) with the same dep and arrival. Properly search view, can be booked. Proper driver gets notificatoin.
+
+міста стрибають
+
+P search: time, status, num of free seats. Do not let book if was 1 seat before booking, but during booking there is no seats.
+
+sort approved and pending by pickup time?
+artem pickup is at 20:10
+anna 20:05 -> she should come before artem when drivers views a trip.
+
+passenger phone number
+
+driver phone numberDb
+
+треба краще описати дефолтні маршрути по комсомольску і кобеляках
+
+залишіть будь-ласка відкуг, якщо щось буде не зручно.
 
 пропустити в кроках де це можна
 

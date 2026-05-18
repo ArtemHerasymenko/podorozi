@@ -180,6 +180,7 @@ CREATE TABLE IF NOT EXISTS recent_searches (
 );
 """)
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
+cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS counter INT NOT NULL DEFAULT 1")
 conn.commit()
 
 cursor.execute("""
@@ -908,7 +909,7 @@ def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str
         INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at)
         VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP())
         ON CONFLICT (passenger_id, from_city, to_city, time_str, search_for_day)
-        DO UPDATE SET searched_at = CLOCK_TIMESTAMP()
+        DO UPDATE SET searched_at = CLOCK_TIMESTAMP(), counter = recent_searches.counter + 1
     """, (passenger_id, from_city, to_city, time_str, search_for_day))
     conn.commit()
 
