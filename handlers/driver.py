@@ -146,7 +146,7 @@ async def _finish_from_points(state: FSMContext, answer, user_id: int):
     data = await state.get_data()
     selected = data.get("from_points_sel", [])
     landmarks = data.get("from_landmarks", [])
-    points_str = ", ".join([landmarks[i] for i in sorted(selected) if i < len(landmarks)])
+    points_str = ", ".join([landmarks[i] for i in selected if i < len(landmarks)])
     await state.update_data(from_points=points_str)
     if points_str:
         save_route_description(user_id, data["from_city"], True, points_str)
@@ -157,7 +157,7 @@ async def _finish_to_points(state: FSMContext, answer, user_id: int):
     data = await state.get_data()
     selected = data.get("to_points_sel", [])
     landmarks = data.get("to_landmarks", [])
-    points_str = ", ".join([landmarks[i] for i in sorted(selected) if i < len(landmarks)])
+    points_str = ", ".join([landmarks[i] for i in selected if i < len(landmarks)])
     await state.update_data(to_points=points_str)
     if points_str:
         save_route_description(user_id, data["to_city"], False, points_str)
