@@ -425,7 +425,7 @@ def get_cities_for_user_sorted(user_id: int):
         ORDER BY last_updated DESC
         LIMIT 4
     """, (user_id,))
-    popular = [r[0] for r in cursor.fetchall()]
+    popular = sorted(r[0] for r in cursor.fetchall())
 
     # Get all cities
     all_cities = get_cities()

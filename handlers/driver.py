@@ -680,7 +680,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
             f"{format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], trip[4], trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12], driver_name=callback.from_user.full_name)}"
             if trip else ""
         )
-        await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання.{booking_desc}", parse_mode="HTML")
+        await bot.send_message(passenger_id, f"❌ Вибачте, водій скасував ваше бронювання\n{booking_desc}", parse_mode="HTML")
     elif prev_status == "rejected":
         await safe_answer(callback, "❌ Ви вже відхилили це бронювання раніше", show_alert=True)
     elif prev_status == "trip_cancelled":

@@ -371,8 +371,9 @@ async def search(message: types.Message, state: FSMContext):
         utc_from = round_to_nearest_10_minutes(input_dt - datetime.timedelta(minutes=30))
         utc_to = round_to_nearest_10_minutes(input_dt + datetime.timedelta(hours=1))
         if is_today:
-            utc_from = max(utc_from, now_kyiv.astimezone(datetime.timezone.utc))
-            utc_to = min(utc_to, kyiv_end_of_day.astimezone(datetime.timezone.utc))
+            now_utc = now_kyiv.astimezone(datetime.timezone.utc)
+            utc_from = max(utc_from, now_utc)
+            utc_to = max(min(utc_to, kyiv_end_of_day.astimezone(datetime.timezone.utc)), now_utc + datetime.timedelta(hours=1))
         else:
             utc_from = max(utc_from, kyiv_next_day.replace(
                 hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc))
