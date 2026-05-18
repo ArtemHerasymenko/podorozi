@@ -350,6 +350,8 @@ async def search(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if time_str != "Показати всі поїздки":
         save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str, data["day"])
+    else:
+        save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], "show_all", data["day"])
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)

@@ -916,7 +916,7 @@ def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str
 def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 2):
     cursor.execute("""
         SELECT time_str FROM recent_searches
-        WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s
+        WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s AND time_str != 'show_all'
         ORDER BY searched_at DESC
         LIMIT %s
     """, (passenger_id, from_city, to_city, search_for_day, limit))
