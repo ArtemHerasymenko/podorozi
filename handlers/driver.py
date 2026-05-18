@@ -524,6 +524,13 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
 async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
     booking_id = int(callback.data.split(":")[1])
 
+    trip = get_trip_details_by_booking(booking_id)
+    if trip:
+        arrival_dt = trip[5]
+        if arrival_dt <= datetime.datetime.now(datetime.timezone.utc):
+            await safe_answer(callback, "❌ Не можливо підтвердити бронювання, поїздка вже відбулась.", show_alert=True)
+            return
+
     await safe_answer(callback)
     trip_id = get_trip_id_for_booking(booking_id)
     # Use cancel_trip do distinguish if we are confirming from view trip or P msg.
@@ -542,7 +549,6 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
     )
     await state.set_state(DriverStates.confirming_booking)
 
-    trip = get_trip_details_by_booking(booking_id)
     if trip:
         # trip is (from_city, to_city, dep_dt, notes)
         dep_dt = trip[2]
