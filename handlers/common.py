@@ -86,17 +86,17 @@ def validate_city_name(city: str):
 
 def validate_time(time_str):
     import re
-    
-    # Validate time format (allow H:MM or HH:MM)
+
+    time_str = re.sub(r'[.\- ]', ':', time_str.strip())
+
     if not re.match(r'^\d{1,2}:\d{2}$', time_str):
         return False, "Неправильний формат часу. Введіть в форматі ГГ:ХХ. Наприклад, 14:30"
-    
-    # Validate time values
+
     hour, minute = map(int, time_str.split(':'))
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
-        return False, "Неправильний час. Години 00-23, хвилини 00-59:"
-    
-    return True, None
+        return False, "Неправильний час. Години 00-23, хвилини 00-59"
+
+    return True, time_str
 
 def generate_datetime(date_str, time_str):
     # Parse into datetime with timezone conversion

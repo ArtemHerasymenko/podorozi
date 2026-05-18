@@ -340,10 +340,11 @@ async def search(message: types.Message, state: FSMContext):
     time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
 
     if time_str != "Показати всі поїздки":
-        is_valid, error_msg = validate_time(time_str)
+        is_valid, result = validate_time(time_str)
         if not is_valid:
-            await message.answer(error_msg)
+            await message.answer(result)
             return
+        time_str = result
 
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()

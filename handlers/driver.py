@@ -269,10 +269,11 @@ async def time(message: types.Message, state: FSMContext):
     time_str = message.text.zfill(5)
 
     # Validate time format and values
-    is_valid, error_msg = validate_time(time_str)
+    is_valid, result = validate_time(time_str)
     if not is_valid:
-        await message.answer(error_msg)
+        await message.answer(result)
         return
+    time_str = result
 
     data = await state.get_data()
     is_valid, response = generate_datetime(data.get("day"), time_str)
@@ -583,10 +584,11 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(DriverStates.confirming_booking)
 async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: Bot):
-    is_valid, error_msg = validate_time(message.text)
+    is_valid, result = validate_time(message.text)
     if not is_valid:
-        await message.answer(error_msg)
+        await message.answer(result)
         return
+    time_str = result
 
     data = await state.get_data()
     booking_id = data["confirming_booking_id"]
@@ -597,7 +599,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         dep_dt = trip[2]
         arrival_dt = trip[5]
         local_date = dep_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%Y-%m-%d")
-        ok, pickup_dt = generate_datetime(local_date, message.text)
+        ok, pickup_dt = generate_datetime(local_date, time_str)
         if ok and not (dep_dt <= pickup_dt <= arrival_dt):
             dep_local = dep_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
             arr_local = arrival_dt.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
