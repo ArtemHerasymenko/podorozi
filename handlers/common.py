@@ -89,7 +89,7 @@ def validate_time(time_str):
     
     # Validate time format (allow H:MM or HH:MM)
     if not re.match(r'^\d{1,2}:\d{2}$', time_str):
-        return False, "Неправильний формат часу. Введи в форматі ГГ:ХХ. Наприклад, 14:30:"
+        return False, "Неправильний формат часу. Введіть в форматі ГГ:ХХ. Наприклад, 14:30"
     
     # Validate time values
     hour, minute = map(int, time_str.split(':'))

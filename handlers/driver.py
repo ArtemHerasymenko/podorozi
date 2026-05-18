@@ -150,7 +150,7 @@ async def _finish_from_points(state: FSMContext, answer, user_id: int):
     await state.update_data(from_points=points_str)
     if points_str:
         save_route_description(user_id, data["from_city"], True, points_str)
-    await answer("Місто прибуття:", reply_markup=cities_keyboard(user_id))
+    await answer("Оберіть місто прибуття:", reply_markup=cities_keyboard(user_id))
     await state.set_state(DriverStates.to_city)
 
 async def _finish_to_points(state: FSMContext, answer, user_id: int):
@@ -261,7 +261,7 @@ async def day(message: types.Message, state: FSMContext):
     await state.update_data(day=day_dict[message.text])
     data = await state.get_data()
     from_city_label = get_city_modified_name_2(data["from_city"]) or data["from_city"]
-    await message.answer(f"Введи запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
+    await message.answer(f"Введіть запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
     await state.set_state(DriverStates.datetime)
 
 @router.message(DriverStates.datetime)
@@ -368,7 +368,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
-    await message.answer("Поїздка збережена ✅.\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
+    await message.answer("✅ Поїздка збережена!\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
 
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:

@@ -256,7 +256,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     )
     await state.set_state(PassengerStates.search_from_datetime)
 
-QUICK_TIME_OPTIONS = [10, 30, 60, 120]
+QUICK_TIME_OPTIONS = [30, 120]
 
 
 def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
@@ -543,9 +543,10 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
         return
 
     trip, _, _ = result
-    if trip[1] == callback.from_user.id:
-        await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
-        return
+    # TODO
+    # if trip[1] == callback.from_user.id:
+    #     await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
+    #     return
 
     await safe_answer(callback)
     await callback.message.edit_reply_markup()

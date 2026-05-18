@@ -912,7 +912,7 @@ def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str
     """, (passenger_id, from_city, to_city, time_str, search_for_day))
     conn.commit()
 
-def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 4):
+def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 2):
     cursor.execute("""
         SELECT time_str FROM recent_searches
         WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s
