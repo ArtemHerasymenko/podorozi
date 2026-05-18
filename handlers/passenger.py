@@ -256,7 +256,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
     )
     await state.set_state(PassengerStates.search_from_datetime)
 
-QUICK_TIME_OPTIONS = [30, 120]
+QUICK_TIME_OPTIONS = [30, 90]
 
 
 def round_to_nearest_10_minutes(dt: datetime.datetime) -> datetime.datetime:
@@ -287,7 +287,7 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
         if not is_today:
             options = [[KeyboardButton(text=t)] for t in TOMORROW_TIME_OPTIONS]
         else:
-            base = round_to_nearest_10_minutes(now_kyiv)
+            base = now_kyiv.replace(minute=(now_kyiv.minute // 30) * 30, second=0, microsecond=0)
             options = []
             for minutes in QUICK_TIME_OPTIONS:
                 option_time = base + datetime.timedelta(minutes=minutes)
