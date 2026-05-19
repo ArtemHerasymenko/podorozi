@@ -5,6 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
 from database import save_feedback
+from config import ADMIN_CHAT_ID
 import datetime
 import zoneinfo
 
@@ -191,11 +192,20 @@ async def start(message: types.Message, state: FSMContext):
 @router.message(lambda m: m.text == "📝 Залишити відгук")
 async def feedback_start(message: types.Message, state: FSMContext):
     await state.set_state(FeedbackStates.writing)
-    await message.answer("Напишіть відгук в довільній формі:", reply_markup=back_only_kb)
+    await message.answer("Напишіть відгук в довільній формі або надішліть скріншот:", reply_markup=back_only_kb)
 
 @router.message(FeedbackStates.writing, lambda m: m.text != "⬅️ Назад")
 async def feedback_write(message: types.Message, state: FSMContext):
-    save_feedback(message.from_user.id, "general", message.text)
+    if message.photo:
+        file_id = message.photo[-1].file_id
+        caption = message.caption or ""
+        feedback_id = save_feedback(message.from_user.id, "general", feedback_text=caption, file_id=file_id)
+        await message.bot.send_photo(ADMIN_CHAT_ID, file_id, caption=f"📬 Відгук #{feedback_id} від {message.from_user.full_name} ({message.from_user.id})\n{caption}")
+    elif message.text:
+        save_feedback(message.from_user.id, "general", feedback_text=message.text)
+    else:
+        await message.answer("Будь ласка, надішліть відгук у вигляді тексту або скріншоту:")
+        return
     await state.clear()
     await message.answer("Дякуємо за ваш відгук! 🙏", reply_markup=role_menu)
 

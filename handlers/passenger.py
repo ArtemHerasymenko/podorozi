@@ -195,6 +195,9 @@ async def find_trip(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть назву міста текстом:")
+        return
     if message.text.startswith("───"):
         await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
@@ -211,6 +214,9 @@ async def from_city(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть назву міста текстом:")
+        return
     if message.text.startswith("───"):
         await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
@@ -247,7 +253,7 @@ async def day_handler(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.seats_requested)
 async def seats_requested_handler(message: types.Message, state: FSMContext):
-    if not message.text.isdigit() or int(message.text) < 1:
+    if not message.text or not message.text.isdigit() or int(message.text) < 1:
         await message.answer("Введіть ціле число, наприклад 1:")
         return
     seats = int(message.text)
@@ -341,6 +347,9 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
 
 @router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+        return
     time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
 
     if time_str != "Показати всі поїздки":

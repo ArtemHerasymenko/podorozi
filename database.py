@@ -161,10 +161,13 @@ CREATE TABLE IF NOT EXISTS feedbacks (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     mode TEXT NOT NULL,
-    feedback_text TEXT NOT NULL,
+    feedback_text TEXT,
+    file_id TEXT,
     created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 );
 """)
+cursor.execute("ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS file_id TEXT")
+cursor.execute("ALTER TABLE feedbacks ALTER COLUMN feedback_text DROP NOT NULL")
 conn.commit()
 
 cursor.execute("""
@@ -937,9 +940,12 @@ def upsert_user_details(user_id: int, user_name: str):
     """, (user_id, user_name))
     conn.commit()
 
-def save_feedback(user_id: int, mode: str, feedback_text: str):
+def save_feedback(user_id: int, mode: str, feedback_text: str = None, file_id: str = None) -> int:
     cursor.execute("""
-        INSERT INTO feedbacks (user_id, mode, feedback_text)
-        VALUES (%s, %s, %s)
-    """, (user_id, mode, feedback_text))
+        INSERT INTO feedbacks (user_id, mode, feedback_text, file_id)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id
+    """, (user_id, mode, feedback_text, file_id))
+    feedback_id = cursor.fetchone()[0]
     conn.commit()
+    return feedback_id

@@ -124,6 +124,9 @@ async def create_trip(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть назву міста текстом:")
+        return
     if message.text.startswith("───"):
         await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
@@ -166,6 +169,9 @@ async def _finish_to_points(state: FSMContext, answer, user_id: int):
 
 @router.message(DriverStates.to_city)
 async def to_city(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть назву міста текстом:")
+        return
     if message.text.startswith("───"):
         await message.answer("Будь ласка, оберіть місто зі списку або введіть вручну.")
         return
@@ -199,6 +205,9 @@ async def add_landmark(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(DriverStates.entering_landmark)
 async def entering_landmark(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть назву орієнтира текстом:")
+        return
     data = await state.get_data()
     prefix = data.get("adding_landmark_prefix", "from")
     lm_key = "from_landmarks" if prefix == "from" else "to_landmarks"
@@ -270,6 +279,9 @@ async def day(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.datetime)
 async def time(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+        return
     time_str = message.text.zfill(5)
 
     # Validate time format and values
@@ -300,6 +312,9 @@ async def time(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.seats)
 async def seats(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть кількість місць текстом:")
+        return
     await state.update_data(seats=message.text)
     await message.answer("Ціна за місце (виберіть або введіть свою):", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=p)] for p in ["50", "60", "80", "100"]] + [[KeyboardButton(text="⬅️ Назад")]],
@@ -310,6 +325,9 @@ async def seats(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.price)
 async def price(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть ціну текстом:")
+        return
     await state.update_data(price=message.text)
     recent_cars = get_driver_recent_car_descriptions(message.from_user.id, limit=4)
     keyboard = [[KeyboardButton(text=car)] for car in recent_cars] if recent_cars else []
@@ -321,6 +339,9 @@ async def price(message: types.Message, state: FSMContext):
 
 @router.message(DriverStates.car_description)
 async def car_description(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть опис авто текстом:")
+        return
     await state.update_data(car_description=message.text)
     save_or_update_driver_car_description(message.from_user.id, message.text)
     
@@ -588,6 +609,9 @@ async def confirm_booking(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(DriverStates.confirming_booking)
 async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: Bot):
+    if not message.text:
+        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+        return
     is_valid, result = validate_time(message.text)
     if not is_valid:
         await message.answer(result)
