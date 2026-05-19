@@ -174,6 +174,10 @@ async def to_city(message: types.Message, state: FSMContext):
         await message.answer(error_msg)
         return
     city = message.text.title()
+    data = await state.get_data()
+    if city == data.get("from_city"):
+        await message.answer("Місто прибуття не може збігатися з містом відправлення. Оберіть інше місто:")
+        return
     await state.update_data(to_city=city)
     increment_city_popularity(message.from_user.id, city)
     add_city_if_missing(city)
