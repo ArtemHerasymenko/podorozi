@@ -32,7 +32,7 @@ async def start_health_server():
     app.router.add_get("/health", health)
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.getenv("PORT", 8080))
+    port = int(os.getenv("HEALTH_PORT", 8080))
     print(f"Starting health server on port {port}")
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
