@@ -39,7 +39,7 @@ async def start_health_server():
     print(f"Health server started on port {port}")
 
 async def main():
-    # await start_health_server()
+    await start_health_server()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
