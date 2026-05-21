@@ -361,10 +361,6 @@ async def search(message: types.Message, state: FSMContext):
 
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
-    if time_str != "Показати всі поїздки":
-        save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str, data["day"])
-    else:
-        save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], "show_all", data["day"])
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)
@@ -419,6 +415,7 @@ async def search(message: types.Message, state: FSMContext):
     all_trips = search_trips_ids(data["booking_from_city"], data["booking_to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
     total = len(all_trips)
     trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
+    save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data["day"], [t_id for t_id, _ in all_trips])
 
     def trip_word(n):
         last2, last1 = n % 100, n % 10

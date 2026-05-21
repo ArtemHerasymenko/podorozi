@@ -184,6 +184,7 @@ CREATE TABLE IF NOT EXISTS recent_searches (
 """)
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS counter INT NOT NULL DEFAULT 1")
+cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS trip_ids INTEGER[] DEFAULT NULL")
 conn.commit()
 
 cursor.execute("""
@@ -907,13 +908,13 @@ def decrease_trip_search_list_index(user_id: int):
     conn.commit()
 
 
-def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str):
+def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str, trip_ids: list = None):
     cursor.execute("""
-        INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at)
-        VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP())
+        INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at, trip_ids)
+        VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP(), %s)
         ON CONFLICT (passenger_id, from_city, to_city, time_str, search_for_day)
-        DO UPDATE SET searched_at = CLOCK_TIMESTAMP(), counter = recent_searches.counter + 1
-    """, (passenger_id, from_city, to_city, time_str, search_for_day))
+        DO UPDATE SET searched_at = CLOCK_TIMESTAMP(), counter = recent_searches.counter + 1, trip_ids = EXCLUDED.trip_ids
+    """, (passenger_id, from_city, to_city, time_str, search_for_day, trip_ids))
     conn.commit()
 
 def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 2):
