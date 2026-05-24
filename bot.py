@@ -11,6 +11,7 @@ from config import TOKEN
 
 from aiogram.filters import Command
 from handlers import driver, passenger, common
+from handlers import template
 from handlers.common import start
 from middlewares import IncomingLoggingMiddleware, LoggingSession
 
@@ -20,6 +21,7 @@ dp.update.outer_middleware(IncomingLoggingMiddleware())
 
 dp.message.register(start, Command("start"))
 
+dp.include_router(template.router)
 dp.include_router(driver.router)
 dp.include_router(passenger.router)
 dp.include_router(common.router)

@@ -14,3 +14,8 @@ class DriverStates(StatesGroup):
     confirming_booking = State()
     entering_landmark = State()
     viewing_trips = State()
+    choosing_creation_method = State()
+    choosing_template = State()
+    day_template = State()
+    datetime_template = State()
+    seats_template = State()

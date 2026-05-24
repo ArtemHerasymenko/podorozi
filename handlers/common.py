@@ -1,13 +1,17 @@
+import logging
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
-from database import save_feedback
+from database import save_feedback, save_trip_to_db, save_trip_template, upsert_template_time, get_recent_template_times, get_recent_times_by_cities
 from config import ADMIN_CHAT_ID
+from data.route_intermediates import get_intermediates
+from database import get_city_modified_name_2
 import datetime
 import zoneinfo
+from zoneinfo import ZoneInfo
 
 router = Router()
 
@@ -16,6 +20,19 @@ async def safe_answer(callback, *args, **kwargs):
         await callback.answer(*args, **kwargs)
     except TelegramBadRequest:
         pass
+
+async def safe_send(send_fn, text: str, kb: InlineKeyboardMarkup, parse_mode="HTML"):
+    try:
+        return await send_fn(text, reply_markup=kb, parse_mode=parse_mode)
+    except TelegramBadRequest as e:
+        if "BUTTON_USER_PRIVACY_RESTRICTED" in str(e) and kb:
+            logging.warning("BUTTON_USER_PRIVACY_RESTRICTED — retrying without tg://user button: %s", e)
+            filtered_rows = [
+                row for row in kb.inline_keyboard
+                if not any(btn.url and btn.url.startswith("tg://user") for btn in row)
+            ]
+            return await send_fn(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=filtered_rows), parse_mode=parse_mode)
+        raise
 
 # Hardcoded Ukrainian translations
 uk_days = {
@@ -109,6 +126,79 @@ def generate_datetime(date_str, time_str):
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
+async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMContext):
+    template_id = save_trip_template(user_id, data)
+    if template_id and data.get("datetime"):
+        kyiv_time = data["datetime"].astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
+        upsert_template_time(template_id, kyiv_time)
+    saved = save_trip_to_db(user_id, data)
+    if not saved:
+        await answer("❌ У вас вже є активна поїздка в цей час.", reply_markup=driver_menu_kb)
+        await state.clear()
+        return
+    await answer("✅ Поїздка збережена!\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
+    intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
+    if intermediates:
+        names = [get_city_modified_name_2(c) or c for c in intermediates]
+        cities_str = " та ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " та " + names[-1]
+        await answer(f"ℹ️ Вашу поїздку також бачитимуть пасажири з {cities_str}.")
+    await state.clear()
+
+async def handle_day_input(message: types.Message, state: FSMContext, next_state):
+    quick_days = generate_quick_days()
+    day_dict = {label: date_str for label, date_str in quick_days}
+    if message.text not in day_dict:
+        await message.answer("Оберіть день зі списку.")
+        return
+    await state.update_data(day=day_dict[message.text])
+    data = await state.get_data()
+    from_city_label = get_city_modified_name_2(data["from_city"]) or data["from_city"]
+    exact = get_recent_template_times(data["template_id"], limit=10) if data.get("template_id") else []
+    by_city = get_recent_times_by_cities(message.from_user.id, data.get("from_city", ""), data.get("to_city", ""), limit=10)
+    recent_times = list(dict.fromkeys(exact + by_city))
+    chosen_day = data.get("day", "")
+    now_kyiv = datetime.datetime.now(tz=zoneinfo.ZoneInfo("Europe/Kyiv"))
+    if chosen_day == now_kyiv.strftime("%Y-%m-%d"):
+        current_hhmm = (now_kyiv + datetime.timedelta(minutes=3)).strftime("%H:%M")
+        recent_times = [t for t in recent_times if t > current_hhmm]
+    recent_times = sorted(recent_times[:3])
+    if recent_times:
+        kb = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=t)] for t in recent_times] + [[KeyboardButton(text="⬅️ Назад")]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+    else:
+        kb = back_only_kb
+    await message.answer(f"Введіть час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=kb)
+    await state.set_state(next_state)
+
+async def handle_time_input(message: types.Message, state: FSMContext, next_state):
+    if not message.text:
+        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+        return
+    time_str = message.text.zfill(5)
+    is_valid, result = validate_time(time_str)
+    if not is_valid:
+        await message.answer(result)
+        return
+    data = await state.get_data()
+    is_valid, response = generate_datetime(data.get("day"), time_str)
+    if not is_valid:
+        await message.answer(response)
+        return
+    if response <= datetime.datetime.now(datetime.timezone.utc):
+        await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
+        return
+    arrival = response + datetime.timedelta(minutes=30)
+    await state.update_data(datetime=response, arrival_time=arrival)
+    await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    ))
+    await state.set_state(next_state)
+
 def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_points: str = None, to_points: str = None, show_date: bool = False) -> str:
     local_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
     local_dt = dep_dt.astimezone(local_tz)
@@ -163,6 +253,26 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
     driver_line = f"\n👤 {driver_name}" if driver_name else ""
     notes_desc = format_notes_details_for_passenger(notes, pickup_at, booking_from_city, booking_to_city)
     return f"{driver_line}{notes_desc}{seats_line}{price_line}{car_line}{phone_line}\n\nМаршрут водія:\n{trip_desc}"
+
+create_trip_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="📋 Використати шаблон")],
+        [KeyboardButton(text="✏️ Створити з нуля")],
+        [KeyboardButton(text="⬅️ Назад")],
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True
+)
+
+driver_menu_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🚗 Створити поїздку")],
+        [KeyboardButton(text="📋 Заплановані поїздки")],
+        [KeyboardButton(text="📜 Минулі поїздки")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ],
+    resize_keyboard=True
+)
 
 role_menu = ReplyKeyboardMarkup(
     keyboard=[

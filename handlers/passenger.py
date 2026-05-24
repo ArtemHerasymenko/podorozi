@@ -8,6 +8,7 @@ from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_b
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.exceptions import TelegramBadRequest
 from keyboards.city_kb import cities_keyboard
 from keyboards.booking_kb import booking_actions_kb
 from aiogram.types import ReplyKeyboardRemove
@@ -16,7 +17,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send
 from data.route_intermediates import get_search_city_pairs
 
 def mask_phone(phone):
@@ -93,9 +94,9 @@ async def my_trips(message: types.Message, state: FSMContext):
                 [InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)],
                 [InlineKeyboardButton(text="Скасувати бронювання ❌", callback_data=f"cancel_booking:{booking_id}")]
             ])
+            await safe_send(message.answer, text, kb)
         else:
-            kb = None
-        await message.answer(text, reply_markup=kb, parse_mode="HTML")
+            await message.answer(text, parse_mode="HTML")
 
 @router.message(lambda m: m.text == "📜 Минулі бронювання")
 async def my_past_trips(message: types.Message, state: FSMContext):
@@ -107,7 +108,7 @@ async def my_past_trips(message: types.Message, state: FSMContext):
         await message.answer("У вас ще немає завершених поїздок.")
         return
     text, kb = await _build_past_passenger_booking_msg(booking, message.bot, message.from_user.id)
-    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await safe_send(message.answer, text, kb)
 
 
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
@@ -164,7 +165,7 @@ async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
         return
 
     text, kb = await _build_past_passenger_booking_msg(booking, bot, passenger_id)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await safe_send(callback.message.edit_text, text, kb)
     await safe_answer(callback)
 
 
@@ -306,6 +307,10 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
     options.append([KeyboardButton(text="Показати всі поїздки")])
     options.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
+
+async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index):
+    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index)
+    return await safe_send(send_fn, text, kb)
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0):
     rows = []
@@ -450,11 +455,8 @@ async def search(message: types.Message, state: FSMContext):
     except:
         driver_name = None
 
-    trip_message = await message.answer(
-        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
-        parse_mode="HTML"
-    )
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id))
+    trip_message = await send_trip_message(message.answer, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index)
 
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
@@ -504,11 +506,8 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = driver_chat.full_name
     except:
         driver_name = None
-    await callback.message.edit_text(
-        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
-        parse_mode="HTML"
-    )
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
+    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index)
 
     await safe_answer(callback)
 
@@ -536,11 +535,8 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = driver_chat.full_name
     except:
         driver_name = None
-    await callback.message.edit_text(
-        format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id)),
-        reply_markup=trip_keyboard(trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index=index),
-        parse_mode="HTML"
-    )
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
+    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index)
 
     await safe_answer(callback)
 
@@ -649,11 +645,10 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
         f"{booking_desc}"
     )
 
-    await message.bot.send_message(
-        driver_id,
+    await safe_send(
+        lambda t, **kw: message.bot.send_message(driver_id, t, **kw),
         text,
-        reply_markup=booking_actions_kb(booking_id, passenger_id, message.from_user.username),
-        parse_mode="HTML"
+        booking_actions_kb(booking_id, passenger_id, message.from_user.username)
     )
 
 @router.callback_query(lambda c: c.data == "cancel_search")

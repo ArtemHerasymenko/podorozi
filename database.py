@@ -234,6 +234,36 @@ cursor.execute("""
 conn.commit()
 
 cursor.execute("""
+    CREATE TABLE IF NOT EXISTS trip_templates (
+        id SERIAL PRIMARY KEY,
+        driver_id BIGINT NOT NULL,
+        from_city TEXT NOT NULL,
+        to_city TEXT NOT NULL,
+        from_points TEXT,
+        to_points TEXT,
+        car_description TEXT,
+        driver_phone TEXT,
+        price TEXT,
+        created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (driver_id, from_city, to_city, from_points, to_points)
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS template_times (
+        id SERIAL PRIMARY KEY,
+        template_id INTEGER NOT NULL REFERENCES trip_templates(id) ON DELETE CASCADE,
+        time TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        updated_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        UNIQUE (template_id, time)
+    )
+""")
+conn.commit()
+
+cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id BIGSERIAL PRIMARY KEY,
         from_user_id BIGINT,
@@ -250,6 +280,8 @@ for city_name, landmark in CITY_LANDMARKS:
         VALUES (0, %s, %s)
         ON CONFLICT DO NOTHING
     """, (city_name, landmark))
+
+cursor.execute("DELETE FROM city_landmarks WHERE city_name = 'Полтава' AND landmark = 'Полтіхніка'")
 conn.commit()
 
 def save_trip_to_db(driver_id, data):
@@ -925,6 +957,82 @@ def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, sea
         LIMIT %s
     """, (passenger_id, from_city, to_city, search_for_day, limit))
     return [row[0] for row in cursor.fetchall()]
+
+def save_trip_template(driver_id: int, data: dict) -> int | None:
+    cursor.execute("""
+        INSERT INTO trip_templates (driver_id, from_city, to_city, from_points, to_points, car_description, driver_phone, price, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CLOCK_TIMESTAMP())
+        ON CONFLICT (driver_id, from_city, to_city, from_points, to_points)
+        DO UPDATE SET price = EXCLUDED.price, car_description = EXCLUDED.car_description,
+                      driver_phone = EXCLUDED.driver_phone, updated_at = CLOCK_TIMESTAMP(),
+                      active = TRUE
+        RETURNING id
+    """, (driver_id, data.get("from_city"), data.get("to_city"), data.get("from_points"),
+          data.get("to_points"), data.get("car_description"), data.get("driver_phone"), data.get("price")))
+    row = cursor.fetchone()
+    conn.commit()
+    return row[0] if row else None
+
+def upsert_template_time(template_id: int, time_str: str):
+    cursor.execute("""
+        INSERT INTO template_times (template_id, time, count, updated_at)
+        VALUES (%s, %s, 1, CLOCK_TIMESTAMP())
+        ON CONFLICT (template_id, time)
+        DO UPDATE SET count = template_times.count + 1, updated_at = CLOCK_TIMESTAMP()
+    """, (template_id, time_str))
+    conn.commit()
+
+def get_recent_template_times(template_id: int, limit: int = 3) -> list[str]:
+    cursor.execute("""
+        SELECT time FROM template_times
+        WHERE template_id = %s
+        ORDER BY updated_at DESC
+        LIMIT %s
+    """, (template_id, limit))
+    return [row[0] for row in cursor.fetchall()]
+
+def get_recent_times_by_cities(driver_id: int, from_city: str, to_city: str, limit: int = 10) -> list[str]:
+    cursor.execute("""
+        SELECT tt.time FROM template_times tt
+        JOIN trip_templates t ON tt.template_id = t.id
+        WHERE t.driver_id = %s AND t.from_city = %s AND t.to_city = %s
+        ORDER BY tt.updated_at DESC
+        LIMIT %s
+    """, (driver_id, from_city, to_city, limit))
+    return [row[0] for row in cursor.fetchall()]
+
+def get_driver_templates(driver_id: int):
+    cursor.execute("""
+        SELECT id, from_city, to_city, from_points, to_points, car_description, driver_phone, price
+        FROM trip_templates
+        WHERE driver_id = %s AND active = TRUE
+        ORDER BY updated_at DESC
+    """, (driver_id,))
+    return cursor.fetchall()
+
+def get_template_by_id(template_id: int, driver_id: int):
+    cursor.execute("""
+        SELECT id, from_city, to_city, from_points, to_points, car_description, driver_phone, price
+        FROM trip_templates
+        WHERE id = %s AND driver_id = %s
+    """, (template_id, driver_id))
+    return cursor.fetchone()
+
+def get_template_by_route(driver_id: int, from_city: str, to_city: str, from_points: str, to_points: str):
+    cursor.execute("""
+        SELECT id FROM trip_templates
+        WHERE driver_id = %s AND from_city = %s AND to_city = %s
+          AND COALESCE(from_points, '') = %s AND COALESCE(to_points, '') = %s
+    """, (driver_id, from_city, to_city, from_points or "", to_points or ""))
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+def deactivate_template(template_id: int, driver_id: int):
+    cursor.execute("""
+        UPDATE trip_templates SET active = FALSE
+        WHERE id = %s AND driver_id = %s
+    """, (template_id, driver_id))
+    conn.commit()
 
 def save_event(from_user_id, to_user_id, text: str):
     cursor.execute("""

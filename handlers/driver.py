@@ -2,20 +2,21 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.driver_states import DriverStates
-from database import save_trip_to_db
+from database import upsert_user_details, get_template_by_route
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_2, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks, save_user_landmark, upsert_user_details
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks, save_user_landmark
 from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb, seats_word, safe_answer
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_passenger, format_notes_details_for_driver, back_only_kb, seats_word, safe_answer, safe_send, handle_day_input, handle_time_input, finish_trip_creation, driver_menu_kb, create_trip_kb
 from data.route_intermediates import get_intermediates
+from config import ADMIN_CHAT_ID
 
 router = Router()
 
@@ -91,15 +92,6 @@ async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
     return text, kb
 
 
-driver_menu_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="🚗 Створити поїздку")],
-        [KeyboardButton(text="📋 Заплановані поїздки")],
-        [KeyboardButton(text="📜 Минулі поїздки")],
-        [KeyboardButton(text="⬅️ Назад")]
-    ],
-    resize_keyboard=True
-)
 
 @router.message(lambda m: m.text == "🚗 Я водій")
 async def driver_menu(message: types.Message):
@@ -107,6 +99,17 @@ async def driver_menu(message: types.Message):
         "Меню водія:",
         reply_markup=driver_menu_kb
     )
+
+@router.message(StateFilter(
+    DriverStates.from_city, DriverStates.from_points,
+    DriverStates.to_city, DriverStates.to_points,
+    DriverStates.entering_landmark,
+    DriverStates.day, DriverStates.datetime, DriverStates.seats,
+    DriverStates.price, DriverStates.car_description, DriverStates.phone,
+), lambda m: m.text == "⬅️ Назад")
+async def scratch_flow_back(message: types.Message, state: FSMContext):
+    await state.set_state(DriverStates.choosing_creation_method)
+    await message.answer("Використати шаблон, чи створити поїздку з нуля?", reply_markup=create_trip_kb)
 
 @router.message(StateFilter(DriverStates), lambda m: m.text == "⬅️ Назад")
 async def driver_flow_back(message: types.Message, state: FSMContext):
@@ -116,13 +119,15 @@ async def driver_flow_back(message: types.Message, state: FSMContext):
 @router.message(lambda m: m.text == "🚗 Створити поїздку")
 async def create_trip(message: types.Message, state: FSMContext):
     upsert_user_details(message.from_user.id, message.from_user.full_name)
-    await message.answer(
-    "Оберіть місто відправлення:",
-    reply_markup=cities_keyboard(message.from_user.id)
-    )
+    await state.set_state(DriverStates.choosing_creation_method)
+    await message.answer("Використати шаблон, чи створити поїздку з нуля?", reply_markup=create_trip_kb)
+
+@router.message(DriverStates.choosing_creation_method, lambda m: m.text == "✏️ Створити з нуля")
+async def trip_from_scratch(message: types.Message, state: FSMContext):
+    await message.answer("Оберіть місто відправлення:", reply_markup=cities_keyboard(message.from_user.id))
     await state.set_state(DriverStates.from_city)
 
-@router.message(DriverStates.from_city)
+@router.message(DriverStates.from_city, lambda m: m.text != "⬅️ Назад")
 async def from_city(message: types.Message, state: FSMContext):
     if not message.text:
         await message.answer("Будь ласка, введіть назву міста текстом:")
@@ -164,10 +169,13 @@ async def _finish_to_points(state: FSMContext, answer, user_id: int):
     await state.update_data(to_points=points_str)
     if points_str:
         save_route_description(user_id, data["to_city"], False, points_str)
+    template_id = get_template_by_route(user_id, data["from_city"], data["to_city"], data.get("from_points", ""), points_str)
+    if template_id:
+        await state.update_data(template_id=template_id)
     await answer("Оберіть день:", reply_markup=quick_day_kb())
     await state.set_state(DriverStates.day)
 
-@router.message(DriverStates.to_city)
+@router.message(DriverStates.to_city, lambda m: m.text != "⬅️ Назад")
 async def to_city(message: types.Message, state: FSMContext):
     if not message.text:
         await message.answer("Будь ласка, введіть назву міста текстом:")
@@ -203,7 +211,7 @@ async def add_landmark(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Введіть назву орієнтира:", reply_markup=back_only_kb)
     await safe_answer(callback)
 
-@router.message(DriverStates.entering_landmark)
+@router.message(DriverStates.entering_landmark, lambda m: m.text != "⬅️ Назад")
 async def entering_landmark(message: types.Message, state: FSMContext):
     if not message.text:
         await message.answer("Будь ласка, введіть назву орієнтира текстом:")
@@ -264,56 +272,18 @@ async def confirm_route_points(callback: types.CallbackQuery, state: FSMContext)
         await _finish_to_points(state, callback.message.answer, callback.from_user.id)
     await safe_answer(callback)
 
-@router.message(DriverStates.day)
+@router.message(DriverStates.day, lambda m: m.text != "⬅️ Назад")
 async def day(message: types.Message, state: FSMContext):
-    quick_days = generate_quick_days()
-    day_dict = {label: date_str for label, date_str in quick_days}
-    if message.text not in day_dict:
-        await message.answer("Оберіть день зі списку.")
-        return
-    await state.update_data(day=day_dict[message.text])
-    data = await state.get_data()
-    from_city_label = get_city_modified_name_2(data["from_city"]) or data["from_city"]
-    await message.answer(f"Введіть запланований час виїзду з {from_city_label} у форматі ГГ:ХХ:", reply_markup=back_only_kb)
-    await state.set_state(DriverStates.datetime)
+    await handle_day_input(message, state, DriverStates.datetime)
 
-@router.message(DriverStates.datetime)
+@router.message(DriverStates.datetime, lambda m: m.text != "⬅️ Назад")
 async def time(message: types.Message, state: FSMContext):
-    if not message.text:
-        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
-        return
-    time_str = message.text.zfill(5)
+    await handle_time_input(message, state, DriverStates.seats)
 
-    # Validate time format and values
-    is_valid, result = validate_time(time_str)
-    if not is_valid:
-        await message.answer(result)
-        return
-    time_str = result
-
-    data = await state.get_data()
-    is_valid, response = generate_datetime(data.get("day"), time_str)
-    if not is_valid:
-        await message.answer(response)
-        return
-
-    if response <= datetime.datetime.now(datetime.timezone.utc):
-        await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
-        return
-
-    arrival = response + datetime.timedelta(minutes=30)
-    await state.update_data(datetime=response, arrival_time=arrival)
-    await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    ))
-    await state.set_state(DriverStates.seats)
-
-@router.message(DriverStates.seats)
+@router.message(DriverStates.seats, lambda m: m.text != "⬅️ Назад")
 async def seats(message: types.Message, state: FSMContext):
-    if not message.text:
-        await message.answer("Будь ласка, введіть кількість місць текстом:")
+    if not message.text or not message.text.isdigit() or int(message.text) < 1:
+        await message.answer("Будь ласка, введіть кількість місць цифрою.")
         return
     await state.update_data(seats=message.text)
     await message.answer("Ціна за місце (виберіть або введіть свою):", reply_markup=ReplyKeyboardMarkup(
@@ -323,10 +293,10 @@ async def seats(message: types.Message, state: FSMContext):
     ))
     await state.set_state(DriverStates.price)
 
-@router.message(DriverStates.price)
+@router.message(DriverStates.price, lambda m: m.text != "⬅️ Назад")
 async def price(message: types.Message, state: FSMContext):
-    if not message.text:
-        await message.answer("Будь ласка, введіть ціну текстом:")
+    if not message.text or not message.text.isdigit():
+        await message.answer("Будь ласка, введіть ціну цифрою:")
         return
     await state.update_data(price=message.text)
     recent_cars = get_driver_recent_car_descriptions(message.from_user.id, limit=4)
@@ -337,7 +307,7 @@ async def price(message: types.Message, state: FSMContext):
     await state.set_state(DriverStates.car_description)
 
 
-@router.message(DriverStates.car_description)
+@router.message(DriverStates.car_description, lambda m: m.text != "⬅️ Назад")
 async def car_description(message: types.Message, state: FSMContext):
     if not message.text:
         await message.answer("Будь ласка, введіть опис авто текстом:")
@@ -367,7 +337,8 @@ async def car_description(message: types.Message, state: FSMContext):
     await state.set_state(DriverStates.phone)
 
 
-@router.message(DriverStates.phone)
+
+@router.message(DriverStates.phone, lambda m: m.text != "⬅️ Назад")
 async def driver_phone(message: types.Message, state: FSMContext):
     phone = None
     if message.text == "Не ділитися":
@@ -384,25 +355,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
 
     await state.update_data(driver_phone=phone)
     data = await state.get_data()
-
-    saved = save_trip_to_db(message.from_user.id, data)
-    if not saved:
-        await message.answer(
-            "❌ У вас вже є активна поїздка в цей час.",
-            reply_markup=driver_menu_kb
-        )
-        await state.clear()
-        return
-
-    await message.answer("✅ Поїздка збережена!\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
-
-    intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
-    if intermediates:
-        names = [get_city_modified_name_2(c) or c for c in intermediates]
-        cities_str = " та ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " та " + names[-1]
-        await message.answer(f"ℹ️ Вашу поїздку також бачитимуть пасажири з {cities_str}.")
-
-    await state.clear()
+    await finish_trip_creation(message.from_user.id, data, message.answer, state)
 
 
 @router.message(lambda m: m.text == "📋 Заплановані поїздки")
@@ -421,7 +374,7 @@ async def my_driver_trips(message: types.Message, state: FSMContext):
             await asyncio.sleep(2)
             await message.answer("*\n*\n*")
         text, kb = await _build_driver_trip_details_msg(trip, message.bot, index=i + 1, total=total)
-        await message.answer(text, reply_markup=kb, parse_mode="HTML")
+        await safe_send(message.answer, text, kb)
 
 
 async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
@@ -492,7 +445,7 @@ async def my_past_driver_trips(message: types.Message, state: FSMContext):
         await message.answer("У вас ще немає минулих поїздок.")
         return
     text, kb = await _build_past_driver_trip_details_msg(trip, message.bot, message.from_user.id)
-    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await safe_send(message.answer, text, kb)
 
 
 @router.callback_query(lambda c: c.data and (c.data.startswith("dh_prev:") or c.data.startswith("dh_next:")))
@@ -511,7 +464,7 @@ async def driver_history_nav(callback: types.CallbackQuery, bot: Bot):
         return
 
     text, kb = await _build_past_driver_trip_details_msg(trip, bot, driver_id)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await safe_send(callback.message.edit_text, text, kb)
     await safe_answer(callback)
 
 
@@ -648,7 +601,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         if updated_trip:
             # if trip_id - we got here from my_driver_trips, so we need to rebuild the message with updated booking counts
             new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
-            await bot.edit_message_text(new_text, chat_id=chat_id, message_id=msg_id, reply_markup=new_kb, parse_mode="HTML")
+            await safe_send(lambda t, **kw: bot.edit_message_text(t, chat_id=chat_id, message_id=msg_id, **kw), new_text, new_kb)
         else:
             # if no trip_id - we got here from the direct booking confirmation msg, so we just append the confirmation note to the existing message
             await bot.edit_message_text(original_text + "\n\n✅ Ви підтвердили бронювання", chat_id=chat_id, message_id=msg_id, reply_markup=None, parse_mode="HTML")
@@ -694,7 +647,7 @@ async def reject_booking(callback: types.CallbackQuery, bot: Bot):
         updated_trip = get_driver_trip_by_id(trip_id) if (trip_id and from_trips_view) else None
         if updated_trip:
             new_text, new_kb = await _build_driver_trip_details_msg(updated_trip, bot)
-            await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
+            await safe_send(callback.message.edit_text, new_text, new_kb)
         else:
             await callback.message.edit_text(callback.message.html_text + suffix, reply_markup=None, parse_mode="HTML")
 
