@@ -181,7 +181,7 @@ def _format_day(date_str: str) -> str:
 
 def _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested) -> str:
     display_time = "Показати всі поїздки" if time_str == "show_all" else time_str
-    seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested > 1 else ""
+    seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested >= 1 else ""
     return f"🔁 {from_city}→{to_city}\n{_format_day(search_for_day)}, {display_time}{seats_label}"
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
@@ -198,8 +198,8 @@ async def find_trip(message: types.Message, state: FSMContext):
             return False
         return True
     all_recent = get_recent_searches(message.from_user.id)
-    recent = sorted([r for r in all_recent if _not_expired(r)][:3], key=lambda r: (r[2], r[3]))
-    unique_routes = list(dict.fromkeys((r[0], r[1]) for r in all_recent))[:3]
+    recent = sorted([r for r in all_recent if _not_expired(r)][:2], key=lambda r: (r[2], r[3]))
+    unique_routes = list(dict.fromkeys((r[0], r[1]) for r in all_recent))[:2]
 
     data = await state.get_data()
     trip_message_id = data.get("trip_message_id")
@@ -482,9 +482,10 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     search_from_datetime = data["search_from_datetime"]
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
-        f"🔎 Шукаємо поїздки на {'сьогодні' if is_today else 'завтра'}\n"
+        f"🔎 Шукаємо поїздки... \n{'Сьогодні' if is_today else 'Завтра'}\n"
         f"{data['booking_from_city']} → {data['booking_to_city']}\n"
-        f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
+        f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}\n"
+        f"{seats} {seats_word(seats)}",
         reply_markup=back_only_kb
     )
     await asyncio.sleep(3)
