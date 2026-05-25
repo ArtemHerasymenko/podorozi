@@ -213,7 +213,7 @@ async def find_trip(message: types.Message, state: FSMContext):
         except:
             pass
     is_admin = message.from_user.id == int(ADMIN_CHAT_ID)
-    if recent and is_admin:
+    if recent and is_admin and False:
         buttons = []
         for from_city, to_city, search_for_day, time_str, seats_requested in recent:
             label = _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested)
