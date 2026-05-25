@@ -187,12 +187,16 @@ cursor.execute("ALTER TABLE recent_searches DROP COLUMN IF EXISTS counter")
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS seats_requested INTEGER NOT NULL DEFAULT 1")
 cursor.execute("""
     DO $$
+    DECLARE
+        con_name TEXT;
     BEGIN
-        IF EXISTS (
-            SELECT 1 FROM pg_constraint
-            WHERE conname = 'recent_searches_passenger_id_from_city_to_city_time_str_sear_key'
-        ) THEN
-            ALTER TABLE recent_searches DROP CONSTRAINT recent_searches_passenger_id_from_city_to_city_time_str_sear_key;
+        SELECT conname INTO con_name
+        FROM pg_constraint
+        WHERE conrelid = 'recent_searches'::regclass
+          AND contype = 'u'
+          AND conname LIKE 'recent_searches_passenger_id_from_city_to_city_time_str%';
+        IF con_name IS NOT NULL THEN
+            EXECUTE 'ALTER TABLE recent_searches DROP CONSTRAINT ' || quote_ident(con_name);
         END IF;
     END $$
 """)
