@@ -176,11 +176,11 @@ async def passenger_flow_back(message: types.Message, state: FSMContext):
     await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb)
 
 def _format_day(date_str: str) -> str:
-    day_map = {d: label for label, d in generate_quick_days()}
+    day_map = {d: label.split()[0] for label, d in generate_quick_days()}
     return day_map.get(date_str, date_str)
 
 def _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested) -> str:
-    display_time = "Показати всі поїздки" if time_str == "show_all" else time_str
+    display_time = "показати всі" if time_str == "show_all" else time_str
     seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested >= 1 else ""
     return f"🔁 {from_city}→{to_city}\n{_format_day(search_for_day)}, {display_time}{seats_label}"
 
