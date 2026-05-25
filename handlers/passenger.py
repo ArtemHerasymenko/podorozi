@@ -182,7 +182,7 @@ def _format_day(date_str: str) -> str:
 def _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested) -> str:
     display_time = "показати всі" if time_str == "show_all" else time_str
     seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested >= 1 else ""
-    return f"🔁 {from_city}→{to_city}\n{_format_day(search_for_day)}, {display_time}{seats_label}"
+    return f"🔁 {from_city} → {to_city}\n{_format_day(search_for_day)}, {display_time}{seats_label}"
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
@@ -226,10 +226,10 @@ async def find_trip(message: types.Message, state: FSMContext):
             "Повторіть попередній пошук або почніть новий:",
             reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
         )
-    elif unique_routes and is_admin:
+    elif unique_routes and is_admin and False:
         buttons = []
         for from_city, to_city in unique_routes:
-            buttons.append([KeyboardButton(text=f"🔄 {from_city}→{to_city}")])
+            buttons.append([KeyboardButton(text=f"🔄 {from_city} → {to_city}")])
         buttons.append([KeyboardButton(text="🔍 Новий пошук")])
         buttons.append([KeyboardButton(text="⬅️ Назад")])
         await state.set_state(PassengerStates.quick_partial_search_or_new)
@@ -246,7 +246,7 @@ async def find_trip(message: types.Message, state: FSMContext):
 
 @router.message(PassengerStates.quick_partial_search_or_new, lambda m: m.text and m.text.startswith("🔄 "))
 async def quick_route_select(message: types.Message, state: FSMContext):
-    parts = message.text[2:].strip().split("→", 1)
+    parts = message.text[2:].strip().split(" → ", 1)
     if len(parts) != 2:
         await message.answer("Не вдалося розпізнати пошук.")
         return
