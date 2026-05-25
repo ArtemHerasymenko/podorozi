@@ -992,10 +992,16 @@ def get_recent_booking_notes(passenger_id: int, from_city: str, limit: int = 3) 
 
 def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 2):
     cursor.execute("""
-        SELECT time_str FROM recent_searches
-        WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s AND time_str != 'show_all'
-        ORDER BY searched_at DESC
-        LIMIT %s
+        SELECT time_str FROM (
+            SELECT time_str FROM (
+                SELECT DISTINCT ON (time_str) time_str, searched_at FROM recent_searches
+                WHERE passenger_id = %s AND from_city = %s AND to_city = %s AND search_for_day = %s AND time_str != 'show_all'
+                ORDER BY time_str, searched_at DESC
+            ) latest
+            ORDER BY searched_at DESC
+            LIMIT %s
+        ) top
+        ORDER BY time_str
     """, (passenger_id, from_city, to_city, search_for_day, limit))
     return [row[0] for row in cursor.fetchall()]
 
