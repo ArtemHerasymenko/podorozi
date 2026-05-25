@@ -184,6 +184,7 @@ CREATE TABLE IF NOT EXISTS recent_searches (
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS trip_ids INTEGER[] DEFAULT NULL")
 cursor.execute("ALTER TABLE recent_searches DROP COLUMN IF EXISTS counter")
+cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS seats_requested INTEGER NOT NULL DEFAULT 1")
 cursor.execute("""
     DO $$
     BEGIN
@@ -950,12 +951,27 @@ def decrease_trip_search_list_index(user_id: int):
     conn.commit()
 
 
-def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str, trip_ids: list = None):
+def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str, trip_ids: list = None, seats_requested: int = 1):
     cursor.execute("""
-        INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at, trip_ids)
-        VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP(), %s)
-    """, (passenger_id, from_city, to_city, time_str, search_for_day, trip_ids))
+        INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at, trip_ids, seats_requested)
+        VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP(), %s, %s)
+    """, (passenger_id, from_city, to_city, time_str, search_for_day, trip_ids, seats_requested))
     conn.commit()
+
+def get_recent_searches(passenger_id: int, limit: int = 20) -> list[tuple]:
+    cursor.execute("""
+        SELECT from_city, to_city, search_for_day, time_str, seats_requested
+        FROM (
+            SELECT DISTINCT ON (from_city, to_city, search_for_day, time_str)
+                   from_city, to_city, search_for_day, time_str, seats_requested, searched_at
+            FROM recent_searches
+            WHERE passenger_id = %s
+            ORDER BY from_city, to_city, search_for_day, time_str, searched_at DESC
+        ) latest
+        ORDER BY searched_at DESC
+        LIMIT %s
+    """, (passenger_id, limit))
+    return cursor.fetchall()
 
 def get_recent_booking_notes(passenger_id: int, from_city: str, limit: int = 3) -> list[str]:
     cursor.execute("""

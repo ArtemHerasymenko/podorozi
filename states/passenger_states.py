@@ -10,3 +10,5 @@ class PassengerStates(StatesGroup):
     booking_notes = State()
     booking_phone = State()
     viewing_bookings = State()
+    quick_search_or_new = State()
+    quick_partial_search_or_new = State()

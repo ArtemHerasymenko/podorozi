@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -17,7 +17,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send, seats_word
 from data.route_intermediates import get_search_city_pairs
 
 def mask_phone(phone):
@@ -174,9 +174,32 @@ async def passenger_flow_back(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb)
 
+def _format_day(date_str: str) -> str:
+    day_map = {d: label for label, d in generate_quick_days()}
+    return day_map.get(date_str, date_str)
+
+def _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested) -> str:
+    display_time = "Показати всі поїздки" if time_str == "show_all" else time_str
+    seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested > 1 else ""
+    return f"🔁 {from_city}→{to_city}, {_format_day(search_for_day)}, {display_time}{seats_label}"
+
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
     upsert_user_details(message.from_user.id, message.from_user.full_name)
+    now_kyiv = datetime.datetime.now(tz=ZoneInfo("Europe/Kyiv"))
+    today = now_kyiv.strftime("%Y-%m-%d")
+    now_hhmm = now_kyiv.strftime("%H:%M")
+    def _not_expired(r):
+        _, _, search_for_day, time_str, _ = r
+        if search_for_day < today:
+            return False
+        if search_for_day == today and ("23:59" if time_str == "show_all" else time_str) <= now_hhmm:
+            return False
+        return True
+    all_recent = get_recent_searches(message.from_user.id)
+    recent = sorted([r for r in all_recent if _not_expired(r)][:3], key=lambda r: (r[2], r[3]))
+    unique_routes = list(dict.fromkeys((r[0], r[1]) for r in all_recent))[:3]
+
     data = await state.get_data()
     trip_message_id = data.get("trip_message_id")
     if trip_message_id:
@@ -188,11 +211,80 @@ async def find_trip(message: types.Message, state: FSMContext):
             )
         except:
             pass
-    await message.answer(
-    "Оберіть місто відправлення зі списку. Не знайшлось? Введіть вручну:",
-    reply_markup=cities_keyboard(message.from_user.id)
-)
+    if recent:
+        buttons = []
+        for from_city, to_city, search_for_day, time_str, seats_requested in recent:
+            label = _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested)
+            buttons.append([KeyboardButton(text=label)])
+        buttons.append([KeyboardButton(text="🔍 Новий пошук")])
+        buttons.append([KeyboardButton(text="⬅️ Назад")])
+        await state.update_data(recent_searches=recent)
+        await state.set_state(PassengerStates.quick_search_or_new)
+        await message.answer(
+            "Повторіть попередній пошук або почніть новий:",
+            reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+        )
+    elif unique_routes:
+        buttons = []
+        for from_city, to_city in unique_routes:
+            buttons.append([KeyboardButton(text=f"🔄 {from_city}→{to_city}")])
+        buttons.append([KeyboardButton(text="🔍 Новий пошук")])
+        buttons.append([KeyboardButton(text="⬅️ Назад")])
+        await state.set_state(PassengerStates.quick_partial_search_or_new)
+        await message.answer(
+            "Повторіть попередній пошук або почніть новий:",
+            reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+        )
+    else:
+        await state.set_state(PassengerStates.from_city)
+        await message.answer(
+            "Оберіть місто відправлення зі списку. Не знайшлось? Введіть вручну:",
+            reply_markup=cities_keyboard(message.from_user.id)
+        )
+
+@router.message(PassengerStates.quick_partial_search_or_new, lambda m: m.text and m.text.startswith("🔄 "))
+async def quick_route_select(message: types.Message, state: FSMContext):
+    parts = message.text[2:].strip().split("→", 1)
+    if len(parts) != 2:
+        await message.answer("Не вдалося розпізнати пошук.")
+        return
+    from_city, to_city = parts[0].strip(), parts[1].strip()
+    await state.update_data(booking_from_city=from_city, booking_to_city=to_city)
+    await state.set_state(PassengerStates.day)
+    await message.answer("Оберіть день:", reply_markup=quick_day_kb())
+
+@router.message(StateFilter(PassengerStates.quick_search_or_new, PassengerStates.quick_partial_search_or_new), lambda m: m.text == "🔍 Новий пошук")
+async def quick_search_new(message: types.Message, state: FSMContext):
     await state.set_state(PassengerStates.from_city)
+    await message.answer(
+        "Оберіть місто відправлення зі списку. Не знайшлось? Введіть вручну:",
+        reply_markup=cities_keyboard(message.from_user.id)
+    )
+
+@router.message(PassengerStates.quick_search_or_new, lambda m: m.text and m.text.startswith("🔁 "))
+async def quick_search_select(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    recent_searches = data.get("recent_searches", [])
+    matched = None
+    for row in recent_searches:
+        from_city, to_city, search_for_day, time_str, seats_requested = row
+        label = _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested)
+        if message.text == label:
+            matched = row
+            break
+    if not matched:
+        await state.clear()
+        await message.answer("Не вдалося розпізнати пошук.", reply_markup=passenger_menu_kb)
+        return
+    from_city, to_city, search_for_day, time_str, seats_requested = matched
+    await state.update_data(
+        booking_from_city=from_city,
+        booking_to_city=to_city,
+        day=search_for_day,
+        seats_requested=seats_requested,
+    )
+    await state.set_state(PassengerStates.search_from_datetime)
+    await _run_search(message, state, "Показати всі поїздки" if time_str == "show_all" else time_str)
 
 @router.message(PassengerStates.from_city)
 async def from_city(message: types.Message, state: FSMContext):
@@ -350,20 +442,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         f"{phone_line}\n"
         f"👥 Вільних місць: {trip[10]}/{trip[9]}")
 
-@router.message(PassengerStates.search_from_datetime)
-async def search(message: types.Message, state: FSMContext):
-    if not message.text:
-        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
-        return
-    time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
-
-    if time_str != "Показати всі поїздки":
-        is_valid, result = validate_time(time_str)
-        if not is_valid:
-            await message.answer(result)
-            return
-        time_str = result
-
+async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
     selected_day = data.get("day")
@@ -371,10 +450,9 @@ async def search(message: types.Message, state: FSMContext):
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)
     kyiv_next_day = now_kyiv + datetime.timedelta(days=1)
 
-    if message.text == "Показати всі поїздки":
+    if time_str == "Показати всі поїздки":
         if is_today:
-            kyiv_from = now_kyiv
-            kyiv_to = kyiv_end_of_day
+            kyiv_from, kyiv_to = now_kyiv, kyiv_end_of_day
         else:
             kyiv_from = kyiv_next_day.replace(hour=0, minute=0, second=0, microsecond=0)
             kyiv_to = kyiv_next_day.replace(hour=23, minute=59, second=59, microsecond=0)
@@ -392,10 +470,8 @@ async def search(message: types.Message, state: FSMContext):
             utc_from = max(utc_from, now_utc)
             utc_to = max(min(utc_to, kyiv_end_of_day.astimezone(datetime.timezone.utc)), now_utc + datetime.timedelta(hours=1))
         else:
-            utc_from = max(utc_from, kyiv_next_day.replace(
-                hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc))
-            utc_to = min(utc_to, kyiv_next_day.replace(
-                hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc))
+            utc_from = max(utc_from, kyiv_next_day.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc))
+            utc_to = min(utc_to, kyiv_next_day.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc))
 
     await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
 
@@ -404,15 +480,15 @@ async def search(message: types.Message, state: FSMContext):
     search_from_datetime = data["search_from_datetime"]
     search_to_datetime = data["search_to_datetime"]
     await message.answer(
-        f"🔎 Шукаємо поїздки на { 'сьогодні' if data['day'] == datetime.datetime.now(ZoneInfo('Europe/Kyiv')).strftime('%Y-%m-%d') else 'завтра' }\n"
+        f"🔎 Шукаємо поїздки на {'сьогодні' if is_today else 'завтра'}\n"
         f"{data['booking_from_city']} → {data['booking_to_city']}\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}",
         reply_markup=back_only_kb
     )
     await asyncio.sleep(3)
-    
-    # if now is 19:43, we will say that we are looking for 19:43-XX:MM, 
-    # but actually we look from 19:48, just to make sure we don't show already departed trips, 
+
+    # if now is 19:43, we will say that we are looking for 19:43-XX:MM,
+    # but actually we look from 19:48, just to make sure we don't show already departed trips,
     # or close to departure ones.
     min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
     search_from_datetime = max(search_from_datetime, min_from)
@@ -420,7 +496,7 @@ async def search(message: types.Message, state: FSMContext):
     all_trips = search_trips_ids(data["booking_from_city"], data["booking_to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
     total = len(all_trips)
     trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
-    save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data["day"], [t_id for t_id, _ in all_trips])
+    save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data["day"], [t_id for t_id, _ in all_trips], seats_requested=seats)
 
     def trip_word(n):
         last2, last1 = n % 100, n % 10
@@ -460,6 +536,20 @@ async def search(message: types.Message, state: FSMContext):
 
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
+
+@router.message(PassengerStates.search_from_datetime)
+async def search(message: types.Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+        return
+    time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
+    if time_str != "Показати всі поїздки":
+        is_valid, result = validate_time(time_str)
+        if not is_valid:
+            await message.answer(result)
+            return
+        time_str = result
+    await _run_search(message, state, time_str)
 
 @router.message(PassengerStates.browsing_trips)
 async def remove_buttons_on_message(message: types.Message, state: FSMContext):
