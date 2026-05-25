@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -564,9 +564,16 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
     city = get_city_modified_name(data.get("booking_from_city", ""))
-    await callback.message.answer(f"📍 Вкажіть місце де вас підібрати у {city}: ",
-        reply_markup=back_only_kb
-    )
+    recent_notes = get_recent_booking_notes(callback.from_user.id, data.get("booking_from_city", ""))
+    if recent_notes:
+        kb = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=n)] for n in recent_notes] + [[KeyboardButton(text="⬅️ Назад")]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+    else:
+        kb = back_only_kb
+    await callback.message.answer(f"📍 Вкажіть місце де вас підібрати у {city}:", reply_markup=kb)
 
 @router.message(PassengerStates.booking_notes)
 async def booking_notes_handler(message: types.Message, state: FSMContext):

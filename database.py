@@ -179,12 +179,22 @@ CREATE TABLE IF NOT EXISTS recent_searches (
     time_str TEXT NOT NULL,
     search_for_day TEXT NOT NULL,
     searched_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
-    UNIQUE (passenger_id, from_city, to_city, time_str, search_for_day)
 );
 """)
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
-cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS counter INT NOT NULL DEFAULT 1")
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS trip_ids INTEGER[] DEFAULT NULL")
+cursor.execute("ALTER TABLE recent_searches DROP COLUMN IF EXISTS counter")
+cursor.execute("""
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'recent_searches_passenger_id_from_city_to_city_time_str_sear_key'
+        ) THEN
+            ALTER TABLE recent_searches DROP CONSTRAINT recent_searches_passenger_id_from_city_to_city_time_str_sear_key;
+        END IF;
+    END $$
+""")
 conn.commit()
 
 cursor.execute("""
@@ -944,10 +954,21 @@ def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str
     cursor.execute("""
         INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at, trip_ids)
         VALUES (%s, %s, %s, %s, %s, CLOCK_TIMESTAMP(), %s)
-        ON CONFLICT (passenger_id, from_city, to_city, time_str, search_for_day)
-        DO UPDATE SET searched_at = CLOCK_TIMESTAMP(), counter = recent_searches.counter + 1, trip_ids = EXCLUDED.trip_ids
     """, (passenger_id, from_city, to_city, time_str, search_for_day, trip_ids))
     conn.commit()
+
+def get_recent_booking_notes(passenger_id: int, from_city: str, limit: int = 3) -> list[str]:
+    cursor.execute("""
+        SELECT notes FROM bookings
+        WHERE passenger_id = %s
+          AND from_city = %s
+          AND notes IS NOT NULL
+          AND notes != ''
+        GROUP BY notes
+        ORDER BY MAX(booked_at) DESC
+        LIMIT %s
+    """, (passenger_id, from_city, limit))
+    return [row[0] for row in cursor.fetchall()]
 
 def get_recent_search_times(passenger_id: int, from_city: str, to_city: str, search_for_day: str, limit: int = 2):
     cursor.execute("""
