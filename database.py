@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS recent_searches (
     to_city TEXT NOT NULL,
     time_str TEXT NOT NULL,
     search_for_day TEXT NOT NULL,
-    searched_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+    searched_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP()
 );
 """)
 cursor.execute("ALTER TABLE recent_searches ADD COLUMN IF NOT EXISTS search_for_day TEXT NOT NULL DEFAULT ''")
