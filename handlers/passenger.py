@@ -19,6 +19,7 @@ import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send, seats_word
 from data.route_intermediates import get_search_city_pairs
+from config import ADMIN_CHAT_ID
 
 def mask_phone(phone):
     if not phone or len(phone) < 4:
@@ -211,7 +212,8 @@ async def find_trip(message: types.Message, state: FSMContext):
             )
         except:
             pass
-    if recent:
+    is_admin = message.from_user.id == ADMIN_CHAT_ID
+    if recent and is_admin:
         buttons = []
         for from_city, to_city, search_for_day, time_str, seats_requested in recent:
             label = _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested)
@@ -224,7 +226,7 @@ async def find_trip(message: types.Message, state: FSMContext):
             "Повторіть попередній пошук або почніть новий:",
             reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
         )
-    elif unique_routes:
+    elif unique_routes and is_admin:
         buttons = []
         for from_city, to_city in unique_routes:
             buttons.append([KeyboardButton(text=f"🔄 {from_city}→{to_city}")])
