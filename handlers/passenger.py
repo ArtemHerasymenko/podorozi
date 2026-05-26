@@ -221,7 +221,7 @@ async def find_trip(message: types.Message, state: FSMContext):
         await state.update_data(recent_searches=recent)
         await state.set_state(PassengerStates.quick_search_or_new)
         await message.answer(
-            "Повторіть попередній пошук або почніть новий:",
+            "Хочете повторити пошук чи почати новий?",
             reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
         )
     elif unique_routes:
@@ -232,7 +232,7 @@ async def find_trip(message: types.Message, state: FSMContext):
         buttons.append([KeyboardButton(text="⬅️ Назад")])
         await state.set_state(PassengerStates.quick_partial_search_or_new)
         await message.answer(
-            "Повторіть попередній пошук або почніть новий:",
+            "Хочете повторити пошук чи почати новий?",
             reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
         )
     else:
