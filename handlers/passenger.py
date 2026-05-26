@@ -444,7 +444,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
     car_line = f"🚘 {trip[12]}" if trip[12] else ""
     return (
         f"{position_line}"
-        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n"
+        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n\n"
         f"💰 {trip[8]} грн за місце\n"
         f"{driver_line}\n"
         f"{car_line}\n"
