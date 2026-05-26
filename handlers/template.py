@@ -145,4 +145,4 @@ async def seats(message: types.Message, state: FSMContext):
         return
     await state.update_data(seats=message.text)
     data = await state.get_data()
-    await finish_trip_creation(message.from_user.id, data, message.answer, state)
+    await finish_trip_creation(message.from_user.id, data, message.answer, state, bot=message.bot)

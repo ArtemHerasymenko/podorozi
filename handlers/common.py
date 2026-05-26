@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
-from database import save_feedback, save_trip_to_db, save_trip_template, upsert_template_time, get_recent_template_times, get_recent_times_by_cities
+from database import save_feedback, save_trip_to_db, save_trip_template, upsert_template_time, get_recent_template_times, get_recent_times_by_cities, get_pending_subscriptions
 from config import ADMIN_CHAT_ID
 from data.route_intermediates import get_intermediates
 from database import get_city_modified_name_2
@@ -126,16 +126,16 @@ def generate_datetime(date_str, time_str):
     except ValueError as e:
         return False, f"Неправильна дата чи час: {str(e)}"
 
-async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMContext):
+async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMContext, bot=None):
     template_id = save_trip_template(user_id, data)
     if template_id and data.get("datetime"):
         kyiv_time = data["datetime"].astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
         upsert_template_time(template_id, kyiv_time)
-    saved = save_trip_to_db(user_id, data)
-    if not saved:
+    trip_id = save_trip_to_db(user_id, data)
+    if not trip_id:
         await answer("❌ У вас вже є активна поїздка в цей час.", reply_markup=driver_menu_kb)
         await state.clear()
-        return
+        return None
     await answer("✅ Поїздка збережена!\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:
@@ -143,6 +143,37 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         cities_str = " та ".join(names) if len(names) <= 2 else ", ".join(names[:-1]) + " та " + names[-1]
         await answer(f"ℹ️ Вашу поїздку також бачитимуть пасажири з {cities_str}.")
     await state.clear()
+    if bot and data.get("datetime"):
+        dep_datetime = data["datetime"]
+        from_city = data.get("from_city", "")
+        to_city = data.get("to_city", "")
+        waiting = get_pending_subscriptions(from_city, to_city, dep_datetime)
+        if waiting:
+            passenger_ids = [row[0] for row in waiting]
+            try:
+                driver_chat = await bot.get_chat(user_id)
+                driver_name = driver_chat.full_name
+            except Exception:
+                driver_name = "Водій"
+            seats = data.get("seats")
+            trip_tuple = (
+                trip_id, user_id, data.get("driver_phone"),
+                from_city, data.get("from_points"),
+                to_city, data.get("to_points"),
+                dep_datetime, data.get("price"),
+                seats, seats,
+                data.get("arrival_time"), data.get("car_description")
+            )
+            trip_text = "🔔 Нова поїздка за вашим маршрутом!\n\n" + format_trip(trip_tuple, 0, 1, driver_name=driver_name)
+            for passenger_id in passenger_ids:
+                try:
+                    await send_trip_message(
+                        lambda text, **kw: bot.send_message(passenger_id, text, **kw),
+                        trip_text, trip_id, 1, user_id, None, 0
+                    )
+                except Exception:
+                    pass
+    return trip_id
 
 async def handle_day_input(message: types.Message, state: FSMContext, next_state):
     quick_days = generate_quick_days()
@@ -212,6 +243,52 @@ def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_
     time_str = f"🕐 {dep_time}, {uk_day}, {date_str}" if show_date else f"🕐 {dep_time}, {uk_day}"
     return f"{time_str}\n➡️ {from_str}\n🏁 {to_str}"
     
+def mask_phone(phone):
+    if not phone or len(phone) < 4:
+        return phone
+    return phone[:3] + '*' * (len(phone) - 4) + phone[-1]
+
+def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
+    position_text = f"Поїздка № {index + 1}/{total_cnt}" if total_cnt > 1 else ""
+    position_line = f"{position_text}\n\n" if position_text else ""
+    name_str = driver_name or "Водій"
+    if is_own:
+        name_str += " (Ви)"
+    driver_line = f"👤 {name_str}"
+    if trip[2]:
+        phone_line = f"📞 {mask_phone(trip[2])}"
+    else:
+        phone_line = "📞 Водій не вказав свій номер"
+    car_line = f"🚘 {trip[12]}" if trip[12] else ""
+    return (
+        f"{position_line}"
+        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n\n"
+        f"💰 {trip[8]} грн за місце\n"
+        f"{driver_line}\n"
+        f"{car_line}\n"
+        f"{phone_line}\n"
+        f"👥 Вільних місць: {trip[10]}/{trip[9]}")
+
+def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0):
+    rows = []
+    if total_cnt > 1:
+        nav = []
+        if index > 0:
+            nav.append(InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"))
+        if index < total_cnt - 1:
+            nav.append(InlineKeyboardButton(text="Наступна ➡️", callback_data="next"))
+        if nav:
+            rows.append(nav)
+    if driver_id:
+        driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
+        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
+    rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index):
+    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index)
+    return await safe_send(send_fn, text, kb)
+
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
     notes_line = f"\n📍 Місце посадки: <b>{booking_from_city}</b>"
     if notes:

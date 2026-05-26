@@ -355,7 +355,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
 
     await state.update_data(driver_phone=phone)
     data = await state.get_data()
-    await finish_trip_creation(message.from_user.id, data, message.answer, state)
+    await finish_trip_creation(message.from_user.id, data, message.answer, state, bot=message.bot)
 
 
 @router.message(lambda m: m.text == "📋 Заплановані поїздки")

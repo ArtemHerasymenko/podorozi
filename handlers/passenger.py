@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -17,13 +17,9 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send, seats_word
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message
 from data.route_intermediates import get_search_city_pairs
-
-def mask_phone(phone):
-    if not phone or len(phone) < 4:
-        return phone
-    return phone[:3] + '*' * (len(phone) - 4) + phone[-1]
+from config import ADMIN_CHAT_ID
 
 router = Router()
 
@@ -35,30 +31,35 @@ STATUS_LABELS = {
     "trip_cancelled": "🚫 Водій скасував цю поїздку"
 }
 
-passenger_menu_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="🔎 Знайти поїздку")],
+def _is_admin(user_id: int) -> bool:
+    return user_id == int(ADMIN_CHAT_ID)
+
+def passenger_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
+    rows = [[KeyboardButton(text="🔎 Знайти поїздку")]]
+    if _is_admin(user_id):
+        rows.append([KeyboardButton(text="🔔 Мої підписки")])
+    rows += [
         [KeyboardButton(text="📋 Поточні бронювання")],
         [KeyboardButton(text="📜 Минулі бронювання")],
         [KeyboardButton(text="⬅️ Назад")]
-    ],
-    resize_keyboard=True
-)
+    ]
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-after_search_kb = ReplyKeyboardMarkup(
-    keyboard=[
+def after_search_kb(user_id: int) -> ReplyKeyboardMarkup:
+    rows = [
         [KeyboardButton(text="🔄 Зворотній маршрут")],
         [KeyboardButton(text="🕐 Змінити час")],
-        [KeyboardButton(text="⬅️ Назад")]
-    ],
-    resize_keyboard=True
-)
+    ]
+    if _is_admin(user_id):
+        rows.append([KeyboardButton(text="🔔 Сповістити про нові поїздки")])
+    rows.append([KeyboardButton(text="⬅️ Назад")])
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
 async def passenger_menu(message: types.Message):
     await message.answer(
         "Меню пасажира:",
-        reply_markup=passenger_menu_kb
+        reply_markup=passenger_menu_kb(message.from_user.id)
     )
 
 @router.message(lambda m: m.text == "📋 Поточні бронювання")
@@ -118,6 +119,32 @@ async def my_past_trips(message: types.Message, state: FSMContext):
         return
     text, kb = await _build_past_passenger_booking_msg(booking, message.bot, message.from_user.id)
     await safe_send(message.answer, text, kb)
+
+
+@router.message(lambda m: m.text == "🔔 Мої підписки")
+async def my_subscriptions(message: types.Message):
+    subs = get_active_subscriptions(message.from_user.id)
+    if not subs:
+        await message.answer("У вас немає активних підписок.", reply_markup=passenger_menu_kb(message.from_user.id))
+        return
+    kyiv = ZoneInfo("Europe/Kyiv")
+    for sub_id, from_city, to_city, search_for_day, seats, from_time, to_time in subs:
+        from_hhmm = from_time.astimezone(kyiv).strftime("%H:%M")
+        to_hhmm = to_time.astimezone(kyiv).strftime("%H:%M")
+        seats_label = f", {seats} {seats_word(seats)}" if seats > 1 else ""
+        text = f"🔔 {from_city} → {to_city}\n{search_for_day}, {from_hhmm}–{to_hhmm}{seats_label}"
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Відписатись ❌", callback_data=f"unsub:{sub_id}")]
+        ])
+        await message.answer(text, reply_markup=kb)
+
+@router.callback_query(lambda c: c.data and c.data.startswith("unsub:"))
+async def unsubscribe_handler(callback: types.CallbackQuery):
+    sub_id = int(callback.data.split(":")[1])
+    deactivate_subscription(sub_id, callback.from_user.id)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.edit_text(callback.message.text + "\n\n✅ Підписку скасовано")
+    await callback.answer()
 
 
 async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
@@ -181,7 +208,7 @@ async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
 @router.message(StateFilter(PassengerStates), lambda m: m.text == "⬅️ Назад")
 async def passenger_flow_back(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb)
+    await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
 def _format_day(date_str: str) -> str:
     day_map = {d: label.split()[0] for label, d in generate_quick_days()}
@@ -283,7 +310,7 @@ async def quick_search_select(message: types.Message, state: FSMContext):
             break
     if not matched:
         await state.clear()
-        await message.answer("Не вдалося розпізнати пошук.", reply_markup=passenger_menu_kb)
+        await message.answer("Не вдалося розпізнати пошук.", reply_markup=passenger_menu_kb(message.from_user.id))
         return
     from_city, to_city, search_for_day, time_str, seats_requested = matched
     await state.update_data(
@@ -409,47 +436,6 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
     options.append([KeyboardButton(text="⬅️ Назад")])
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
 
-async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index):
-    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index)
-    return await safe_send(send_fn, text, kb)
-
-def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0):
-    rows = []
-    if total_cnt > 1:
-        nav = []
-        if index > 0:
-            nav.append(InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"))
-        if index < total_cnt - 1:
-            nav.append(InlineKeyboardButton(text="Наступна ➡️", callback_data="next"))
-        if nav:
-            rows.append(nav)
-    if driver_id:
-        driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
-        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
-    rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
-    # rows.append([InlineKeyboardButton(text="Скасувати пошук ❌", callback_data="cancel_search")])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
-    position_text = f"Поїздка № {index + 1}/{total_cnt}" if total_cnt > 1 else ""
-    position_line = f"{position_text}\n\n" if position_text else ""
-    name_str = driver_name or "Водій"
-    if is_own:
-        name_str += " (Ви)"
-    driver_line = f"👤 {name_str}"
-    if trip[2]:
-        phone_line = f"📞 {mask_phone(trip[2])}"
-    else:
-        phone_line = "📞 Водій не вказав свій номер"
-    car_line = f"🚘 {trip[12]}" if trip[12] else ""
-    return (
-        f"{position_line}"
-        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n\n"
-        f"💰 {trip[8]} грн за місце\n"
-        f"{driver_line}\n"
-        f"{car_line}\n"
-        f"{phone_line}\n"
-        f"👥 Вільних місць: {trip[10]}/{trip[9]}")
 
 async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
@@ -520,16 +506,16 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
 
     if not trips_ids:
         if total == 0:
-            await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=after_search_kb)
+            await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=after_search_kb(message.from_user.id))
         else:
-            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb)
+            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb(message.from_user.id))
         await state.set_state(PassengerStates.browsing_trips)
         return
 
     if total == len(trips_ids):
-        await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb)
+        await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb(message.from_user.id))
     else:
-        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb)
+        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb(message.from_user.id))
     create_trip_search_list(message.from_user.id, trips_ids)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
@@ -580,6 +566,29 @@ async def change_time_handler(message: types.Message, state: FSMContext):
         reply_markup=quick_time_kb(data["day"], recent_times)
     )
 
+@router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔔 Сповістити про нові поїздки")
+async def notify_new_driver_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    seats = data.get("seats_requested", 1)
+    save_search_subscription(
+        message.from_user.id,
+        data["booking_from_city"],
+        data["booking_to_city"],
+        data["day"],
+        seats,
+        from_time=data.get("search_from_datetime"),
+        to_time=data.get("search_to_datetime")
+    )
+    from_time = data.get("search_from_datetime")
+    to_time = data.get("search_to_datetime")
+    if from_time and to_time:
+        from_hhmm = from_time.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
+        to_hhmm = to_time.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
+        time_range = f" з {from_hhmm} до {to_hhmm}"
+    else:
+        time_range = ""
+    await message.answer(f"✅ Ми повідомимо вас, коли з'явиться нова поїздка {time_range}.")
+
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
 async def back_from_search_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -594,7 +603,7 @@ async def back_from_search_handler(message: types.Message, state: FSMContext):
         except:
             pass
     await state.clear()
-    await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
+    await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb(callback.from_user.id))
 
 @router.message(PassengerStates.browsing_trips)
 async def remove_buttons_on_message(message: types.Message, state: FSMContext):
@@ -614,7 +623,7 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
         "Повернення в меню пасажира:",
-        reply_markup=passenger_menu_kb
+        reply_markup=passenger_menu_kb(message.from_user.id)
     )
 
 @router.callback_query(lambda c: c.data == "next")
@@ -626,7 +635,7 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
 
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, почніть новий!", reply_markup=passenger_menu_kb)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, почніть новий!", reply_markup=passenger_menu_kb(callback.from_user.id))
         await safe_answer(callback)
         return
 
@@ -655,7 +664,7 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
 
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb(callback.from_user.id))
         await safe_answer(callback)
         return
 
@@ -683,7 +692,7 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     result = get_current_trip_from_search_list(callback.from_user.id)
     if result == "expired":
         await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb)
+        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb(callback.from_user.id))
         await safe_answer(callback)
         return
 
@@ -769,13 +778,13 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
         "overlap":    "❌ У вас вже є активне бронювання на цей час. Можете його скасувати і спробувати ще раз.",
     }
     if not success:
-        await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb)
+        await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb(message.from_user.id))
         await state.clear()
         return
     await state.clear()
     await message.answer(
         "⏳ Ми відправили запит водієві, очікуйте підтвердження.",
-        reply_markup=passenger_menu_kb
+        reply_markup=passenger_menu_kb(message.from_user.id)
     )
 
     driver_id = get_driver_id(trip_id)
@@ -797,7 +806,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
 async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.clear()
-    await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
+    await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb(callback.from_user.id))
     await safe_answer(callback)
 
 

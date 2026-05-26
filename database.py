@@ -299,8 +299,29 @@ for city_name, landmark in CITY_LANDMARKS:
 cursor.execute("DELETE FROM city_landmarks WHERE city_name = 'Полтава' AND landmark = 'Полтіхніка'")
 conn.commit()
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS search_subscriptions (
+        id SERIAL PRIMARY KEY,
+        passenger_id BIGINT NOT NULL,
+        from_city TEXT NOT NULL,
+        to_city TEXT NOT NULL,
+        search_for_day TEXT NOT NULL,
+        seats_requested INTEGER NOT NULL DEFAULT 1,
+        from_time TIMESTAMPTZ NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+        to_time TIMESTAMPTZ NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT CLOCK_TIMESTAMP(),
+        notified_at TIMESTAMPTZ,
+        UNIQUE (passenger_id, from_city, to_city, search_for_day)
+    )
+""")
+cursor.execute("ALTER TABLE search_subscriptions ADD COLUMN IF NOT EXISTS from_time TIMESTAMPTZ NOT NULL DEFAULT CLOCK_TIMESTAMP()")
+cursor.execute("ALTER TABLE search_subscriptions ADD COLUMN IF NOT EXISTS to_time TIMESTAMPTZ NOT NULL DEFAULT CLOCK_TIMESTAMP()")
+cursor.execute("ALTER TABLE search_subscriptions ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE")
+conn.commit()
+
 def save_trip_to_db(driver_id, data):
-    """Insert trip only if no active trip overlaps. Returns True on success, False on overlap."""
+    """Insert trip only if no active trip overlaps. Returns trip_id on success, None on overlap."""
     cursor.execute("BEGIN")
     cursor.execute("""
         WITH overlap AS (
@@ -330,7 +351,7 @@ def save_trip_to_db(driver_id, data):
     ))
     conn.commit()
     has_overlap, inserted_id = cursor.fetchone()
-    return not has_overlap
+    return inserted_id if not has_overlap else None
 
 def get_cities():
     cursor.execute("SELECT name FROM cities WHERE approved = TRUE ORDER BY name")
@@ -1095,6 +1116,38 @@ def upsert_user_details(user_id: int, user_name: str):
         ON CONFLICT (user_id, user_name) DO UPDATE SET updated_at = CLOCK_TIMESTAMP()
     """, (user_id, user_name))
     conn.commit()
+
+def get_active_subscriptions(passenger_id: int) -> list[tuple]:
+    cursor.execute("""
+        SELECT id, from_city, to_city, search_for_day, seats_requested, from_time, to_time
+        FROM search_subscriptions
+        WHERE passenger_id = %s AND to_time > CLOCK_TIMESTAMP() AND is_active = TRUE
+        ORDER BY from_time
+    """, (passenger_id,))
+    return cursor.fetchall()
+
+def deactivate_subscription(subscription_id: int, passenger_id: int):
+    cursor.execute("""
+        UPDATE search_subscriptions SET is_active = FALSE WHERE id = %s AND passenger_id = %s
+    """, (subscription_id, passenger_id))
+    conn.commit()
+
+def save_search_subscription(passenger_id: int, from_city: str, to_city: str, search_for_day: str, seats_requested: int = 1, from_time=None, to_time=None):
+    cursor.execute("""
+        INSERT INTO search_subscriptions (passenger_id, from_city, to_city, search_for_day, seats_requested, from_time, to_time)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (passenger_id, from_city, to_city, search_for_day)
+        DO UPDATE SET seats_requested = EXCLUDED.seats_requested, from_time = EXCLUDED.from_time,
+                      to_time = EXCLUDED.to_time, is_active = TRUE, created_at = CLOCK_TIMESTAMP(), notified_at = NULL
+    """, (passenger_id, from_city, to_city, search_for_day, seats_requested, from_time, to_time))
+    conn.commit()
+
+def get_pending_subscriptions(from_city: str, to_city: str, dep_datetime) -> list[tuple]:
+    cursor.execute("""
+        SELECT passenger_id, seats_requested FROM search_subscriptions
+        WHERE from_city = %s AND to_city = %s AND %s BETWEEN from_time AND to_time AND is_active = TRUE
+    """, (from_city, to_city, dep_datetime))
+    return cursor.fetchall()
 
 def save_feedback(user_id: int, mode: str, feedback_text: str = None, file_id: str = None) -> int:
     cursor.execute("""
