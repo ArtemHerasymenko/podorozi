@@ -48,6 +48,7 @@ passenger_menu_kb = ReplyKeyboardMarkup(
 after_search_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🔄 Розвернути пошук")],
+        [KeyboardButton(text="🕐 Змінити час")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
     resize_keyboard=True
@@ -568,6 +569,16 @@ async def switch_cities_handler(message: types.Message, state: FSMContext):
     time_str = data.get("last_time_str", "Показати всі поїздки")
     await state.update_data(booking_from_city=to_city, booking_to_city=from_city)
     await _run_search(message, state, time_str)
+
+@router.message(PassengerStates.browsing_trips, lambda m: m.text == "🕐 Змінити час")
+async def change_time_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    recent_times = get_recent_search_times(message.from_user.id, data["booking_from_city"], data["booking_to_city"], data["day"])
+    await state.set_state(PassengerStates.search_from_datetime)
+    await message.answer(
+        "Введіть бажаний час виїзду у форматі ГГ:ХХ або оберіть один із варіантів:",
+        reply_markup=quick_time_kb(data["day"], recent_times)
+    )
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
 async def back_from_search_handler(message: types.Message, state: FSMContext):
