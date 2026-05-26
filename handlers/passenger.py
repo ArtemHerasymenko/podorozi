@@ -587,7 +587,7 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
         time_range = f" з {from_hhmm} до {to_hhmm}"
     else:
         time_range = ""
-    await message.answer(f"✅ Ми повідомимо вас, коли з'явиться нова поїздка {time_range}.")
+    await message.answer(f"✅ Ми повідомимо вас, коли з'явиться нова поїздка \n{data['booking_from_city']} → {data['booking_to_city']}\n{time_range}")
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
 async def back_from_search_handler(message: types.Message, state: FSMContext):
