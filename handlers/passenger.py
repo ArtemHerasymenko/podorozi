@@ -45,6 +45,14 @@ passenger_menu_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+after_search_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🔄 Розвернути пошук")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ],
+    resize_keyboard=True
+)
+
 @router.message(lambda m: m.text == "👤 Я пасажир")
 async def passenger_menu(message: types.Message):
     await message.answer(
@@ -473,7 +481,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
             utc_from = max(utc_from, kyiv_next_day.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc))
             utc_to = min(utc_to, kyiv_next_day.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc))
 
-    await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to)
+    await state.update_data(search_from_datetime=utc_from, search_to_datetime=utc_to, last_time_str=time_str)
 
     data = await state.get_data()
     seats = data.get("seats_requested", 1)
@@ -511,16 +519,16 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
 
     if not trips_ids:
         if total == 0:
-            await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=passenger_menu_kb)
+            await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=after_search_kb)
         else:
-            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=passenger_menu_kb)
-        await state.clear()
+            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb)
+        await state.set_state(PassengerStates.browsing_trips)
         return
 
     if total == len(trips_ids):
-        await message.answer(f"Знайдено {total} {trip_word(total)}.")
+        await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb)
     else:
-        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}")
+        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb)
     create_trip_search_list(message.from_user.id, trips_ids)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
@@ -551,6 +559,31 @@ async def search(message: types.Message, state: FSMContext):
             return
         time_str = result
     await _run_search(message, state, time_str)
+
+@router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔄 Розвернути пошук")
+async def switch_cities_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    from_city = data.get("booking_from_city")
+    to_city = data.get("booking_to_city")
+    time_str = data.get("last_time_str", "Показати всі поїздки")
+    await state.update_data(booking_from_city=to_city, booking_to_city=from_city)
+    await _run_search(message, state, time_str)
+
+@router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
+async def back_from_search_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trip_message_id = data.get("trip_message_id")
+    if trip_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(
+                chat_id=message.chat.id,
+                message_id=trip_message_id,
+                reply_markup=None
+            )
+        except:
+            pass
+    await state.clear()
+    await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb)
 
 @router.message(PassengerStates.browsing_trips)
 async def remove_buttons_on_message(message: types.Message, state: FSMContext):
