@@ -47,7 +47,7 @@ passenger_menu_kb = ReplyKeyboardMarkup(
 
 after_search_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🔄 Розвернути пошук")],
+        [KeyboardButton(text="🔄 Зворотній маршрут")],
         [KeyboardButton(text="🕐 Змінити час")],
         [KeyboardButton(text="⬅️ Назад")]
     ],
@@ -561,7 +561,7 @@ async def search(message: types.Message, state: FSMContext):
         time_str = result
     await _run_search(message, state, time_str)
 
-@router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔄 Розвернути пошук")
+@router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔄 Зворотній маршрут")
 async def switch_cities_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
     from_city = data.get("booking_from_city")
