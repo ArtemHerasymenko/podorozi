@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
 from database import save_feedback, save_trip_to_db, save_trip_template, upsert_template_time, get_recent_template_times, get_recent_times_by_cities, get_pending_subscriptions
 from config import ADMIN_CHAT_ID
-from data.route_intermediates import get_intermediates
+from data.route_intermediates import get_intermediates, get_covered_pairs
 from database import get_city_modified_name_2
 import datetime
 import zoneinfo
@@ -147,7 +147,8 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         dep_datetime = data["datetime"]
         from_city = data.get("from_city", "")
         to_city = data.get("to_city", "")
-        waiting = get_pending_subscriptions(from_city, to_city, dep_datetime)
+        covered = get_covered_pairs(from_city, to_city)
+        waiting = get_pending_subscriptions(covered, dep_datetime)
         if waiting:
             passenger_ids = [row[0] for row in waiting]
             try:

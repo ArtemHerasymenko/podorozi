@@ -1142,11 +1142,16 @@ def save_search_subscription(passenger_id: int, from_city: str, to_city: str, se
     """, (passenger_id, from_city, to_city, search_for_day, seats_requested, from_time, to_time))
     conn.commit()
 
-def get_pending_subscriptions(from_city: str, to_city: str, dep_datetime) -> list[tuple]:
-    cursor.execute("""
-        SELECT passenger_id, seats_requested FROM search_subscriptions
-        WHERE from_city = %s AND to_city = %s AND %s BETWEEN from_time AND to_time AND is_active = TRUE
-    """, (from_city, to_city, dep_datetime))
+def get_pending_subscriptions(pairs: list[tuple[str, str]], dep_datetime) -> list[tuple]:
+    if not pairs:
+        return []
+    placeholders = ",".join(["(%s,%s)"] * len(pairs))
+    params = [x for pair in pairs for x in pair] + [dep_datetime]
+    cursor.execute(f"""
+        SELECT DISTINCT passenger_id, seats_requested FROM search_subscriptions
+        WHERE (from_city, to_city) IN ({placeholders})
+        AND %s BETWEEN from_time AND to_time AND is_active = TRUE
+    """, params)
     return cursor.fetchall()
 
 def save_feedback(user_id: int, mode: str, feedback_text: str = None, file_id: str = None) -> int:
