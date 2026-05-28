@@ -903,6 +903,19 @@ def search_trips_ids(from_city, to_city, time_from, time_to, extra_from_cities: 
     """, (all_from_cities, all_to_cities, time_from, time_to))
     return cursor.fetchall()
 
+def get_trip_for_display(trip_id: int):
+    cursor.execute("""
+        SELECT t.id, t.driver_id, t.driver_phone, t.from_city, t.from_points, t.to_city, t.to_points, t.departure_datetime, t.price, t.seats,
+               t.seats::int - (
+                   SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
+                   WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
+               ) AS free_seats,
+               t.arrival_time, t.car_description
+        FROM trips t
+        WHERE t.id = %s
+    """, (trip_id,))
+    return cursor.fetchone()
+
 def search_trips_with_details(from_city, to_city, time_from, time_to, extra_from_cities: list = None, extra_to_cities: list = None):
     all_from_cities = [from_city] + (extra_from_cities or [])
     all_to_cities = [to_city] + (extra_to_cities or [])

@@ -302,8 +302,8 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
     rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index):
-    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index)
+async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True):
+    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index) if show_keyboard else None
     return await safe_send(send_fn, text, kb)
 
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:

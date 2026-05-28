@@ -7,6 +7,7 @@ class PassengerStates(StatesGroup):
     search_from_datetime = State()
     seats_requested = State()
     browsing_trips = State()
+    browsing_trip_list = State()
     booking_notes = State()
     booking_phone = State()
     viewing_bookings = State()
