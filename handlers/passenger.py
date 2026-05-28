@@ -535,8 +535,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
 
 @router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
-    if not message.text:
-        await message.answer("Будь ласка, введіть час текстом, наприклад 14:30:")
+    if not message.text or message.text == "...":
         return
     time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
     if time_str != "Показати всі поїздки":
