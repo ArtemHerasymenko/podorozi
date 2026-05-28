@@ -69,25 +69,7 @@ async def search_and_display(
     else:
         await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {found}.", reply_markup=in_search_result_kb)
 
-    # --- 2-button layout (commented out) ---
-    # trip_buttons = []
-    # for trip in trips:
-    #     trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
-    #     try:
-    #         chat = await bot.get_chat(driver_id)
-    #         first_name = chat.first_name or chat.full_name.split()[0]
-    #     except Exception:
-    #         first_name = "Водій"
-    #     dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
-    #     destination = to_points or ""
-    #     price_padded = str(price).ljust(4)
-    #     trip_buttons.append([
-    #         KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн\n👤{first_name}"),
-    #         KeyboardButton(text=f"📍 {destination}"),
-    #     ])
-
-    # 1-button layout: collect data first to pad each field to max width
-    trip_data = []
+    trip_buttons = []
     for trip in trips:
         trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
         try:
@@ -97,17 +79,11 @@ async def search_and_display(
             first_name = "Водій"
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        trip_data.append((trip_id, dep_time, str(price), first_name, destination))
-
-    max_price_len = max(len(d[2]) for d in trip_data)
-    max_name_len = max(len(d[3]) for d in trip_data)
-    trip_buttons = [
-        [KeyboardButton(text=(
-            f"🕐 {dep_time}  💰{price.ljust(max_price_len)}грн. 👤{first_name.ljust(max_name_len)}\n"
-            f"📍 {destination}"
-        ))]
-        for _, dep_time, price, first_name, destination in trip_data
-    ]
+        price_padded = str(price).ljust(4)
+        trip_buttons.append([
+            KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн\n👤{first_name}"),
+            KeyboardButton(text=f"📍 {destination}"),
+        ])
 
     kb = ReplyKeyboardMarkup(
         keyboard=trip_buttons + [
