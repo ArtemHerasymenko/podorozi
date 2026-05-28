@@ -79,12 +79,11 @@ async def search_and_display(
         trip_id, _, _, to_points, dep_dt, price, _ = trip
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        price_padded = str(price).ljust(4)
         num = str(i + 1).rjust(len(str(len(trips))))
-        left = f"{num}. 🕐 {dep_time}  💰{price_padded}"
+        left = f"{num}. 🕐 {dep_time}  💰{price}грн"
         right = f"{num}. 📍 {destination}"
-        trip_text_map[left] = trip_id
-        trip_text_map[right] = trip_id
+        trip_text_map[left.strip()] = trip_id
+        trip_text_map[right.strip()] = trip_id
         trip_buttons.append([KeyboardButton(text=left), KeyboardButton(text=right)])
 
     if state:
@@ -104,7 +103,7 @@ async def search_and_display(
 async def view_trip_from_search(message: types.Message, state: FSMContext):
     data = await state.get_data()
     trip_text_map = data.get("trip_text_map", {})
-    trip_id = trip_text_map.get(message.text)
+    trip_id = trip_text_map.get(message.text.strip())
     if not trip_id:
         return
     trip = get_trip_for_display(trip_id)
