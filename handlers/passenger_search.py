@@ -5,7 +5,7 @@ from aiogram import types, Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from zoneinfo import ZoneInfo
 
-from database import search_trips_with_details, save_recent_search
+from database import search_trips_with_details, save_recent_search, get_city_modified_name_2
 from data.route_intermediates import get_search_city_pairs
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from handlers.common import trip_word, searching_kb, seats_word
@@ -82,7 +82,7 @@ async def search_and_display(
 
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        label = f"{dep_time}  {trip_from_city}  {price}грн  {destination}  {first_name}"
+        label = f"🕐{dep_time}  з 📍{get_city_modified_name_2(trip_from_city)}  💰{price}грн \n🏁{destination}  👤{first_name}"
         buttons.append([InlineKeyboardButton(text=label, callback_data=f"view_trip:{trip_id}")])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
