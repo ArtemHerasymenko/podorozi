@@ -442,10 +442,10 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
 
-    if _is_admin(message.from_user.id):
-        await search_and_display(message, data["booking_from_city"], data["booking_to_city"], data.get("day"), data.get("seats_requested", 1), state=state)
-        await state.set_state(PassengerStates.browsing_trip_list)
-        return
+    # if _is_admin(message.from_user.id):
+    #     await search_and_display(message, data["booking_from_city"], data["booking_to_city"], data.get("day"), data.get("seats_requested", 1), state=state)
+    #     await state.set_state(PassengerStates.browsing_trip_list)
+    #     return
 
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
