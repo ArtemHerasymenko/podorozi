@@ -82,8 +82,8 @@ async def search_and_display(
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
         text = (
-            f"🕐 {dep_time} з 📍 {get_city_modified_name_2(trip_from_city)} 💰 {price} грн"
-            f"🏁 {destination} - 👤 {first_name}"
+            f"🕐 {dep_time}  •  📍 {get_city_modified_name_2(trip_from_city)} → 🏁 {destination}\n"
+            f"💰 {price} грн  •  👤 {first_name}"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Детальніше →", callback_data=f"view_trip:{trip_id}")]
