@@ -101,6 +101,17 @@ def seats_word(n) -> str:
         return "місця"
     return "місць"
 
+def trip_word(n) -> str:
+    n = abs(int(n))
+    last2, last1 = n % 100, n % 10
+    if 11 <= last2 <= 14:
+        return "поїздок"
+    if last1 == 1:
+        return "поїздку"
+    if 2 <= last1 <= 4:
+        return "поїздки"
+    return "поїздок"
+
 def validate_city_name(city: str):
     import re
     if not city or not re.match(r"^[a-zA-Zа-яА-ЯіІїЇєЄ'\s-]+$", city):

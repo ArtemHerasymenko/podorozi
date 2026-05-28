@@ -7,6 +7,7 @@ from states.passenger_states import PassengerStates
 from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index
 from database import increment_city_popularity, add_city_if_missing
+from handlers.passenger_search import search_and_display
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.exceptions import TelegramBadRequest
 from keyboards.city_kb import cities_keyboard
@@ -440,6 +441,12 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
 async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
+
+    if _is_admin(message.from_user.id):
+        await search_and_display(message, message.bot, data["booking_from_city"], data["booking_to_city"], data.get("day"), data.get("seats_requested", 1))
+        await state.set_state(PassengerStates.browsing_trips)
+        return
+
     selected_day = data.get("day")
     is_today = selected_day == now_kyiv.strftime("%Y-%m-%d")
     kyiv_end_of_day = now_kyiv.replace(hour=23, minute=59, second=59, microsecond=0)

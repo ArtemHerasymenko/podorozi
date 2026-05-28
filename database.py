@@ -903,6 +903,25 @@ def search_trips_ids(from_city, to_city, time_from, time_to, extra_from_cities: 
     """, (all_from_cities, all_to_cities, time_from, time_to))
     return cursor.fetchall()
 
+def search_trips_with_details(from_city, to_city, time_from, time_to, extra_from_cities: list = None, extra_to_cities: list = None):
+    all_from_cities = [from_city] + (extra_from_cities or [])
+    all_to_cities = [to_city] + (extra_to_cities or [])
+    cursor.execute("""
+        SELECT t.id, t.driver_id, t.from_city, t.to_points, t.departure_datetime, t.price,
+               t.seats::int - COALESCE((
+                   SELECT SUM(b.seats) FROM bookings b
+                   WHERE b.trip_id = t.id AND b.status IN ('pending', 'confirmed')
+               ), 0) AS free_seats
+        FROM trips t
+        WHERE t.from_city = ANY(%s) AND t.to_city = ANY(%s)
+          AND t.status = 'active'
+          AND t.departure_datetime > CLOCK_TIMESTAMP()
+          AND t.departure_datetime >= %s
+          AND t.departure_datetime <= %s
+        ORDER BY t.departure_datetime, t.id
+    """, (all_from_cities, all_to_cities, time_from, time_to))
+    return cursor.fetchall()
+
 def create_trip_search_list(user_id: int, trips: list[int]):
     cursor.execute("""
         INSERT INTO trip_search_lists (user_id, trip_ids, current_index, created_at)
