@@ -17,7 +17,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message
 from data.route_intermediates import get_search_city_pairs
 from config import ADMIN_CHAT_ID
 
@@ -66,7 +66,7 @@ async def passenger_menu(message: types.Message):
 async def my_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(PassengerStates.viewing_bookings)
-    await asyncio.sleep(3)
+    # await asyncio.sleep(3)
     trips = get_passenger_bookings(message.from_user.id)
     if not trips:
         await message.answer("У вас ще немає заброньованих поїздок.")
@@ -112,7 +112,7 @@ async def my_trips(message: types.Message, state: FSMContext):
 async def my_past_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(PassengerStates.viewing_bookings)
-    await asyncio.sleep(3)
+    # await asyncio.sleep(3)
     booking = get_latest_passenger_past_booking(message.from_user.id)
     if not booking:
         await message.answer("У вас ще немає завершених поїздок.")
@@ -479,7 +479,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
         f"{data['booking_from_city']} → {data['booking_to_city']}\n"
         f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}\n"
         f"{seats} {seats_word(seats)}",
-        reply_markup=back_only_kb
+        reply_markup=searching_kb
     )
     await asyncio.sleep(3)
 

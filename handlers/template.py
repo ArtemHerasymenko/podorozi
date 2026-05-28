@@ -36,6 +36,7 @@ def _template_kb(index, total, t_id):
 
 @router.message(DriverStates.choosing_creation_method, lambda m: m.text == "📋 Використати шаблон")
 async def trip_use_template(message: types.Message, state: FSMContext):
+    await message.answer("Шукаємо...", reply_markup=back_only_kb)
     templates = get_driver_templates(message.from_user.id)
     if not templates:
         await message.answer("Шаблонів ще немає. Створіть поїздку і шаблон збережеться тут автоматично.", reply_markup=create_trip_kb)
@@ -43,8 +44,6 @@ async def trip_use_template(message: types.Message, state: FSMContext):
     await state.update_data(tpl_index=0)
     await state.set_state(DriverStates.choosing_template)
     t = templates[0]
-    await message.answer("Шукаємо шаблони...", reply_markup=back_only_kb)
-    await asyncio.sleep(2)
     tpl_msg = await message.answer(
         _template_text(t, 0, len(templates)),
         reply_markup=_template_kb(0, len(templates), t[0]),

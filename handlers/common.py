@@ -79,6 +79,11 @@ back_only_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+searching_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="...")]],
+    resize_keyboard=True
+)
+
 def quick_day_kb():
     quick_days = generate_quick_days()
     keyboard = [[KeyboardButton(text=label)] for label, _ in quick_days]

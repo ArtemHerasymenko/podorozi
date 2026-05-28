@@ -362,7 +362,7 @@ async def driver_phone(message: types.Message, state: FSMContext):
 async def my_driver_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(DriverStates.viewing_trips)
-    await asyncio.sleep(1)
+    # await asyncio.sleep(1)
     trips = get_driver_trips(message.from_user.id)
     if not trips:
         await message.answer("У вас ще немає запланованих поїздок.")
@@ -439,7 +439,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
 async def my_past_driver_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(DriverStates.viewing_trips)
-    await asyncio.sleep(3)
+    # await asyncio.sleep(3)
     trip = get_latest_driver_past_trip(message.from_user.id)
     if not trip:
         await message.answer("У вас ще немає минулих поїздок.")
