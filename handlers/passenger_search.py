@@ -81,7 +81,7 @@ async def search_and_display(
 
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        label = f"🕐{dep_time}  •  💰{price}грн  •  👤{first_name}\n➡️ {destination}"
+        label = f"🕐{dep_time}  •  💰{price}грн  •  👤{first_name}\n📍 {destination}"
         trip_buttons.append([KeyboardButton(text=label)])
 
     kb = ReplyKeyboardMarkup(
