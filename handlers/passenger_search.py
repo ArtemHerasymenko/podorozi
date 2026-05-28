@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from database import search_trips_with_details, save_recent_search, get_city_modified_name_2
 from data.route_intermediates import get_search_city_pairs
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from handlers.common import trip_word, searching_kb, seats_word
 
 _KYIV = ZoneInfo("Europe/Kyiv")
@@ -69,7 +69,7 @@ async def search_and_display(
     else:
         await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {found}.", reply_markup=in_search_result_kb)
 
-    last = None
+    trip_buttons = []
     for trip in trips:
         trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
 
@@ -81,13 +81,14 @@ async def search_and_display(
 
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        text = (
-            f"🕐 {dep_time}  •  📍 {get_city_modified_name_2(trip_from_city)} → 🏁 {destination}\n"
-            f"💰 {price} грн  •  👤 {first_name}"
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Детальніше →", callback_data=f"view_trip:{trip_id}")]
-        ])
-        last = await message.answer(text, reply_markup=kb)
+        label = f"🕐 {dep_time}  •  📍 {get_city_modified_name_2(trip_from_city)} → 🏁 {destination}  •  💰{price}грн  👤{first_name}"
+        trip_buttons.append([KeyboardButton(text=label)])
 
-    return last
+    kb = ReplyKeyboardMarkup(
+        keyboard=trip_buttons + [
+            [KeyboardButton(text="🔔 Сповістити про нові поїздки")],
+            [KeyboardButton(text="⬅️ Назад")],
+        ],
+        resize_keyboard=True,
+    )
+    return await message.answer("Оберіть поїздку:", reply_markup=kb)
