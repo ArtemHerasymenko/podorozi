@@ -69,23 +69,42 @@ async def search_and_display(
     else:
         await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {found}.", reply_markup=in_search_result_kb)
 
-    trip_buttons = []
+    # --- 2-button layout (commented out) ---
+    # trip_buttons = []
+    # for trip in trips:
+    #     trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
+    #     try:
+    #         chat = await bot.get_chat(driver_id)
+    #         first_name = chat.first_name or chat.full_name.split()[0]
+    #     except Exception:
+    #         first_name = "Водій"
+    #     dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
+    #     destination = to_points or ""
+    #     price_padded = str(price).ljust(4)
+    #     trip_buttons.append([
+    #         KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн\n👤{first_name}"),
+    #         KeyboardButton(text=f"📍 {destination}"),
+    #     ])
+
+    # 1-button layout: collect data first to align first line lengths
+    trip_data = []
     for trip in trips:
         trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
-
         try:
             chat = await bot.get_chat(driver_id)
             first_name = chat.first_name or chat.full_name.split()[0]
         except Exception:
             first_name = "Водій"
-
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        price_padded = str(price).ljust(4)
-        trip_buttons.append([
-            KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн\n👤{first_name}"),
-            KeyboardButton(text=f"📍 {destination}"),
-        ])
+        first_line = f"🕐 {dep_time}  💰{price}грн  👤{first_name}"
+        trip_data.append((trip_id, first_line, destination))
+
+    max_len = max(len(d[1]) for d in trip_data)
+    trip_buttons = [
+        [KeyboardButton(text=f"{first_line.ljust(max_len)}\n📍 {destination}")]
+        for _, first_line, destination in trip_data
+    ]
 
     kb = ReplyKeyboardMarkup(
         keyboard=trip_buttons + [
