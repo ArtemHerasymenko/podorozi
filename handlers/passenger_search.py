@@ -81,8 +81,9 @@ async def search_and_display(
 
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
+        price_padded = str(price).ljust(4)
         trip_buttons.append([
-            KeyboardButton(text=f"🕐 {dep_time}  💰{price}грн  👤{first_name}"),
+            KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн"),
             KeyboardButton(text=f"📍 {destination}"),
         ])
 
