@@ -81,7 +81,7 @@ async def search_and_display(
         destination = to_points or ""
         price_padded = str(price).ljust(4)
         num = str(i + 1).rjust(len(str(len(trips))))
-        left = f"{num}. 🕐 {dep_time}  💰{price_padded}грн"
+        left = f"{num}. 🕐 {dep_time}  💰{price_padded}"
         right = f"{num}. 📍 {destination}"
         trip_text_map[left] = trip_id
         trip_text_map[right] = trip_id
@@ -121,13 +121,7 @@ async def view_trip_from_search(message: types.Message, state: FSMContext):
     prev_msg_id = data.get("trip_detail_message_id")
     if prev_msg_id:
         try:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id,
-                message_id=prev_msg_id,
-                text=trip_text,
-                parse_mode="HTML",
-            )
-            return
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=prev_msg_id)
         except Exception:
             pass
     sent = await send_trip_message(message.answer, trip_text, trip[0], 1, trip[1], driver_chat.username if driver_chat else None, 0, show_keyboard=False)
