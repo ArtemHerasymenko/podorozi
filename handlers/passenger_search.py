@@ -81,7 +81,7 @@ async def search_and_display(
         destination = to_points or ""
         price_padded = str(price).ljust(4)
         trip_buttons.append([
-            KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн\n👤{first_name}"),
+            KeyboardButton(text=f"🕐 {dep_time}  💰{price_padded}грн"),
             KeyboardButton(text=f"📍 {destination}"),
         ])
 
