@@ -80,7 +80,7 @@ async def search_and_display(
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
         num = str(i + 1).rjust(len(str(len(trips))))
-        left = f"{num}. 🕐 {dep_time}  💰{price}грн"
+        left = f"{num}. 🕐 {dep_time}  💰{price}"
         right = f"{num}. 📍 {destination}"
         trip_text_map[left.strip()] = trip_id
         trip_text_map[right.strip()] = trip_id
