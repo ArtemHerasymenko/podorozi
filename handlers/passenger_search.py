@@ -86,7 +86,7 @@ async def search_and_display(
     #         KeyboardButton(text=f"📍 {destination}"),
     #     ])
 
-    # 1-button layout: collect data first to align first line lengths
+    # 1-button layout: collect data first to pad each field to max width
     trip_data = []
     for trip in trips:
         trip_id, driver_id, trip_from_city, to_points, dep_dt, price, _ = trip
@@ -97,13 +97,16 @@ async def search_and_display(
             first_name = "Водій"
         dep_time = dep_dt.astimezone(_KYIV).strftime("%H:%M")
         destination = to_points or ""
-        first_line = f"🕐 {dep_time}  💰{price}грн  👤{first_name}"
-        trip_data.append((trip_id, first_line, destination))
+        trip_data.append((trip_id, dep_time, str(price), first_name, destination))
 
-    max_len = max(len(d[1]) for d in trip_data)
+    max_price_len = max(len(d[2]) for d in trip_data)
+    max_name_len = max(len(d[3]) for d in trip_data)
     trip_buttons = [
-        [KeyboardButton(text=f"{first_line.ljust(max_len)}\n📍 {destination}")]
-        for _, first_line, destination in trip_data
+        [KeyboardButton(text=(
+            f"🕐 {dep_time}  💰{price.ljust(max_price_len)}грн. 👤{first_name.ljust(max_name_len)}\n"
+            f"📍 {destination}"
+        ))]
+        for _, dep_time, price, first_name, destination in trip_data
     ]
 
     kb = ReplyKeyboardMarkup(
