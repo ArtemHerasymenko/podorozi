@@ -576,6 +576,12 @@ async def change_time_handler(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔔 Сповістити про нові поїздки")
 async def notify_new_driver_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
+    trip_message_id = data.get("trip_message_id")
+    if trip_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
+        except:
+            pass
     seats = data.get("seats_requested", 1)
     save_search_subscription(
         message.from_user.id,
@@ -610,7 +616,7 @@ async def back_from_search_handler(message: types.Message, state: FSMContext):
         except:
             pass
     await state.clear()
-    await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb(callback.from_user.id))
+    await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
 @router.message(PassengerStates.browsing_trips)
 async def remove_buttons_on_message(message: types.Message, state: FSMContext):
