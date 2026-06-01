@@ -208,6 +208,13 @@ async def passenger_history_nav(callback: types.CallbackQuery, bot: Bot):
 
 @router.message(StateFilter(PassengerStates), lambda m: m.text == "⬅️ Назад")
 async def passenger_flow_back(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trip_message_id = data.get("trip_message_id")
+    if trip_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
+        except:
+            pass
     await state.clear()
     await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
