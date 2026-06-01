@@ -699,6 +699,11 @@ async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
     target_index = int(callback.data.split(":")[1])
 
+    _, current_index = get_search_list_times(user_id)
+    if target_index == current_index:
+        await safe_answer(callback)
+        return
+
     set_trip_search_list_index(user_id, target_index)
     result = get_current_trip_from_search_list(user_id)
 
