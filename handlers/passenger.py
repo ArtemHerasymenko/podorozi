@@ -601,10 +601,7 @@ def _subscription_inline_kb(selected=None):
         [InlineKeyboardButton(text=label(t), callback_data=f"sub_time:{t}") for t in SUBSCRIPTION_TIMES[i:i + 4]]
         for i in range(0, len(SUBSCRIPTION_TIMES), 4)
     ]
-    rows.append([
-        InlineKeyboardButton(text="⬅️ Назад", callback_data="sub_back"),
-        InlineKeyboardButton(text="✅ Готово", callback_data="sub_done"),
-    ])
+    rows.append([InlineKeyboardButton(text="✅ Готово", callback_data="sub_done")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔔 Сповістити про нові поїздки")
@@ -618,8 +615,12 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
             pass
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
-    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки:", reply_markup=back_only_kb)
+    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки.", reply_markup=back_only_kb)
     await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
+
+@router.message(PassengerStates.subscription_from_to_time, lambda m: m.text != "⬅️ Назад")
+async def subscription_text_ignored(message: types.Message):
+    await message.answer("Оберіть час, натиснувши кнопку вище.")
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
 async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -685,12 +686,6 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     )
     await callback.answer()
 
-@router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data == "sub_back")
-async def subscription_back_handler(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await state.set_state(PassengerStates.browsing_trips)
-    await callback.message.answer("Пошук поїздок:", reply_markup=after_search_kb(callback.from_user.id))
-    await callback.answer()
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
 async def back_from_search_handler(message: types.Message, state: FSMContext):
