@@ -310,7 +310,7 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             next_btn = InlineKeyboardButton(text=f"{all_times[end]}...{all_times[-1]}", callback_data=f"trip_idx:{end}") if end < n else None
             time_btns = [
                 InlineKeyboardButton(
-                    text=f"🔵 {t}" if i == index else t,
+                    text=f"👉 {t}" if i == index else t,
                     callback_data=f"trip_idx:{i}"
                 )
                 for i, t in list(enumerate(all_times))[start:end]
@@ -330,8 +330,12 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
                     rows[-2].insert(0, rows[-3].pop())
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
-        rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
-    rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
+        rows.append([
+            InlineKeyboardButton(text="✉️ Написати водію", url=driver_url),
+            InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}"),
+        ])
+    else:
+        rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True, all_times=None):
