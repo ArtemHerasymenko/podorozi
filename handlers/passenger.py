@@ -225,7 +225,7 @@ def _format_day(date_str: str) -> str:
 def _recent_search_label(from_city, to_city, search_for_day, time_str, seats_requested) -> str:
     display_time = "показати всі" if time_str == "show_all" else time_str
     seats_label = f", {seats_requested} {seats_word(seats_requested)}" if seats_requested >= 1 else ""
-    return f"🔁 {from_city} → {to_city}\n{_format_day(search_for_day)}, {display_time}{seats_label}"
+    return f"🔁 {from_city} → {to_city}\n{_format_day(search_for_day)}{seats_label}"
 
 @router.message(lambda m: m.text == "🔎 Знайти поїздку")
 async def find_trip(message: types.Message, state: FSMContext):
@@ -241,8 +241,8 @@ async def find_trip(message: types.Message, state: FSMContext):
             return False
         return True
     all_recent = get_recent_searches(message.from_user.id)
-    recent = sorted([r for r in all_recent if _not_expired(r)][:2], key=lambda r: (r[2], r[3]))
-    unique_routes = list(dict.fromkeys((r[0], r[1]) for r in all_recent))[:2]
+    recent = sorted([r for r in all_recent if _not_expired(r)][:1], key=lambda r: (r[2], r[3]))
+    # unique_routes = list(dict.fromkeys((r[0], r[1]) for r in all_recent))[:2]
 
     data = await state.get_data()
     trip_message_id = data.get("trip_message_id")
@@ -268,17 +268,17 @@ async def find_trip(message: types.Message, state: FSMContext):
             "Хочете повторити пошук чи почати новий?",
             reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
         )
-    elif unique_routes:
-        buttons = []
-        for from_city, to_city in unique_routes:
-            buttons.append([KeyboardButton(text=f"🔄 {from_city} → {to_city}")])
-        buttons.append([KeyboardButton(text="🔍 Новий пошук")])
-        buttons.append([KeyboardButton(text="⬅️ Назад")])
-        await state.set_state(PassengerStates.quick_partial_search_or_new)
-        await message.answer(
-            "Хочете повторити пошук чи почати новий?",
-            reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-        )
+    # elif unique_routes:
+    #     buttons = []
+    #     for from_city, to_city in unique_routes:
+    #         buttons.append([KeyboardButton(text=f"🔄 {from_city} → {to_city}")])
+    #     buttons.append([KeyboardButton(text="🔍 Новий пошук")])
+    #     buttons.append([KeyboardButton(text="⬅️ Назад")])
+    #     await state.set_state(PassengerStates.quick_partial_search_or_new)
+    #     await message.answer(
+    #         "Хочете повторити пошук чи почати новий?",
+    #         reply_markup=ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    #     )
     else:
         await state.set_state(PassengerStates.from_city)
         await message.answer(
