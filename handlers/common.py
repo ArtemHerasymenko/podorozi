@@ -301,15 +301,19 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             page = index // page_size
             start = page * page_size
             end = min(start + page_size, n)
-            buttons = [
+            buttons = []
+            if start > 0:
+                buttons.append(InlineKeyboardButton(text=f"{all_times[0]}...{all_times[start - 1]}", callback_data=f"trip_idx:{start - 1}"))
+            buttons += [
                 InlineKeyboardButton(
                     text=f"🔵 {t}" if i == index else t,
                     callback_data=f"trip_idx:{i}"
                 )
                 for i, t in list(enumerate(all_times))[start:end]
             ]
-            if start > 0:
-                rows.append([InlineKeyboardButton(text=f"◀ {all_times[0]}...{all_times[start - 1]}", callback_data=f"trip_idx:{start - 1}")])
+            if end < n:
+                next_text = f"{all_times[end]}" if end == n - 1 else f"{all_times[end]}...{all_times[-1]}"
+                buttons.append(InlineKeyboardButton(text=next_text, callback_data=f"trip_idx:{end}"))
             n_btn = len(buttons)
             num_rows = math.ceil(n_btn / 4)
             base, extra = divmod(n_btn, num_rows)
@@ -318,9 +322,6 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
                 size = base + (1 if r < extra else 0)
                 rows.append(buttons[pos:pos + size])
                 pos += size
-            if end < n:
-                next_text = f"{all_times[end]} ▶" if end == n - 1 else f"{all_times[end]}...{all_times[-1]} ▶"
-                rows.append([InlineKeyboardButton(text=next_text, callback_data=f"trip_idx:{end}")])
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
