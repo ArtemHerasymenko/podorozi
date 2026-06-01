@@ -127,7 +127,7 @@ async def my_past_trips(message: types.Message, state: FSMContext):
 async def my_subscriptions(message: types.Message):
     subs = get_active_subscriptions(message.from_user.id)
     if not subs:
-        await message.answer("У вас немає активних підписок.", reply_markup=passenger_menu_kb(message.from_user.id))
+        await message.answer("У вас немає активних сповіщень. Почніть пошук і зможете створити сповіщення.", reply_markup=passenger_menu_kb(message.from_user.id))
         return
     kyiv = ZoneInfo("Europe/Kyiv")
     for sub_id, from_city, to_city, search_for_day, seats, from_time, to_time in subs:
