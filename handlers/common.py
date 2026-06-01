@@ -283,8 +283,9 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         f"💰 {trip[8]} грн за місце\n"
         f"{driver_line}\n"
         f"{car_line}\n"
-        f"{phone_line}\n"
-        f"👥 Вільних місць: {trip[10]}/{trip[9]}")
+        # f"{phone_line}\n"
+        # f"👥 Вільних місць: {trip[10]}/{trip[9]}"
+        )
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None):
     import math
