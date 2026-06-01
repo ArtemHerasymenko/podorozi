@@ -618,7 +618,8 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
             pass
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
-    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки:", reply_markup=_subscription_inline_kb())
+    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки:", reply_markup=back_only_kb)
+    await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
 async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -670,7 +671,10 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         from_time=from_utc,
         to_time=to_utc,
     )
-    await callback.message.edit_reply_markup(reply_markup=None)
+    try:
+        await callback.message.delete()
+    except TelegramBadRequest:
+        pass
     await state.clear()
     await callback.message.answer(
         f"✅ Ми повідомимо вас, коли з'явиться нова поїздка\n"
