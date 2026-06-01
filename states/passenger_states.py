@@ -13,3 +13,4 @@ class PassengerStates(StatesGroup):
     viewing_bookings = State()
     quick_search_or_new = State()
     quick_partial_search_or_new = State()
+    subscription_from_to_time = State()

@@ -576,6 +576,28 @@ async def change_time_handler(message: types.Message, state: FSMContext):
         reply_markup=quick_time_kb(data["day"], recent_times)
     )
 
+SUBSCRIPTION_TIMES = ["00:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "23:59"]
+
+def _subscription_inline_kb(selected=None):
+    selected = selected or []
+    if len(selected) == 2:
+        lo = min(SUBSCRIPTION_TIMES.index(selected[0]), SUBSCRIPTION_TIMES.index(selected[1]))
+        hi = max(SUBSCRIPTION_TIMES.index(selected[0]), SUBSCRIPTION_TIMES.index(selected[1]))
+        highlighted = set(SUBSCRIPTION_TIMES[lo:hi + 1])
+    else:
+        highlighted = set(selected)
+    def label(t):
+        return f"🔵 {t}" if t in highlighted else t
+    rows = [
+        [InlineKeyboardButton(text=label(t), callback_data=f"sub_time:{t}") for t in SUBSCRIPTION_TIMES[i:i + 4]]
+        for i in range(0, len(SUBSCRIPTION_TIMES), 4)
+    ]
+    rows.append([
+        InlineKeyboardButton(text="✅ Готово", callback_data="sub_done"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="sub_back"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "🔔 Сповістити про нові поїздки")
 async def notify_new_driver_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -585,25 +607,77 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
         except:
             pass
-    seats = data.get("seats_requested", 1)
-    save_search_subscription(
-        message.from_user.id,
-        data["booking_from_city"],
-        data["booking_to_city"],
-        data["day"],
-        seats,
-        from_time=data.get("search_from_datetime"),
-        to_time=data.get("search_to_datetime")
-    )
-    from_time = data.get("search_from_datetime")
-    to_time = data.get("search_to_datetime")
-    if from_time and to_time:
-        from_hhmm = from_time.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
-        to_hhmm = to_time.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
-        time_range = f" з {from_hhmm} до {to_hhmm}"
+    await state.update_data(subscription_selected_times=[])
+    await state.set_state(PassengerStates.subscription_from_to_time)
+    await message.answer("Оберіть два часи для сповіщень:", reply_markup=_subscription_inline_kb())
+
+@router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
+async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
+    raw = callback.data.split(":", 1)[1]
+    if raw not in SUBSCRIPTION_TIMES:
+        await callback.answer()
+        return
+    data = await state.get_data()
+    selected = list(data.get("subscription_selected_times", []))
+    if raw in selected:
+        selected.remove(raw)
+    elif len(selected) < 2:
+        selected.append(raw)
     else:
-        time_range = ""
-    await message.answer(f"✅ Ми повідомимо вас, коли з'явиться нова поїздка \n{data['booking_from_city']} → {data['booking_to_city']}\n{time_range}")
+        selected = [raw]
+    await state.update_data(subscription_selected_times=selected)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=_subscription_inline_kb(selected))
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
+
+@router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data == "sub_done")
+async def subscription_done_handler(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    selected = data.get("subscription_selected_times", [])
+    if len(selected) != 2:
+        await callback.answer("Оберіть два часи.", show_alert=True)
+        return
+    from_city = data.get("booking_from_city")
+    to_city = data.get("booking_to_city")
+    if not from_city or not to_city:
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await state.clear()
+        await callback.message.answer("Сталася помилка. Спробуйте почати пошук знову.", reply_markup=passenger_menu_kb(callback.from_user.id))
+        await callback.answer()
+        return
+    from_str, to_str = min(selected), max(selected)
+    day = data.get("day")
+    seats = data.get("seats_requested", 1)
+    _, from_utc = generate_datetime(day, from_str)
+    _, to_utc = generate_datetime(day, to_str)
+    save_search_subscription(
+        callback.from_user.id,
+        from_city,
+        to_city,
+        day,
+        seats,
+        from_time=from_utc,
+        to_time=to_utc,
+    )
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.set_state(PassengerStates.browsing_trips)
+    await callback.message.answer(
+        f"✅ Ми повідомимо вас, коли з'явиться нова поїздка\n"
+        f"{from_city} → {to_city}\n"
+        f"з {from_str} до {to_str}\n"
+        f"{day}, {seats} {seats_word(seats)}",
+        reply_markup=after_search_kb(callback.from_user.id)
+    )
+    await callback.answer()
+
+@router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data == "sub_back")
+async def subscription_back_handler(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.set_state(PassengerStates.browsing_trips)
+    await callback.message.answer("Пошук поїздок:", reply_markup=after_search_kb(callback.from_user.id))
+    await callback.answer()
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
 async def back_from_search_handler(message: types.Message, state: FSMContext):

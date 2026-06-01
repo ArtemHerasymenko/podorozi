@@ -165,14 +165,14 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         to_city = data.get("to_city", "")
         covered = get_covered_pairs(from_city, to_city)
         waiting = get_pending_subscriptions(covered, dep_datetime)
+        seats = data.get("seats")
+        waiting = [(pid, sreq) for pid, sreq in waiting if sreq <= seats]
         if waiting:
-            passenger_ids = [row[0] for row in waiting]
             try:
                 driver_chat = await bot.get_chat(user_id)
                 driver_name = driver_chat.full_name
             except Exception:
                 driver_name = "Водій"
-            seats = data.get("seats")
             trip_tuple = (
                 trip_id, user_id, data.get("driver_phone"),
                 from_city, data.get("from_points"),
@@ -182,7 +182,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                 data.get("arrival_time"), data.get("car_description")
             )
             trip_text = "🔔 Нова поїздка за вашим маршрутом!\n\n" + format_trip(trip_tuple, 0, 1, driver_name=driver_name)
-            for passenger_id in passenger_ids:
+            for passenger_id, _ in waiting:
                 try:
                     await send_trip_message(
                         lambda text, **kw: bot.send_message(passenger_id, text, **kw),
