@@ -38,7 +38,7 @@ def _is_admin(user_id: int) -> bool:
 def passenger_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
     rows = [[KeyboardButton(text="🔎 Знайти поїздку")]]
     if _is_admin(user_id):
-        rows.append([KeyboardButton(text="🔔 Мої підписки")])
+        rows.append([KeyboardButton(text="🔔 Сповіщення про нові поїздки")])
     rows += [
         [KeyboardButton(text="📋 Поточні бронювання")],
         [KeyboardButton(text="📜 Минулі бронювання")],
@@ -123,7 +123,7 @@ async def my_past_trips(message: types.Message, state: FSMContext):
     await safe_send(message.answer, text, kb)
 
 
-@router.message(lambda m: m.text == "🔔 Мої підписки")
+@router.message(lambda m: m.text == "🔔 Сповіщення про нові поїздки")
 async def my_subscriptions(message: types.Message):
     subs = get_active_subscriptions(message.from_user.id)
     if not subs:
@@ -145,7 +145,7 @@ async def unsubscribe_handler(callback: types.CallbackQuery):
     sub_id = int(callback.data.split(":")[1])
     deactivate_subscription(sub_id, callback.from_user.id)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.edit_text(callback.message.text + "\n\n✅ Підписку скасовано")
+    await callback.message.edit_text(callback.message.text + "\n\n🚫 Сповіщення скасовано")
     await callback.answer()
 
 
@@ -688,7 +688,8 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         f"✅ Ми повідомимо вас, коли з'явиться нова поїздка\n"
         f"{from_city} → {to_city}\n"
         f"з {from_str} до {to_str}\n"
-        f"{_day_label(day)}, {seats} {seats_word(seats)}",
+        f"{_day_label(day)}, {seats} {seats_word(seats)}\n\n"
+        f"Можете переглянути у меню «🔔 Сповіщення про нові поїздки»",
         reply_markup=passenger_menu_kb(callback.from_user.id)
     )
     await callback.answer()
