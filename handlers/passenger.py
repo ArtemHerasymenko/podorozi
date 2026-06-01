@@ -637,7 +637,12 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
 async def next_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
-    increase_trip_search_list_index(user_id)
+    times, old_index = get_search_list_times(user_id)
+    new_index = increase_trip_search_list_index(user_id)
+    if new_index == old_index:
+        await safe_answer(callback)
+        return
+
     result = get_current_trip_from_search_list(user_id)
 
     if result == "expired":
@@ -658,7 +663,6 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
     except:
         driver_name = None
     trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
-    times, _ = get_search_list_times(callback.from_user.id)
     await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
 
     await safe_answer(callback)
@@ -667,7 +671,12 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
 async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     user_id = callback.from_user.id
 
-    decrease_trip_search_list_index(user_id)
+    times, old_index = get_search_list_times(user_id)
+    new_index = decrease_trip_search_list_index(user_id)
+    if new_index == old_index:
+        await safe_answer(callback)
+        return
+
     result = get_current_trip_from_search_list(user_id)
 
     if result == "expired":
@@ -688,7 +697,6 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
     except:
         driver_name = None
     trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
-    times, _ = get_search_list_times(callback.from_user.id)
     await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
 
     await safe_answer(callback)

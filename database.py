@@ -980,32 +980,28 @@ def get_current_trip_from_search_list(user_id: int):
     
     return cursor.fetchone(), index, len(trip_ids)
 
-def increase_trip_search_list_index(user_id: int):
+def increase_trip_search_list_index(user_id: int) -> int:
     cursor.execute("""
         UPDATE trip_search_lists
-        SET current_index = (
-            CASE 
-                WHEN current_index = cardinality(trip_ids) - 1 THEN 0
-                ELSE current_index + 1
-            END
-        )
+        SET current_index = LEAST(current_index + 1, cardinality(trip_ids) - 1)
         WHERE user_id = %s
+        RETURNING current_index
     """, (user_id,))
     conn.commit()
+    row = cursor.fetchone()
+    return row[0] if row else 0
 
 
-def decrease_trip_search_list_index(user_id: int):
+def decrease_trip_search_list_index(user_id: int) -> int:
     cursor.execute("""
         UPDATE trip_search_lists
-        SET current_index = (
-            CASE
-                WHEN current_index = 0 THEN cardinality(trip_ids) - 1
-                ELSE current_index - 1
-            END
-        )
+        SET current_index = GREATEST(current_index - 1, 0)
         WHERE user_id = %s
+        RETURNING current_index
     """, (user_id,))
     conn.commit()
+    row = cursor.fetchone()
+    return row[0] if row else 0
 
 
 def set_trip_search_list_index(user_id: int, index: int):

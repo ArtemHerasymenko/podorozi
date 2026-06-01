@@ -289,13 +289,11 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None):
     rows = []
     if total_cnt > 1:
-        nav = []
-        if index > 0:
-            nav.append(InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"))
-        if index < total_cnt - 1:
-            nav.append(InlineKeyboardButton(text="Наступна ➡️", callback_data="next"))
-        if nav:
-            rows.append(nav)
+        nav = [
+            InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"),
+            InlineKeyboardButton(text="Наступна ➡️", callback_data="next"),
+        ]
+        rows.append(nav)
         if all_times:
             import math
             buttons = [
