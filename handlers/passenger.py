@@ -515,7 +515,8 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
 
     if not trips_ids:
         if total == 0:
-            await message.answer("Поїздок на цей час не знайдено, спробуйте пізніше.", reply_markup=after_search_kb(message.from_user.id))
+            day_label = "сьогодні" if is_today else "завтра"
+            await message.answer(f"Поїздок на {day_label} не знайдено, спробуйте пізніше.", reply_markup=after_search_kb(message.from_user.id))
         else:
             await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb(message.from_user.id))
         await state.set_state(PassengerStates.browsing_trips)
