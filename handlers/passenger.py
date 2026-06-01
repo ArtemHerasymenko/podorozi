@@ -621,13 +621,13 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
             pass
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
-    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки.", reply_markup=back_only_kb)
+    await message.answer("Оберіть з якого та по який час шукаєте поїздки.", reply_markup=back_only_kb)
     sub_kb_msg = await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
     await state.update_data(subscription_kb_message_id=sub_kb_msg.message_id)
 
 @router.message(PassengerStates.subscription_from_to_time, lambda m: m.text != "⬅️ Назад")
 async def subscription_text_ignored(message: types.Message):
-    await message.answer("Оберіть час, натиснувши кнопку вище.")
+    await message.answer("Оберіть час, натиснувши кнопки вище.")
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
 async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
