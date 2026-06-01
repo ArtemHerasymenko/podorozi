@@ -708,7 +708,8 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
             except Exception:
                 driver_name = "Водій"
                 driver_username = None
-            trip_text = "🔔 Нова поїздка за вашим маршрутом!\n\n" + format_trip(trip, 0, 1, driver_name=driver_name)
+            await callback.message.answer("🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
+            trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
             await send_trip_message(
                 callback.message.answer,
                 trip_text, trip_id, 1, driver_id, driver_username, 0

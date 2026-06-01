@@ -181,9 +181,10 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                 seats, seats,
                 data.get("arrival_time"), data.get("car_description")
             )
-            trip_text = "🔔 Нова поїздка за вашим маршрутом!\n\n" + format_trip(trip_tuple, 0, 1, driver_name=driver_name)
+            trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
             for passenger_id, _ in waiting:
                 try:
+                    await bot.send_message(passenger_id, "🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
                     await send_trip_message(
                         lambda text, **kw: bot.send_message(passenger_id, text, **kw),
                         trip_text, trip_id, 1, user_id, None, 0
