@@ -395,13 +395,7 @@ async def seats_requested_handler(message: types.Message, state: FSMContext):
         return
     seats = int(message.text)
     await state.update_data(seats_requested=seats)
-    data = await state.get_data()
-    recent_times = get_recent_search_times(message.from_user.id, data["booking_from_city"], data["booking_to_city"], data["day"])
-    await message.answer(
-        "Введіть бажаний час виїзду у форматі ГГ:ХХ або оберіть один із варіантів:",
-        reply_markup=quick_time_kb(data["day"], recent_times)
-    )
-    await state.set_state(PassengerStates.search_from_datetime)
+    await _run_search(message, state, "Показати всі поїздки")
 
 QUICK_TIME_OPTIONS = [30, 90]
 
