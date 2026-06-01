@@ -1008,6 +1008,38 @@ def decrease_trip_search_list_index(user_id: int):
     conn.commit()
 
 
+def set_trip_search_list_index(user_id: int, index: int):
+    cursor.execute("""
+        UPDATE trip_search_lists
+        SET current_index = %s
+        WHERE user_id = %s
+    """, (index, user_id))
+    conn.commit()
+
+
+def get_search_list_times(user_id: int):
+    from zoneinfo import ZoneInfo
+    _KYIV = ZoneInfo("Europe/Kyiv")
+    cursor.execute("""
+        SELECT trip_ids, current_index
+        FROM trip_search_lists
+        WHERE user_id = %s
+    """, (user_id,))
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return [], 0
+    trip_ids, current_index = row
+    cursor.execute("""
+        SELECT t.departure_datetime
+        FROM unnest(%s::int[]) WITH ORDINALITY AS ord(trip_id, pos)
+        JOIN trips t ON t.id = ord.trip_id
+        ORDER BY ord.pos
+    """, (trip_ids,))
+    rows = cursor.fetchall()
+    times = [r[0].astimezone(_KYIV).strftime("%H:%M") for r in rows]
+    return times, current_index
+
+
 def save_recent_search(passenger_id: int, from_city: str, to_city: str, time_str: str, search_for_day: str, trip_ids: list = None, seats_requested: int = 1):
     cursor.execute("""
         INSERT INTO recent_searches (passenger_id, from_city, to_city, time_str, search_for_day, searched_at, trip_ids, seats_requested)

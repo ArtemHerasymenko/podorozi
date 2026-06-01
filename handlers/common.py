@@ -286,7 +286,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         f"{phone_line}\n"
         f"👥 Вільних місць: {trip[10]}/{trip[9]}")
 
-def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0):
+def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None):
     rows = []
     if total_cnt > 1:
         nav = []
@@ -296,14 +296,31 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             nav.append(InlineKeyboardButton(text="Наступна ➡️", callback_data="next"))
         if nav:
             rows.append(nav)
+        if all_times:
+            import math
+            buttons = [
+                InlineKeyboardButton(
+                    text=f"🔵 {t}" if i == index else t,
+                    callback_data=f"trip_idx:{i}"
+                )
+                for i, t in enumerate(all_times)
+            ]
+            n = len(buttons)
+            num_rows = math.ceil(n / 4)
+            base, extra = divmod(n, num_rows)
+            pos = 0
+            for r in range(num_rows):
+                size = base + (1 if r < extra else 0)
+                rows.append(buttons[pos:pos + size])
+                pos += size
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
     rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True):
-    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index) if show_keyboard else None
+async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True, all_times=None):
+    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index, all_times=all_times) if show_keyboard else None
     return await safe_send(send_fn, text, kb)
 
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
