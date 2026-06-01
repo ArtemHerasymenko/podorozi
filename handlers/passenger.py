@@ -619,12 +619,12 @@ async def subscription_time_handler(callback: types.CallbackQuery, state: FSMCon
         return
     data = await state.get_data()
     selected = list(data.get("subscription_selected_times", []))
-    if raw in selected:
-        selected.remove(raw)
-    elif len(selected) < 2:
-        selected.append(raw)
-    else:
+    if len(selected) >= 2:
         selected = [raw]
+    elif raw in selected:
+        selected.remove(raw)
+    else:
+        selected.append(raw)
     await state.update_data(subscription_selected_times=selected)
     try:
         await callback.message.edit_reply_markup(reply_markup=_subscription_inline_kb(selected))
