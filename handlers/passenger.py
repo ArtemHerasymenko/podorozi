@@ -578,6 +578,15 @@ async def change_time_handler(message: types.Message, state: FSMContext):
 
 SUBSCRIPTION_TIMES = ["00:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:59"]
 
+def _day_label(day: str) -> str:
+    kyiv = ZoneInfo("Europe/Kyiv")
+    today = datetime.datetime.now(tz=kyiv).date()
+    if day == today.strftime("%Y-%m-%d"):
+        return "сьогодні"
+    if day == (today + datetime.timedelta(days=1)).strftime("%Y-%m-%d"):
+        return "завтра"
+    return day
+
 def _subscription_inline_kb(selected=None):
     selected = selected or []
     if len(selected) == 2:
@@ -593,8 +602,8 @@ def _subscription_inline_kb(selected=None):
         for i in range(0, len(SUBSCRIPTION_TIMES), 4)
     ]
     rows.append([
-        InlineKeyboardButton(text="✅ Готово", callback_data="sub_done"),
         InlineKeyboardButton(text="⬅️ Назад", callback_data="sub_back"),
+        InlineKeyboardButton(text="✅ Готово", callback_data="sub_done"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -609,7 +618,7 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
             pass
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
-    await message.answer("Оберіть два часи для сповіщень:", reply_markup=_subscription_inline_kb())
+    await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки:", reply_markup=_subscription_inline_kb())
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
 async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
@@ -662,13 +671,13 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         to_time=to_utc,
     )
     await callback.message.edit_reply_markup(reply_markup=None)
-    await state.set_state(PassengerStates.browsing_trips)
+    await state.clear()
     await callback.message.answer(
         f"✅ Ми повідомимо вас, коли з'явиться нова поїздка\n"
         f"{from_city} → {to_city}\n"
         f"з {from_str} до {to_str}\n"
-        f"{day}, {seats} {seats_word(seats)}",
-        reply_markup=after_search_kb(callback.from_user.id)
+        f"{_day_label(day)}, {seats} {seats_word(seats)}",
+        reply_markup=passenger_menu_kb(callback.from_user.id)
     )
     await callback.answer()
 
