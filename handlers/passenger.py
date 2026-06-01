@@ -47,10 +47,11 @@ def passenger_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 def after_search_kb(user_id: int) -> ReplyKeyboardMarkup:
-    rows = [
-        [KeyboardButton(text="🔄 Зворотній маршрут")],
-        [KeyboardButton(text="🕐 Змінити час")],
-    ]
+    rows = []
+    # [
+    #     [KeyboardButton(text="🔄 Зворотній маршрут")],
+    #     [KeyboardButton(text="🕐 Змінити час")],
+    # ]
     if _is_admin(user_id):
         rows.append([KeyboardButton(text="🔔 Сповістити про нові поїздки")])
     rows.append([KeyboardButton(text="⬅️ Назад")])
@@ -485,7 +486,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     await message.answer(
         f"🔎 Шукаємо поїздки... \n{'Сьогодні' if is_today else 'Завтра'}\n"
         f"{data['booking_from_city']} → {data['booking_to_city']}\n"
-        f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}\n"
+        # f"з {search_from_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')} до {search_to_datetime.astimezone(ZoneInfo('Europe/Kyiv')).strftime('%H:%M')}\n"
         f"{seats} {seats_word(seats)}",
         reply_markup=searching_kb
     )
