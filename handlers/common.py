@@ -299,8 +299,13 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             page_size = 8
             n = len(all_times)
             page = index // page_size
-            start = page * page_size
-            end = min(start + page_size, n)
+            last_page = (n - 1) // page_size
+            if n % page_size == 1 and last_page > 0 and page >= last_page - 1:
+                start = (last_page - 1) * page_size
+                end = n
+            else:
+                start = page * page_size
+                end = min(start + page_size, n)
             buttons = []
             if start > 0:
                 buttons.append(InlineKeyboardButton(text=f"{all_times[0]}...{all_times[start - 1]}", callback_data=f"trip_idx:{start - 1}"))
@@ -312,7 +317,7 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
                 for i, t in list(enumerate(all_times))[start:end]
             ]
             if end < n:
-                next_text = f"{all_times[end]}" if end == n - 1 else f"{all_times[end]}...{all_times[-1]}"
+                next_text = f"{all_times[end]}...{all_times[-1]}"
                 buttons.append(InlineKeyboardButton(text=next_text, callback_data=f"trip_idx:{end}"))
             n_btn = len(buttons)
             num_rows = math.ceil(n_btn / 4)
