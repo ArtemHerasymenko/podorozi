@@ -576,7 +576,7 @@ async def change_time_handler(message: types.Message, state: FSMContext):
         reply_markup=quick_time_kb(data["day"], recent_times)
     )
 
-SUBSCRIPTION_TIMES = ["00:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "23:59"]
+SUBSCRIPTION_TIMES = ["00:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:59"]
 
 def _subscription_inline_kb(selected=None):
     selected = selected or []
