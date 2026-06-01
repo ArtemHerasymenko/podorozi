@@ -935,6 +935,11 @@ def search_trips_with_details(from_city, to_city, time_from, time_to, extra_from
     """, (all_from_cities, all_to_cities, time_from, time_to))
     return cursor.fetchall()
 
+def get_trip_search_list_ids(user_id: int) -> list[int]:
+    cursor.execute("SELECT trip_ids FROM trip_search_lists WHERE user_id = %s", (user_id,))
+    row = cursor.fetchone()
+    return list(row[0]) if row and row[0] else []
+
 def create_trip_search_list(user_id: int, trips: list[int]):
     cursor.execute("""
         INSERT INTO trip_search_lists (user_id, trip_ids, current_index, created_at)

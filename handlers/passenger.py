@@ -5,7 +5,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
 from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription
-from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index, set_trip_search_list_index, get_search_list_times
+from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index, set_trip_search_list_index, get_search_list_times, get_trip_search_list_ids, get_trip_for_display
 from database import increment_city_popularity, add_city_if_missing
 from handlers.passenger_search import search_and_display
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -678,6 +678,11 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         from_time=from_utc,
         to_time=to_utc,
     )
+    extra_from, extra_to = get_search_city_pairs(from_city, to_city)
+    all_trips = search_trips_ids(from_city, to_city, from_utc, to_utc, extra_from_cities=extra_from, extra_to_cities=extra_to)
+    matching_ids = {trip_id for trip_id, free_seats in all_trips if free_seats >= seats}
+    known_ids = set(get_trip_search_list_ids(callback.from_user.id))
+    new_trip_ids = [tid for tid in matching_ids if tid not in known_ids]
     try:
         await callback.message.delete()
     except TelegramBadRequest:
@@ -691,6 +696,23 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         f"Можете переглянути у меню\n«🔔 Сповіщення про нові поїздки»",
         reply_markup=passenger_menu_kb(callback.from_user.id)
     )
+    for trip_id in new_trip_ids:
+            trip = get_trip_for_display(trip_id)
+            if not trip:
+                continue
+            driver_id = trip[1]
+            try:
+                driver_chat = await callback.bot.get_chat(driver_id)
+                driver_name = driver_chat.full_name
+                driver_username = driver_chat.username
+            except Exception:
+                driver_name = "Водій"
+                driver_username = None
+            trip_text = "🔔 Нова поїздка за вашим маршрутом!\n\n" + format_trip(trip, 0, 1, driver_name=driver_name)
+            await send_trip_message(
+                callback.message.answer,
+                trip_text, trip_id, 1, driver_id, driver_username, 0
+            )
     await callback.answer()
 
 
