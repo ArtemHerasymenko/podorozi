@@ -319,11 +319,15 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             if prev_btn:
                 rows.append([prev_btn] + middle[:2])
                 middle = middle[2:]
-            if next_btn:
-                rows.extend([middle[i:i + 4] for i in range(0, max(0, len(middle) - 2), 4)])
-                rows.append(middle[max(0, len(middle) - 2):] + [next_btn])
-            else:
-                rows.extend([middle[i:i + 4] for i in range(0, len(middle), 4)])
+            remaining = middle + ([next_btn] if next_btn else [])
+            rows.extend(remaining[i:i + 4] for i in range(0, len(remaining), 4))
+            if len(rows) >= 2 and len(rows[-1]) <= 2:
+                rows[-1].insert(0, rows[-2].pop())
+            if next_btn and rows and len(rows[-1]) == 4:
+                rows.append(rows[-1][2:])
+                rows[-2] = rows[-2][:2]
+                if len(rows) >= 3:
+                    rows[-2].insert(0, rows[-3].pop())
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
