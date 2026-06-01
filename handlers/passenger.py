@@ -133,10 +133,9 @@ async def my_subscriptions(message: types.Message):
     for sub_id, from_city, to_city, search_for_day, seats, from_time, to_time in subs:
         from_hhmm = from_time.astimezone(kyiv).strftime("%H:%M")
         to_hhmm = to_time.astimezone(kyiv).strftime("%H:%M")
-        seats_label = f", {seats} {seats_word(seats)}" if seats > 1 else ""
-        text = f"🔔 {from_city} → {to_city}\n{search_for_day}, {from_hhmm}–{to_hhmm}{seats_label}"
+        text = f"🔔 {from_city} → {to_city}\n{_day_label(search_for_day)}, {from_hhmm}–{to_hhmm}, {seats} {seats_word(seats)}"
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Відписатись ❌", callback_data=f"unsub:{sub_id}")]
+            [InlineKeyboardButton(text="Скасувати ❌", callback_data=f"unsub:{sub_id}")]
         ])
         await message.answer(text, reply_markup=kb)
 
