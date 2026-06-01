@@ -287,6 +287,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         f"👥 Вільних місць: {trip[10]}/{trip[9]}")
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None):
+    import math
     rows = []
     if total_cnt > 1:
         nav = [
@@ -295,22 +296,34 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
         ]
         rows.append(nav)
         if all_times:
-            import math
+            page_size = 8
+            n = len(all_times)
+            page = index // page_size
+            start = page * page_size
+            end = min(start + page_size, n)
             buttons = [
                 InlineKeyboardButton(
                     text=f"🔵 {t}" if i == index else t,
                     callback_data=f"trip_idx:{i}"
                 )
-                for i, t in enumerate(all_times)
+                for i, t in list(enumerate(all_times))[start:end]
             ]
-            n = len(buttons)
-            num_rows = math.ceil(n / 4)
-            base, extra = divmod(n, num_rows)
+            n_btn = len(buttons)
+            num_rows = math.ceil(n_btn / 4)
+            base, extra = divmod(n_btn, num_rows)
             pos = 0
             for r in range(num_rows):
                 size = base + (1 if r < extra else 0)
                 rows.append(buttons[pos:pos + size])
                 pos += size
+            pag_row = []
+            if start > 0:
+                pag_row.append(InlineKeyboardButton(text=f"{all_times[0]}...{all_times[start - 1]}", callback_data=f"trip_idx:{start - 1}"))
+            if end < n:
+                next_text = f"{all_times[end]}" if end == n - 1 else f"{all_times[end]}...{all_times[-1]}"
+                pag_row.append(InlineKeyboardButton(text=next_text, callback_data=f"trip_idx:{end}"))
+            if pag_row:
+                rows.append(pag_row)
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
