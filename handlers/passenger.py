@@ -863,15 +863,8 @@ async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot):
 async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     trip_id = int(callback.data.split(":")[1])
 
-    result = get_current_trip_from_search_list(callback.from_user.id)
-    if result == "expired":
-        await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer("⏱ Цей пошук застарів. Будь ласка, розпочніть новий!", reply_markup=passenger_menu_kb(callback.from_user.id))
-        await safe_answer(callback)
-        return
-
-    trip, _, _ = result
-    if trip[1] == callback.from_user.id:
+    trip = get_trip_for_display(trip_id)
+    if not trip or trip[1] == callback.from_user.id:
         await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
         return
 
