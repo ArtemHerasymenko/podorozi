@@ -216,6 +216,12 @@ async def passenger_flow_back(message: types.Message, state: FSMContext):
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
         except:
             pass
+    sub_kb_message_id = data.get("subscription_kb_message_id")
+    if sub_kb_message_id:
+        try:
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=sub_kb_message_id)
+        except:
+            pass
     await state.clear()
     await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
@@ -616,7 +622,8 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
     await message.answer("Оберіть два часи: з якого та по який шукаєте поїздки.", reply_markup=back_only_kb)
-    await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
+    sub_kb_msg = await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
+    await state.update_data(subscription_kb_message_id=sub_kb_msg.message_id)
 
 @router.message(PassengerStates.subscription_from_to_time, lambda m: m.text != "⬅️ Назад")
 async def subscription_text_ignored(message: types.Message):
