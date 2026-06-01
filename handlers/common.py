@@ -165,7 +165,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         to_city = data.get("to_city", "")
         covered = get_covered_pairs(from_city, to_city)
         waiting = get_pending_subscriptions(covered, dep_datetime)
-        seats = data.get("seats")
+        seats = int(data.get("seats") or 0)
         waiting = [(pid, sreq) for pid, sreq in waiting if sreq <= seats]
         if waiting:
             try:
