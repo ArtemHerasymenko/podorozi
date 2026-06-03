@@ -1197,15 +1197,17 @@ def deactivate_subscription(subscription_id: int, passenger_id: int):
     """, (subscription_id, passenger_id))
     conn.commit()
 
-def save_search_subscription(passenger_id: int, from_city: str, to_city: str, search_for_day: str, seats_requested: int = 1, from_time=None, to_time=None):
+def save_search_subscription(passenger_id: int, from_city: str, to_city: str, search_for_day: str, seats_requested: int = 1, from_time=None, to_time=None) -> int:
     cursor.execute("""
         INSERT INTO search_subscriptions (passenger_id, from_city, to_city, search_for_day, seats_requested, from_time, to_time)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (passenger_id, from_city, to_city, search_for_day)
         DO UPDATE SET seats_requested = EXCLUDED.seats_requested, from_time = EXCLUDED.from_time,
                       to_time = EXCLUDED.to_time, is_active = TRUE, created_at = CLOCK_TIMESTAMP(), notified_at = NULL
+        RETURNING id
     """, (passenger_id, from_city, to_city, search_for_day, seats_requested, from_time, to_time))
     conn.commit()
+    return cursor.fetchone()[0]
 
 def get_pending_subscriptions(pairs: list[tuple[str, str]], dep_datetime) -> list[tuple]:
     if not pairs:

@@ -669,7 +669,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     seats = data.get("seats_requested", 1)
     _, from_utc = generate_datetime(day, from_str)
     _, to_utc = generate_datetime(day, to_str)
-    save_search_subscription(
+    subscription_id = save_search_subscription(
         callback.from_user.id,
         from_city,
         to_city,
@@ -714,7 +714,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
             trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
             await send_trip_message(
                 callback.message.answer,
-                trip_text, trip_id, 1, driver_id, driver_username, 0
+                trip_text, trip_id, 1, driver_id, driver_username, 0, subscription_id=subscription_id
             )
 
 
