@@ -18,7 +18,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message, driver_menu_kb
 from data.route_intermediates import get_search_city_pairs
 from config import ADMIN_CHAT_ID
 
@@ -967,14 +967,10 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     trip_details = get_trip_details(trip_id)
     booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
-    text = (
-        f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:\n"
-        f"{booking_desc}"
-    )
-
+    await message.bot.send_message(driver_id, f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:", parse_mode="HTML", reply_markup=back_only_kb)
     await safe_send(
         lambda t, **kw: message.bot.send_message(driver_id, t, **kw),
-        text,
+        booking_desc,
         booking_actions_kb(booking_id, passenger_id, message.from_user.username)
     )
 
@@ -1016,7 +1012,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
                 booking_from_city=trip[10], booking_to_city=trip[11],
             ) if trip else ""
         )
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}", parse_mode="HTML")
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}", parse_mode="HTML", reply_markup=back_only_kb)
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)
