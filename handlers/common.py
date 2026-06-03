@@ -171,8 +171,10 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
             try:
                 driver_chat = await bot.get_chat(user_id)
                 driver_name = driver_chat.full_name
+                driver_username = driver_chat.username
             except Exception:
                 driver_name = "Водій"
+                driver_username = None
             trip_tuple = (
                 trip_id, user_id, data.get("driver_phone"),
                 from_city, data.get("from_points"),
@@ -187,7 +189,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                     await bot.send_message(passenger_id, "🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
                     await send_trip_message(
                         lambda text, **kw: bot.send_message(passenger_id, text, **kw),
-                        trip_text, trip_id, 1, user_id, None, 0, subscription_id=sub_id
+                        trip_text, trip_id, 1, user_id, driver_username, 0, subscription_id=sub_id
                     )
                 except Exception:
                     pass
