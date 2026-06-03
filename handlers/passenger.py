@@ -129,6 +129,7 @@ async def my_subscriptions(message: types.Message):
     if not subs:
         await message.answer("У вас немає активних сповіщень. Почніть пошук і зможете створити сповіщення.", reply_markup=passenger_menu_kb(message.from_user.id))
         return
+    await message.answer("Ми сповістимо вас коли з'являться нові поїздки з такими параметрами:", reply_markup=back_only_kb)
     kyiv = ZoneInfo("Europe/Kyiv")
     for sub_id, from_city, to_city, search_for_day, seats, from_time, to_time in subs:
         from_hhmm = from_time.astimezone(kyiv).strftime("%H:%M")
@@ -710,7 +711,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
             except Exception:
                 driver_name = "Водій"
                 driver_username = None
-            await callback.message.answer("🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
+            await callback.message.answer("🔔 Зʼявилась нова поїздка!", reply_markup=back_only_kb)
             trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
             await send_trip_message(
                 callback.message.answer,
