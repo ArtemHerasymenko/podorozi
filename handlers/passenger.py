@@ -690,11 +690,11 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         pass
     await state.clear()
     await callback.message.answer(
-        f"✅ Ми повідомимо вас, коли з'явиться нова поїздка\n"
+        f"✅ Ми повідомимо вас, коли з'явиться нова поїздка:\n"
         f"{from_city} → {to_city}\n"
         f"з {from_str} до {to_str}\n"
         f"{_day_label(day)}, {seats} {seats_word(seats)}\n\n"
-        f"Можете переглянути у меню\n«🔔 Сповіщення про нові поїздки»",
+        f"Щоб переглянути або скасувати сповіщення перейдіть у меню\n«🔔 Сповіщення про нові поїздки»",
         reply_markup=passenger_menu_kb(callback.from_user.id)
     )
     await callback.answer()
