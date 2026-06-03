@@ -696,6 +696,8 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
         f"Можете переглянути у меню\n«🔔 Сповіщення про нові поїздки»",
         reply_markup=passenger_menu_kb(callback.from_user.id)
     )
+    await callback.answer()
+    await asyncio.sleep(3)
     for trip_id in new_trip_ids:
             trip = get_trip_for_display(trip_id)
             if not trip:
@@ -714,7 +716,6 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
                 callback.message.answer,
                 trip_text, trip_id, 1, driver_id, driver_username, 0
             )
-    await callback.answer()
 
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
