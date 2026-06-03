@@ -129,7 +129,7 @@ async def my_subscriptions(message: types.Message):
     if not subs:
         await message.answer("У вас немає активних сповіщень. Почніть пошук і зможете створити сповіщення.", reply_markup=passenger_menu_kb(message.from_user.id))
         return
-    await message.answer("Ми сповістимо вас коли з'являться нові поїздки з такими параметрами:", reply_markup=back_only_kb)
+    await message.answer("Ми сповістимо вас коли з'являться нові поїздки з такими параметрами:", reply_markup=passenger_menu_kb(message.from_user.id))
     kyiv = ZoneInfo("Europe/Kyiv")
     for sub_id, from_city, to_city, search_for_day, seats, from_time, to_time in subs:
         from_hhmm = from_time.astimezone(kyiv).strftime("%H:%M")
