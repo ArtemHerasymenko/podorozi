@@ -404,6 +404,39 @@ def add_city_if_missing(city_name: str):
     """, (city_name, city_name, city_name, city_name))
     conn.commit()
 
+def check_trip_bookable(trip_id: int, passenger_id: int, seats_requested: int = 1):
+    cursor.execute("""
+        SELECT
+            status,
+            departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
+            seats::int - (
+                SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
+                WHERE b.trip_id = %s AND b.status IN ('pending', 'confirmed')
+            ) >= %s AS has_seats,
+            (
+                SELECT COUNT(*) FROM bookings b2
+                JOIN trips t2 ON b2.trip_id = t2.id
+                WHERE b2.passenger_id = %s
+                  AND b2.status IN ('pending', 'confirmed')
+                  AND t2.departure_datetime < (SELECT arrival_time FROM trips WHERE id = %s)
+                  AND t2.arrival_time        > (SELECT departure_datetime FROM trips WHERE id = %s)
+            ) AS overlap_count
+        FROM trips WHERE id = %s
+    """, (trip_id, seats_requested, passenger_id, trip_id, trip_id, trip_id))
+    row = cursor.fetchone()
+    if not row:
+        return False, "not_found"
+    status, not_departed, has_seats, overlap_count = row
+    if status != 'active':
+        return False, "cancelled"
+    if not not_departed:
+        return False, "departed"
+    if not has_seats:
+        return False, "no_seats"
+    if overlap_count:
+        return False, "overlap"
+    return True, None
+
 def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1, passenger_phone: str = None, from_city: str = None, to_city: str = None):
     cursor.execute("BEGIN")
     # Lock the trip row so concurrent bookings can't race past the seat check

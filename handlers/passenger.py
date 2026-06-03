@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription, get_subscription_cities
+from database import search_trips_ids, book_trip, check_trip_bookable, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription, get_subscription_cities
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index, set_trip_search_list_index, get_search_list_times, get_trip_search_list_ids, get_trip_for_display
 from database import increment_city_popularity, add_city_if_missing
 from handlers.passenger_search import search_and_display
@@ -30,6 +30,14 @@ STATUS_LABELS = {
     "rejected": "❌ Відхилено водієм",
     "cancelled_by_passenger": "🚫 Ви скасували ваше бронювання",
     "trip_cancelled": "🚫 Водій скасував цю поїздку"
+}
+
+BOOK_ERRORS = {
+    "not_found": "❌ Поїздку не знайдено. Спробуйте знайти іншу.",
+    "cancelled":  "❌ Водій скасував цю поїздку. Спробуйте знайти іншу.",
+    "departed":   "❌ Ця поїздка вже відправилась. Спробуйте знайти іншу.",
+    "no_seats":   "❌ На жаль, хтось щойно зайняв вільні місця. Спробуйте знайти іншу поїздку.",
+    "overlap":    "❌ У вас вже є активне бронювання на цей час. Можете його скасувати і спробувати ще раз.",
 }
 
 def _is_admin(user_id: int) -> bool:
@@ -876,16 +884,22 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
         await safe_answer(callback, "❌ Ви не можете забронювати власну поїздку.", show_alert=True)
         return
 
+    data = await state.get_data()
+    sub = get_subscription_cities(subscription_id) if subscription_id else None
+    seats = (sub[2] if sub else None) or data.get("seats_requested", 1)
+    can_book, reason = check_trip_bookable(trip_id, callback.from_user.id, seats)
+    if not can_book:
+        await safe_answer(callback, BOOK_ERRORS.get(reason, "❌ Не вдалося забронювати поїздку."), show_alert=True)
+        return
+
     await safe_answer(callback)
     await callback.message.edit_reply_markup()
     await state.update_data(booking_trip_id=trip_id)
     await state.set_state(PassengerStates.booking_notes)
 
-    data = await state.get_data()
-    if subscription_id:
-        sub = get_subscription_cities(subscription_id)
-        from_city, to_city, seats_from_sub = sub[0], sub[1], sub[2]
-        await state.update_data(booking_from_city=from_city, booking_to_city=to_city, seats_requested=seats_from_sub)
+    if sub:
+        from_city, to_city = sub[0], sub[1]
+        await state.update_data(booking_from_city=from_city, booking_to_city=to_city, seats_requested=seats)
     else:
         from_city = data.get("booking_from_city")
         to_city = data.get("booking_to_city")
@@ -952,13 +966,6 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
 
     success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested, phone, from_city=data.get("booking_from_city"), to_city=data.get("booking_to_city"))
 
-    BOOK_ERRORS = {
-        "not_found": "❌ Поїздку не знайдено. Спробуйте знайти іншу.",
-        "cancelled":  "❌ Водій скасував цю поїздку. Спробуйте знайти іншу.",
-        "departed":   "❌ Ця поїздка вже відправилась. Спробуйте знайти іншу.",
-        "no_seats":   "❌ На жаль, хтось щойно зайняв вільні місця. Спробуйте знайти іншу поїздку.",
-        "overlap":    "❌ У вас вже є активне бронювання на цей час. Можете його скасувати і спробувати ще раз.",
-    }
     if not success:
         await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb(message.from_user.id))
         await state.clear()
