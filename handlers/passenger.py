@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription
+from database import search_trips_ids, book_trip, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription, get_subscription_cities
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index, set_trip_search_list_index, get_search_list_times, get_trip_search_list_ids, get_trip_for_display
 from database import increment_city_popularity, add_city_if_missing
 from handlers.passenger_search import search_and_display
@@ -861,7 +861,9 @@ async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot):
 
 @router.callback_query(lambda c: c.data and c.data.startswith("book_trip:"))
 async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
-    trip_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    trip_id = int(parts[1])
+    subscription_id = int(parts[2]) if len(parts) > 2 else None
 
     trip = get_trip_for_display(trip_id)
     if not trip or trip[1] == callback.from_user.id:
@@ -874,8 +876,15 @@ async def book_trip_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(PassengerStates.booking_notes)
 
     data = await state.get_data()
-    city = get_city_modified_name(data.get("booking_from_city", ""))
-    recent_notes = get_recent_booking_notes(callback.from_user.id, data.get("booking_from_city", ""))
+    if subscription_id:
+        sub = get_subscription_cities(subscription_id)
+        from_city, to_city, seats_from_sub = sub[0], sub[1], sub[2]
+        await state.update_data(booking_from_city=from_city, booking_to_city=to_city, seats_requested=seats_from_sub)
+    else:
+        from_city = data.get("booking_from_city")
+        to_city = data.get("booking_to_city")
+    city = get_city_modified_name(from_city)
+    recent_notes = get_recent_booking_notes(callback.from_user.id, from_city)
     if recent_notes:
         kb = ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton(text=n)] for n in recent_notes] + [[KeyboardButton(text="⬅️ Назад")]],

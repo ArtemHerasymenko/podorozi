@@ -1213,11 +1213,17 @@ def get_pending_subscriptions(pairs: list[tuple[str, str]], dep_datetime) -> lis
     placeholders = ",".join(["(%s,%s)"] * len(pairs))
     params = [x for pair in pairs for x in pair] + [dep_datetime]
     cursor.execute(f"""
-        SELECT DISTINCT passenger_id, seats_requested FROM search_subscriptions
+        SELECT DISTINCT ON (passenger_id) id, passenger_id, seats_requested
+        FROM search_subscriptions
         WHERE (from_city, to_city) IN ({placeholders})
         AND %s BETWEEN from_time AND to_time AND is_active = TRUE
+        ORDER BY passenger_id
     """, params)
     return cursor.fetchall()
+
+def get_subscription_cities(subscription_id: int):
+    cursor.execute("SELECT from_city, to_city, seats_requested FROM search_subscriptions WHERE id = %s", (subscription_id,))
+    return cursor.fetchone()
 
 def save_feedback(user_id: int, mode: str, feedback_text: str = None, file_id: str = None) -> int:
     cursor.execute("""

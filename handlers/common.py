@@ -166,7 +166,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         covered = get_covered_pairs(from_city, to_city)
         waiting = get_pending_subscriptions(covered, dep_datetime)
         seats = int(data.get("seats") or 0)
-        waiting = [(pid, sreq) for pid, sreq in waiting if sreq <= seats]
+        waiting = [(sub_id, pid, sreq) for sub_id, pid, sreq in waiting if sreq <= seats]
         if waiting:
             try:
                 driver_chat = await bot.get_chat(user_id)
@@ -182,12 +182,12 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                 data.get("arrival_time"), data.get("car_description")
             )
             trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
-            for passenger_id, _ in waiting:
+            for sub_id, passenger_id, _ in waiting:
                 try:
                     await bot.send_message(passenger_id, "🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
                     await send_trip_message(
                         lambda text, **kw: bot.send_message(passenger_id, text, **kw),
-                        trip_text, trip_id, 1, user_id, None, 0
+                        trip_text, trip_id, 1, user_id, None, 0, subscription_id=sub_id
                     )
                 except Exception:
                     pass
@@ -288,8 +288,9 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
         # f"👥 Вільних місць: {trip[10]}/{trip[9]}"
         )
 
-def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None):
+def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None, subscription_id=None):
     import math
+    book_cb = f"book_trip:{trip_id}:{subscription_id}" if subscription_id else f"book_trip:{trip_id}"
     rows = []
     if total_cnt > 1:
         nav = [
@@ -334,14 +335,14 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([
             InlineKeyboardButton(text="✉️ Написати водію", url=driver_url),
-            InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}"),
+            InlineKeyboardButton(text="Забронювати ✅", callback_data=book_cb),
         ])
     else:
-        rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=f"book_trip:{trip_id}")])
+        rows.append([InlineKeyboardButton(text="Забронювати ✅", callback_data=book_cb)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True, all_times=None):
-    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index, all_times=all_times) if show_keyboard else None
+async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, driver_username, index, show_keyboard=True, all_times=None, subscription_id=None):
+    kb = trip_keyboard(trip_id, total_cnt, driver_id, driver_username, index=index, all_times=all_times, subscription_id=subscription_id) if show_keyboard else None
     return await safe_send(send_fn, text, kb)
 
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
