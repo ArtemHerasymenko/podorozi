@@ -550,9 +550,13 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
 
+@router.message(lambda m: m.text == "...")
+async def searching_noop(message: types.Message):
+    pass
+
 @router.message(PassengerStates.search_from_datetime)
 async def search(message: types.Message, state: FSMContext):
-    if not message.text or message.text == "...":
+    if not message.text:
         return
     time_str = message.text if message.text == "Показати всі поїздки" else message.text.zfill(5)
     if time_str != "Показати всі поїздки":
