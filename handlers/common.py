@@ -296,7 +296,6 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             InlineKeyboardButton(text="⬅️ Попередня", callback_data="prev"),
             InlineKeyboardButton(text="Наступна ➡️", callback_data="next"),
         ]
-        rows.append(nav)
         if all_times:
             page_size = 8
             n = len(all_times)
@@ -330,6 +329,7 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
                 rows[-2] = rows[-2][:2]
                 if len(rows) >= 3:
                     rows[-2].insert(0, rows[-3].pop())
+        rows.insert(0, nav)
     if driver_id:
         driver_url = f"https://t.me/{driver_username}" if driver_username else f"tg://user?id={driver_id}"
         rows.append([
