@@ -29,9 +29,10 @@ async def safe_send(send_fn, text: str, kb: InlineKeyboardMarkup, parse_mode="HT
         if "BUTTON_USER_PRIVACY_RESTRICTED" in str(e) and kb:
             logging.warning("BUTTON_USER_PRIVACY_RESTRICTED — retrying without tg://user button: %s", e)
             filtered_rows = [
-                row for row in kb.inline_keyboard
-                if not any(btn.url and btn.url.startswith("tg://user") for btn in row)
+                [btn for btn in row if not (btn.url and btn.url.startswith("tg://user"))]
+                for row in kb.inline_keyboard
             ]
+            filtered_rows = [row for row in filtered_rows if row]
             return await send_fn(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=filtered_rows), parse_mode=parse_mode)
         raise
 
