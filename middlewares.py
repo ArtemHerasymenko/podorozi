@@ -1,6 +1,9 @@
+import asyncio
+import logging
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.methods import SendMessage, EditMessageText
 from database import save_event
 
@@ -16,7 +19,12 @@ class IncomingLoggingMiddleware(BaseMiddleware):
 
 class LoggingSession(AiohttpSession):
     async def make_request(self, bot, method, timeout=None):
-        result = await super().make_request(bot, method, timeout)
-        if isinstance(method, (SendMessage, EditMessageText)):
-            save_event(None, method.chat_id, method.text or "")
-        return result
+        while True:
+            try:
+                result = await super().make_request(bot, method, timeout)
+                if isinstance(method, (SendMessage, EditMessageText)):
+                    save_event(None, method.chat_id, method.text or "")
+                return result
+            except TelegramRetryAfter as e:
+                logging.warning("Rate limited by Telegram, retrying in %s seconds", e.retry_after)
+                await asyncio.sleep(e.retry_after)
