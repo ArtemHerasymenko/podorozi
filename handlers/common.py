@@ -9,6 +9,7 @@ from database import save_feedback, save_trip_to_db, save_trip_template, upsert_
 from config import ADMIN_CHAT_ID
 from data.route_intermediates import get_intermediates, get_covered_pairs
 from database import get_city_modified_name_2
+import asyncio
 import datetime
 import zoneinfo
 from zoneinfo import ZoneInfo
@@ -185,6 +186,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
             )
             trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
             for sub_id, passenger_id, _ in waiting:
+                await asyncio.sleep(0.2)
                 try:
                     await bot.send_message(passenger_id, "🔔 Нова поїздка за вашим маршрутом!", reply_markup=back_only_kb)
                     await send_trip_message(
