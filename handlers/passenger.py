@@ -44,9 +44,10 @@ def _is_admin(user_id: int) -> bool:
     return user_id == int(ADMIN_CHAT_ID)
 
 def passenger_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
-    rows = [[KeyboardButton(text="🔎 Знайти поїздку")]]
-    if _is_admin(user_id):
-        rows.append([KeyboardButton(text="🔔 Сповіщення про нові поїздки")])
+    rows = [
+        [KeyboardButton(text="🔎 Знайти поїздку")],
+        [KeyboardButton(text="🔔 Сповіщення про нові поїздки")],
+    ]
     rows += [
         [KeyboardButton(text="📋 Поточні бронювання")],
         [KeyboardButton(text="📜 Минулі бронювання")],
@@ -54,15 +55,11 @@ def passenger_menu_kb(user_id: int) -> ReplyKeyboardMarkup:
     ]
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-def after_search_kb(user_id: int) -> ReplyKeyboardMarkup:
-    rows = []
-    # [
-    #     [KeyboardButton(text="🔄 Зворотній маршрут")],
-    #     [KeyboardButton(text="🕐 Змінити час")],
-    # ]
-    if _is_admin(user_id):
-        rows.append([KeyboardButton(text="🔔 Сповістити про нові поїздки")])
-    rows.append([KeyboardButton(text="⬅️ Назад")])
+def after_search_kb() -> ReplyKeyboardMarkup:
+    rows = [
+        [KeyboardButton(text="🔔 Сповістити про нові поїздки")],
+        [KeyboardButton(text="⬅️ Назад")],
+    ]
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 @router.message(lambda m: m.text == "👤 Я пасажир")
@@ -530,16 +527,16 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     if not trips_ids:
         if total == 0:
             # day_label = "сьогодні" if is_today else "завтра"
-            await message.answer(f"Поїздок не знайдено, спробуйте пізніше.", reply_markup=after_search_kb(message.from_user.id))
+            await message.answer(f"Поїздок не знайдено, спробуйте пізніше.", reply_markup=after_search_kb())
         else:
-            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb(message.from_user.id))
+            await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb())
         await state.set_state(PassengerStates.browsing_trips)
         return
 
     if total == len(trips_ids):
-        await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb(message.from_user.id))
+        await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb())
     else:
-        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb(message.from_user.id))
+        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb())
     create_trip_search_list(message.from_user.id, trips_ids)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)

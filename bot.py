@@ -3,9 +3,12 @@
 # load_dotenv()
 
 import asyncio
+import logging
 import os
+import psycopg2
 from aiohttp import web
 from aiogram import Bot, Dispatcher
+from config import DATABASE_URL
 from aiogram.fsm.storage.memory import MemoryStorage
 from config import TOKEN
 
@@ -29,6 +32,14 @@ dp.include_router(passenger_search.router)
 dp.include_router(common.router)
 
 async def health(_):
+    try:
+        hc_conn = psycopg2.connect(DATABASE_URL)
+        with hc_conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        hc_conn.close()
+    except Exception as e:
+        logging.error("Health check DB error: %s", e)
+        return web.Response(text=f"db error: {e}", status=503)
     return web.Response(text="ok")
 
 async def start_health_server():
