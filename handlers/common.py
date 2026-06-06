@@ -187,12 +187,10 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
             )
             trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
             for sub_id, passenger_id, _ in waiting:
-                await asyncio.sleep(5)
+                await asyncio.sleep(0.5)
                 try:
-                    await bot.send_message(passenger_id, "🔔 Зʼявилась нова поїздка!", reply_markup=back_only_kb)
-                    await asyncio.sleep(1)
                     await send_trip_message(
-                        lambda text, **kw: bot.send_message(passenger_id, text, **kw),
+                        lambda text, **kw: bot.send_message(passenger_id, "🔔 Зʼявилась нова поїздка!\n\n" + text, **kw),
                         trip_text, trip_id, 1, user_id, driver_username, 0, subscription_id=sub_id
                     )
                 except Exception:

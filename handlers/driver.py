@@ -608,18 +608,16 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
         driver_phone = get_driver_phone_by_booking(booking_id)
-        await bot.send_message(passenger_id, "✅ Водій підтвердив вашу бронь!", reply_markup=back_only_kb)
-        await asyncio.sleep(1)
         if trip:
             booking_desc = format_booking_description_for_passenger(trip[0], trip[1], trip[2], trip[3], pickup_dt, trip[5], trip[6], trip[7], trip[8], trip[9], booking_from_city=trip[10], booking_to_city=trip[11], driver_phone=driver_phone, price=trip[12], driver_name=message.from_user.full_name)
             driver_url = f"https://t.me/{message.from_user.username}" if message.from_user.username else f"tg://user?id={message.from_user.id}"
             kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)]])
             await safe_send(
-                lambda t, **kw: bot.send_message(passenger_id, t + "\n\nВдалої поїздки!", **kw),
+                lambda t, **kw: bot.send_message(passenger_id, "✅ Водій підтвердив вашу бронь!\n\n" + t + "\n\nВдалої поїздки!", **kw),
                 booking_desc, kb
             )
         else:
-            await bot.send_message(passenger_id, "Вдалої поїздки!")
+            await bot.send_message(passenger_id, "✅ Водій підтвердив вашу бронь!\n\nВдалої поїздки!")
     elif prev_status == "confirmed":
         await message.answer("Ви вже підтвердили це бронювання раніше")
     elif prev_status == "rejected":

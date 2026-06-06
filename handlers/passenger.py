@@ -709,6 +709,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     await callback.answer()
     await asyncio.sleep(3)
     for trip_id in new_trip_ids:
+            await asyncio.sleep(0.5)
             trip = get_trip_for_display(trip_id)
             if not trip:
                 continue
@@ -720,11 +721,9 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
             except Exception:
                 driver_name = "Водій"
                 driver_username = None
-            await callback.message.answer("🔔 Зʼявилась нова поїздка!", reply_markup=back_only_kb)
             trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
-            await asyncio.sleep(1)
             await send_trip_message(
-                callback.message.answer,
+                lambda text, **kw: callback.message.answer("🔔 Зʼявилась нова поїздка!\n\n" + text, **kw),
                 trip_text, trip_id, 1, driver_id, driver_username, 0, subscription_id=subscription_id
             )
 
@@ -978,10 +977,8 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     trip_details = get_trip_details(trip_id)
     booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
 
-    await message.bot.send_message(driver_id, f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:", parse_mode="HTML", reply_markup=back_only_kb)
-    await asyncio.sleep(1)
     await safe_send(
-        lambda t, **kw: message.bot.send_message(driver_id, t, **kw),
+        lambda t, **kw: message.bot.send_message(driver_id, f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:\n\n" + t, **kw),
         booking_desc,
         booking_actions_kb(booking_id, passenger_id, message.from_user.username)
     )
