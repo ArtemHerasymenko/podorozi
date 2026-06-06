@@ -188,6 +188,8 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
             )
             trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
             for sub_id, passenger_id, _ in waiting:
+                if passenger_id == user_id:
+                    continue
                 await asyncio.sleep(0.5)
                 try:
                     await send_trip_message(
