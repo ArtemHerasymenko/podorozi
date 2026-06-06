@@ -616,12 +616,19 @@ def _subscription_inline_kb(selected=None, day: str = None):
     today_str = now_kyiv.strftime("%Y-%m-%d")
     is_today = (day == today_str) if day else False
     current_hour = now_kyiv.strftime("%H:00")
-    def make_btn(t):
-        if is_today and t < current_hour:
+    if is_today:
+        first_future_idx = next((i for i, t in enumerate(SUBSCRIPTION_TIMES) if t >= current_hour), len(SUBSCRIPTION_TIMES))
+        if SUBSCRIPTION_TIMES[first_future_idx] > current_hour:
+            first_future_idx -= 1
+        boundary_idx = first_future_idx
+    else:
+        boundary_idx = 0
+    def make_btn(t, idx):
+        if idx < boundary_idx:
             return InlineKeyboardButton(text="🔵 **:**" if t in highlighted else "**:**", callback_data="sub_noop")
         return InlineKeyboardButton(text=f"🔵 {t}" if t in highlighted else t, callback_data=f"sub_time:{t}")
     rows = [
-        [make_btn(t) for t in SUBSCRIPTION_TIMES[i:i + 4]]
+        [make_btn(t, idx) for idx, t in enumerate(SUBSCRIPTION_TIMES[i:i + 4], start=i)]
         for i in range(0, len(SUBSCRIPTION_TIMES), 4)
     ]
     rows.append([InlineKeyboardButton(text="✅ Готово", callback_data="sub_done")])
