@@ -603,7 +603,10 @@ def _day_label(day: str) -> str:
         return "завтра"
     return day
 
-def _subscription_inline_kb(selected=None):
+def _strike(text: str) -> str:
+    return ''.join(c + '̶' for c in text)
+
+def _subscription_inline_kb(selected=None, day: str = None):
     selected = selected or []
     if len(selected) == 2:
         lo = min(SUBSCRIPTION_TIMES.index(selected[0]), SUBSCRIPTION_TIMES.index(selected[1]))
@@ -611,7 +614,13 @@ def _subscription_inline_kb(selected=None):
         highlighted = set(SUBSCRIPTION_TIMES[lo:hi + 1])
     else:
         highlighted = set(selected)
+    kyiv = ZoneInfo("Europe/Kyiv")
+    now_kyiv = datetime.datetime.now(tz=kyiv)
+    today_str = now_kyiv.strftime("%Y-%m-%d")
+    is_today = (day == today_str) if day else False
     def label(t):
+        if is_today and t < now_kyiv.strftime("%H:00"):
+            return f"🔵 {_strike(t)}" if t in highlighted else _strike(t)
         return f"🔵 {t}" if t in highlighted else t
     rows = [
         [InlineKeyboardButton(text=label(t), callback_data=f"sub_time:{t}") for t in SUBSCRIPTION_TIMES[i:i + 4]]
@@ -632,7 +641,7 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
     await message.answer("Оберіть з якого та по який час шукаєте поїздки.", reply_markup=back_only_kb)
-    sub_kb_msg = await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb())
+    sub_kb_msg = await message.answer("Наприклад, 08:00 - 12:00", reply_markup=_subscription_inline_kb(day=data.get("day")))
     await state.update_data(subscription_kb_message_id=sub_kb_msg.message_id)
 
 @router.message(PassengerStates.subscription_from_to_time, lambda m: m.text != "⬅️ Назад")
@@ -655,7 +664,7 @@ async def subscription_time_handler(callback: types.CallbackQuery, state: FSMCon
         selected.append(raw)
     await state.update_data(subscription_selected_times=selected)
     try:
-        await callback.message.edit_reply_markup(reply_markup=_subscription_inline_kb(selected))
+        await callback.message.edit_reply_markup(reply_markup=_subscription_inline_kb(selected, day=data.get("day")))
     except TelegramBadRequest as e:
         logging.warning("Failed to update subscription inline kb: %s", e)
     await callback.answer()
