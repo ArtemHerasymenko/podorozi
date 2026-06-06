@@ -25,10 +25,13 @@ def _template_text(t, index, total):
 
 def _template_kb(index, total, t_id):
     nav = []
-    if index > 0:
-        nav.append(InlineKeyboardButton(text="⬅️ Попередній", callback_data="tpl_prev"))
-    if index < total - 1:
-        nav.append(InlineKeyboardButton(text="➡️ Наступний", callback_data="tpl_next"))
+    if total > 1:
+        prev_cb = "tpl_noop" if index == 0 else "tpl_prev"
+        next_cb = "tpl_noop" if index == total - 1 else "tpl_next"
+        nav = [
+            InlineKeyboardButton(text="⬅️ Попередній", callback_data=prev_cb),
+            InlineKeyboardButton(text="➡️ Наступний", callback_data=next_cb),
+        ]
     rows = [nav] if nav else []
     rows.append([InlineKeyboardButton(text="✅ Використати", callback_data=f"use_template:{t_id}")])
     rows.append([InlineKeyboardButton(text="🗑 Видалити", callback_data=f"tpl_remove:{t_id}")])
@@ -54,6 +57,10 @@ async def trip_use_template(message: types.Message, state: FSMContext):
 
 
 
+
+@router.callback_query(DriverStates.choosing_template, lambda c: c.data == "tpl_noop")
+async def template_noop(callback: types.CallbackQuery):
+    await callback.answer()
 
 @router.callback_query(DriverStates.choosing_template, lambda c: c.data in ("tpl_prev", "tpl_next"))
 async def template_nav(callback: types.CallbackQuery, state: FSMContext):
