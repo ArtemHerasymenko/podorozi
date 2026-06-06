@@ -1,3 +1,4 @@
+import logging
 from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -238,8 +239,8 @@ async def entering_landmark(message: types.Message, state: FSMContext):
     if msg_id:
         try:
             await message.bot.delete_message(chat_id=message.chat.id, message_id=msg_id)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to delete message msg_id=%s: %s", msg_id, e)
 
     await message.answer("Додано!", reply_markup=back_only_kb)
     new_msg = await message.answer("Продовжіть вибір орієнтирів:", reply_markup=route_points_kb(landmarks, selected, prefix))

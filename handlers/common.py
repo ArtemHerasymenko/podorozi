@@ -19,8 +19,8 @@ router = Router()
 async def safe_answer(callback, *args, **kwargs):
     try:
         await callback.answer(*args, **kwargs)
-    except TelegramBadRequest:
-        pass
+    except TelegramBadRequest as e:
+        logging.warning("callback.answer failed: %s", e)
 
 async def safe_send(send_fn, text: str, kb: InlineKeyboardMarkup, parse_mode="HTML"):
     try:
@@ -175,6 +175,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                 driver_name = driver_chat.full_name
                 driver_username = driver_chat.username
             except Exception:
+                logging.exception("Failed to get driver chat for user_id=%s", user_id)
                 driver_name = "Водій"
                 driver_username = None
             trip_tuple = (
@@ -194,7 +195,7 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                         trip_text, trip_id, 1, user_id, driver_username, 0, subscription_id=sub_id
                     )
                 except Exception:
-                    pass
+                    logging.exception("Failed to send trip notification to passenger_id=%s", passenger_id)
     return trip_id
 
 async def handle_day_input(message: types.Message, state: FSMContext, next_state):
@@ -431,8 +432,8 @@ async def start(message: types.Message, state: FSMContext):
                 message_id=trip_message_id,
                 reply_markup=None
             )
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
     await state.clear()
     await message.answer("Оберіть роль:", reply_markup=role_menu)
 
@@ -467,7 +468,7 @@ async def back(message: types.Message, state: FSMContext):
                 message_id=trip_message_id,
                 reply_markup=None
             )
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
     await state.clear()
     await message.answer("Оберіть роль:", reply_markup=role_menu)

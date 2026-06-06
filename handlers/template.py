@@ -1,3 +1,4 @@
+import logging
 from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -121,8 +122,8 @@ async def template_flow_back(message: types.Message, state: FSMContext):
     if tpl_msg_id:
         try:
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=tpl_msg_id, reply_markup=None)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear template message reply markup: %s", e)
     await state.set_state(DriverStates.choosing_creation_method)
     await message.answer("Використати шаблон, чи створити поїздку з нуля?", reply_markup=create_trip_kb)
 

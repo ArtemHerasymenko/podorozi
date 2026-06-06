@@ -1,4 +1,5 @@
 from email import message
+import logging
 
 from aiogram import Router, types
 from aiogram.filters import StateFilter
@@ -219,14 +220,14 @@ async def passenger_flow_back(message: types.Message, state: FSMContext):
     if trip_message_id:
         try:
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
     sub_kb_message_id = data.get("subscription_kb_message_id")
     if sub_kb_message_id:
         try:
             await message.bot.delete_message(chat_id=message.chat.id, message_id=sub_kb_message_id)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to delete subscription kb message: %s", e)
     await state.clear()
     await message.answer("Меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
@@ -626,8 +627,8 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
     if trip_message_id:
         try:
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=trip_message_id, reply_markup=None)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
     await state.update_data(subscription_selected_times=[])
     await state.set_state(PassengerStates.subscription_from_to_time)
     await message.answer("Оберіть з якого та по який час шукаєте поїздки.", reply_markup=back_only_kb)
@@ -655,8 +656,8 @@ async def subscription_time_handler(callback: types.CallbackQuery, state: FSMCon
     await state.update_data(subscription_selected_times=selected)
     try:
         await callback.message.edit_reply_markup(reply_markup=_subscription_inline_kb(selected))
-    except TelegramBadRequest:
-        pass
+    except TelegramBadRequest as e:
+        logging.warning("Failed to update subscription inline kb: %s", e)
     await callback.answer()
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data == "sub_done")
@@ -695,8 +696,8 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     new_trip_ids = [tid for tid in matching_ids if tid not in known_ids]
     try:
         await callback.message.delete()
-    except TelegramBadRequest:
-        pass
+    except TelegramBadRequest as e:
+        logging.warning("Failed to delete subscription message: %s", e)
     await state.clear()
     await callback.message.answer(
         f"✅ Ми повідомимо вас, коли з'явиться нова поїздка:\n"
@@ -719,6 +720,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
                 driver_name = driver_chat.full_name
                 driver_username = driver_chat.username
             except Exception:
+                logging.exception("Failed to get driver chat for driver_id=%s", driver_id)
                 driver_name = "Водій"
                 driver_username = None
             trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
@@ -739,8 +741,8 @@ async def back_from_search_handler(message: types.Message, state: FSMContext):
                 message_id=trip_message_id,
                 reply_markup=None
             )
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
     await state.clear()
     await message.answer("Повернення в меню пасажира:", reply_markup=passenger_menu_kb(message.from_user.id))
 
@@ -756,9 +758,9 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
                 message_id=trip_message_id,
                 reply_markup=None
             )
-        except:
-            pass
-    
+        except Exception as e:
+            logging.warning("Failed to clear trip message reply markup: %s", e)
+
     await state.clear()
     await message.answer(
         "Повернення в меню пасажира:",

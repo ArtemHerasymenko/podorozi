@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
@@ -121,7 +122,7 @@ async def view_trip_from_search(message: types.Message, state: FSMContext):
     if prev_msg_id:
         try:
             await message.bot.delete_message(chat_id=message.chat.id, message_id=prev_msg_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("Failed to delete previous trip detail message: %s", e)
     sent = await send_trip_message(message.answer, trip_text, trip[0], 1, trip[1], driver_chat.username if driver_chat else None, 0, show_keyboard=False)
     await state.update_data(trip_detail_message_id=sent.message_id)
