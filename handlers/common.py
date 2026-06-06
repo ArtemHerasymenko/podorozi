@@ -418,7 +418,7 @@ role_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚗 Я водій")],
         [KeyboardButton(text="👤 Я пасажир")],
-        [KeyboardButton(text="📝 Залишити відгук")]
+        [KeyboardButton(text="📝 Питання та відгуки")]
     ],
     resize_keyboard=True
 )
@@ -439,10 +439,10 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("Оберіть роль:", reply_markup=role_menu)
 
-@router.message(lambda m: m.text == "📝 Залишити відгук")
+@router.message(lambda m: m.text == "📝 Питання та відгуки")
 async def feedback_start(message: types.Message, state: FSMContext):
     await state.set_state(FeedbackStates.writing)
-    await message.answer("Напишіть відгук в довільній формі або надішліть скріншот:", reply_markup=back_only_kb)
+    await message.answer("Опишіть де виникли проблеми чи питання (можна скріншотом). Або розкажіть що найбільше сподобалось:", reply_markup=back_only_kb)
 
 @router.message(FeedbackStates.writing, lambda m: m.text != "⬅️ Назад")
 async def feedback_write(message: types.Message, state: FSMContext):
