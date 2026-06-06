@@ -388,7 +388,7 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
     car_line = f"\n🚘 {car_description}" if car_description else ""
     phone_line = f"\n📞 {driver_phone}" if driver_phone else "\n📞 Водій не вказав свій номер"
     price_line = f"\n💰 {price} грн за місце" if price is not None else ""
-    driver_line = f"\n👤 {driver_name}" if driver_name else ""
+    driver_line = f"👤 {driver_name}" if driver_name else "👤 Водій"
     notes_desc = format_notes_details_for_passenger(notes, pickup_at, booking_from_city, booking_to_city)
     return f"{driver_line}{notes_desc}{seats_line}{price_line}{car_line}{phone_line}\n\nМаршрут водія:\n{trip_desc}"
 
