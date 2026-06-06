@@ -603,9 +603,6 @@ def _day_label(day: str) -> str:
         return "завтра"
     return day
 
-def _strike(text: str) -> str:
-    return ''.join(c + '̶' for c in text)
-
 def _subscription_inline_kb(selected=None, day: str = None):
     selected = selected or []
     if len(selected) == 2:
@@ -618,12 +615,13 @@ def _subscription_inline_kb(selected=None, day: str = None):
     now_kyiv = datetime.datetime.now(tz=kyiv)
     today_str = now_kyiv.strftime("%Y-%m-%d")
     is_today = (day == today_str) if day else False
-    def label(t):
-        if is_today and t < now_kyiv.strftime("%H:00"):
-            return f"🔵 {_strike(t)}" if t in highlighted else _strike(t)
-        return f"🔵 {t}" if t in highlighted else t
+    current_hour = now_kyiv.strftime("%H:00")
+    def make_btn(t):
+        if is_today and t < current_hour:
+            return InlineKeyboardButton(text="🔵 **:**" if t in highlighted else "**:**", callback_data="sub_noop")
+        return InlineKeyboardButton(text=f"🔵 {t}" if t in highlighted else t, callback_data=f"sub_time:{t}")
     rows = [
-        [InlineKeyboardButton(text=label(t), callback_data=f"sub_time:{t}") for t in SUBSCRIPTION_TIMES[i:i + 4]]
+        [make_btn(t) for t in SUBSCRIPTION_TIMES[i:i + 4]]
         for i in range(0, len(SUBSCRIPTION_TIMES), 4)
     ]
     rows.append([InlineKeyboardButton(text="✅ Готово", callback_data="sub_done")])
@@ -647,6 +645,10 @@ async def notify_new_driver_handler(message: types.Message, state: FSMContext):
 @router.message(PassengerStates.subscription_from_to_time, lambda m: m.text != "⬅️ Назад")
 async def subscription_text_ignored(message: types.Message):
     await message.answer("Оберіть час, натиснувши кнопки вище.")
+
+@router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data == "sub_noop")
+async def subscription_noop(callback: types.CallbackQuery):
+    await callback.answer()
 
 @router.callback_query(PassengerStates.subscription_from_to_time, lambda c: c.data and c.data.startswith("sub_time:"))
 async def subscription_time_handler(callback: types.CallbackQuery, state: FSMContext):
