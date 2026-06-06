@@ -351,7 +351,7 @@ async def send_trip_message(send_fn, text: str, trip_id, total_cnt, driver_id, d
     return await safe_send(send_fn, text, kb)
 
 def format_notes_details_for_driver(notes: str = None, pickup_at=None, passenger_phone: str = None, booking_from_city: str = None, booking_to_city: str = None) -> str:
-    notes_line = f"\n📍 Місце посадки: <b>{booking_from_city}</b>"
+    notes_line = f"📍 Місце посадки: <b>{booking_from_city}</b>"
     if notes:
         notes_line += f"<b>, {notes}</b>"
     if booking_to_city:

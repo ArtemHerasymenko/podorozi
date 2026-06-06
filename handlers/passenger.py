@@ -1023,7 +1023,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
                 booking_from_city=trip[10], booking_to_city=trip[11],
             ) if trip else ""
         )
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n{booking_desc}", parse_mode="HTML", reply_markup=back_only_kb)
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n\n{booking_desc}", parse_mode="HTML", reply_markup=back_only_kb)
     elif prev_status == "cancelled_by_passenger":
         new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
         await callback.message.edit_text(new_text, reply_markup=None)

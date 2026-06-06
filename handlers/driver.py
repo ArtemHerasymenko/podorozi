@@ -61,7 +61,7 @@ async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}) {notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)})\n{notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"✅ {passenger_name}", callback_data=f"confirm_booking:{booking_id}"),
@@ -81,7 +81,7 @@ async def _build_driver_trip_details_msg(trip_row, bot, index=None, total=None):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}){notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)})\n{notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"❌ {passenger_name}", callback_data=f"reject_booking:{booking_id}"),
@@ -404,7 +404,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, None, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}) {notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)})\n{notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
 
@@ -420,7 +420,7 @@ async def _build_past_driver_trip_details_msg(trip_row, bot, driver_id):
             except:
                 passenger_name = "Пасажир"
             notes_line = format_notes_details_for_driver(notes, pickup_at, passenger_phone, booking_from_city=booking_from_city, booking_to_city=booking_to_city)
-            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)}){notes_line}"
+            text += f"\n👤 {passenger_name} ({booking_seats} {seats_word(booking_seats)})\n{notes_line}"
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([InlineKeyboardButton(text=f"✉️ {passenger_name}", url=msg_url)])
 
