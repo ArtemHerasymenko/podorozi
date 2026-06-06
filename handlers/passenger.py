@@ -709,7 +709,13 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     )
     await callback.answer()
     await asyncio.sleep(3)
-    for trip_id in new_trip_ids:
+    if len(new_trip_ids) > 3:
+        await callback.message.answer(
+            f"🔔 З‘явилось багато новий поїздок!"
+            f"\nРозпочніть пошук, щоб переглянути їх."
+        )
+    else:
+        for trip_id in new_trip_ids:
             await asyncio.sleep(0.5)
             trip = get_trip_for_display(trip_id)
             if not trip:
