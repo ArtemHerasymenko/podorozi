@@ -20,7 +20,7 @@ import asyncio
 import datetime
 from zoneinfo import ZoneInfo
 from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message, driver_menu_kb
-from data.route_intermediates import get_search_city_pairs
+from data.route_intermediates import get_search_city_pairs, get_travel_time_between
 from config import ADMIN_CHAT_ID
 
 router = Router()
@@ -103,7 +103,8 @@ async def my_trips(message: types.Message, state: FSMContext):
             display_phone = mask_phone(driver_phone)
         else:
             display_phone = None
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
+        board_time = pickup_at or (dep_dt + datetime.timedelta(minutes=get_travel_time_between(from_city, booking_from_city)) if booking_from_city else None)
+        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, board_time, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
         # passenger_phone_line: str = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
         text = f"{position_line}{status_label}\n\n{booking_desc}"
         if status in ACTIVE_STATUSES:
@@ -172,7 +173,8 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
         display_phone = mask_phone(driver_phone)
     else:
         display_phone = None
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name, show_date=True)
+    board_time = pickup_at or (dep_dt + datetime.timedelta(minutes=get_travel_time_between(from_city, booking_from_city)) if booking_from_city else None)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, board_time, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
     # passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{status_label}\n\n{booking_desc}"
 
@@ -504,16 +506,12 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     )
     await asyncio.sleep(3)
 
-    # if now is 19:43, we will say that we are looking for 19:43-XX:MM,
-    # but actually we look from 19:48, just to make sure we don't show already departed trips,
-    # or close to departure ones.
-    min_from = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
-    search_from_datetime = max(search_from_datetime, min_from)
     extra_from, extra_to = get_search_city_pairs(data["booking_from_city"], data["booking_to_city"])
     all_trips = search_trips_ids(data["booking_from_city"], data["booking_to_city"], search_from_datetime, search_to_datetime, extra_from_cities=extra_from, extra_to_cities=extra_to)
     total = len(all_trips)
-    trips_ids = [t_id for t_id, free_seats in all_trips if free_seats >= seats]
-    save_recent_search(message.from_user.id, data["booking_from_city"], data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data.get("day"), [t_id for t_id, _ in all_trips], seats_requested=seats)
+    passenger_from_city = data["booking_from_city"]
+    available = [(t_id, boarding_dt) for t_id, free_seats, boarding_dt in all_trips if free_seats >= seats]
+    save_recent_search(message.from_user.id, passenger_from_city, data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data.get("day"), [t_id for t_id, *_ in all_trips], seats_requested=seats)
 
     def trip_word(n):
         last2, last1 = n % 100, n % 10
@@ -525,20 +523,21 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
             return "поїздки"
         return "поїздок"
 
-    if not trips_ids:
+    if not available:
         if total == 0:
-            # day_label = "сьогодні" if is_today else "завтра"
             await message.answer(f"Поїздок не знайдено, спробуйте пізніше.", reply_markup=after_search_kb())
         else:
             await message.answer(f"Знайдено {total} {trip_word(total)}, але вільних місць вже немає.", reply_markup=after_search_kb())
         await state.set_state(PassengerStates.browsing_trips)
         return
 
-    if total == len(trips_ids):
+    if total == len(available):
         await message.answer(f"Знайдено {total} {trip_word(total)}.", reply_markup=after_search_kb())
     else:
-        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(trips_ids)}", reply_markup=after_search_kb())
-    create_trip_search_list(message.from_user.id, trips_ids)
+        await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(available)}", reply_markup=after_search_kb())
+    trips_ids = [t_id for t_id, _ in available]
+    boarding_dts = [boarding_dt for _, boarding_dt in available]
+    create_trip_search_list(message.from_user.id, trips_ids, boarding_dts, passenger_from_city)
     # This can come as expired, very unlikely.
     trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
 
@@ -549,9 +548,8 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     except:
         driver_name = None
 
-    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id))
-    times, _ = get_search_list_times(message.from_user.id)
-    trip_message = await send_trip_message(message.answer, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id), passenger_from_city=passenger_from_city, board_time=boarding_dts[index] if boarding_dts else None)
+    trip_message = await send_trip_message(message.answer, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=boarding_dts)
 
     await state.set_state(PassengerStates.browsing_trips)
     await state.update_data(trip_message_id=trip_message.message_id)
@@ -709,7 +707,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
     )
     extra_from, extra_to = get_search_city_pairs(from_city, to_city)
     all_trips = search_trips_ids(from_city, to_city, from_utc, to_utc, extra_from_cities=extra_from, extra_to_cities=extra_to)
-    matching_ids = {trip_id for trip_id, free_seats in all_trips if free_seats >= seats}
+    matching_ids = {trip_id: boarding_dt for trip_id, free_seats, boarding_dt in all_trips if free_seats >= seats}
     known_ids = set(get_trip_search_list_ids(callback.from_user.id))
     new_trip_ids = [tid for tid in matching_ids if tid not in known_ids]
     try:
@@ -747,7 +745,7 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
                 logging.exception("Failed to get driver chat for driver_id=%s", driver_id)
                 driver_name = "Водій"
                 driver_username = None
-            trip_text = format_trip(trip, 0, 1, driver_name=driver_name)
+            trip_text = format_trip(trip, 0, 1, driver_name=driver_name, passenger_from_city=from_city, board_time=matching_ids[trip_id])
             await send_trip_message(
                 lambda text, **kw: callback.message.answer("🔔 Зʼявилась нова поїздка!\n\n" + text, **kw),
                 trip_text, trip_id, 1, driver_id, driver_username, 0, subscription_id=subscription_id
@@ -792,10 +790,10 @@ async def remove_buttons_on_message(message: types.Message, state: FSMContext):
     )
 
 @router.callback_query(lambda c: c.data == "next")
-async def next_handler(callback: types.CallbackQuery, bot: Bot):
+async def next_handler(callback: types.CallbackQuery, bot: Bot, state: FSMContext):
     user_id = callback.from_user.id
 
-    times, old_index = get_search_list_times(user_id)
+    boarding_times, old_index, passenger_from_city = get_search_list_times(user_id)
     new_index = increase_trip_search_list_index(user_id)
     if new_index == old_index:
         await safe_answer(callback)
@@ -820,16 +818,16 @@ async def next_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = driver_chat.full_name
     except:
         driver_name = None
-    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
-    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id), passenger_from_city=passenger_from_city, board_time=boarding_times[index] if boarding_times else None)
+    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=boarding_times)
 
     await safe_answer(callback)
 
 @router.callback_query(lambda c: c.data == "prev")
-async def prev_handler(callback: types.CallbackQuery, bot: Bot):
+async def prev_handler(callback: types.CallbackQuery, bot: Bot, state: FSMContext):
     user_id = callback.from_user.id
 
-    times, old_index = get_search_list_times(user_id)
+    boarding_times, old_index, passenger_from_city = get_search_list_times(user_id)
     new_index = decrease_trip_search_list_index(user_id)
     if new_index == old_index:
         await safe_answer(callback)
@@ -854,18 +852,18 @@ async def prev_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = driver_chat.full_name
     except:
         driver_name = None
-    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
-    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id), passenger_from_city=passenger_from_city, board_time=boarding_times[index] if boarding_times else None)
+    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=boarding_times)
 
     await safe_answer(callback)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("trip_idx:"))
-async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot):
+async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot, state: FSMContext):
     user_id = callback.from_user.id
     target_index = int(callback.data.split(":")[1])
 
-    _, current_index = get_search_list_times(user_id)
+    boarding_times, current_index, passenger_from_city = get_search_list_times(user_id)
     if target_index == current_index:
         await safe_answer(callback)
         return
@@ -890,9 +888,8 @@ async def trip_idx_handler(callback: types.CallbackQuery, bot: Bot):
         driver_name = driver_chat.full_name
     except:
         driver_name = None
-    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id))
-    times, _ = get_search_list_times(user_id)
-    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=times)
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == callback.from_user.id), passenger_from_city=passenger_from_city, board_time=boarding_times[index] if boarding_times else None)
+    await send_trip_message(callback.message.edit_text, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=boarding_times)
     await safe_answer(callback)
 
 

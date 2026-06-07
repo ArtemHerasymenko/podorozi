@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 from states.feedback_states import FeedbackStates
 from database import save_feedback, save_trip_to_db, save_trip_template, upsert_template_time, get_recent_template_times, get_recent_times_by_cities, get_pending_subscriptions
 from config import ADMIN_CHAT_ID
-from data.route_intermediates import get_intermediates, get_covered_pairs
+from data.route_intermediates import get_intermediates, get_covered_pairs, get_travel_time_between
 from database import get_city_modified_name_2
 import asyncio
 import datetime
@@ -37,7 +37,7 @@ async def safe_send(send_fn, text: str, kb: InlineKeyboardMarkup, parse_mode="HT
         raise
 
 # Hardcoded Ukrainian translations
-uk_days = {
+eng_to_ukr_days = {
     'Monday': 'понеділок',
     'Tuesday': 'вівторок',
     'Wednesday': 'середа',
@@ -70,9 +70,9 @@ def generate_quick_days():
         day = now + datetime.timedelta(days=d)
         english_day = day.strftime("%A")
         english_month = day.strftime("%B")
-        uk_day = uk_days.get(english_day, english_day)
+        dep_day = eng_to_ukr_days.get(english_day, english_day)
         uk_month = uk_months.get(english_month, english_month)
-        label = f"{prefixes[d]} ({uk_day})"
+        label = f"{prefixes[d]} ({dep_day})"
         quick_days.append((label, day.strftime("%Y-%m-%d")))
     return quick_days
 
@@ -166,9 +166,10 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
         from_city = data.get("from_city", "")
         to_city = data.get("to_city", "")
         covered = get_covered_pairs(from_city, to_city)
-        waiting = get_pending_subscriptions(covered, dep_datetime)
+        boarding_times = [dep_datetime + datetime.timedelta(minutes=get_travel_time_between(from_city, pair_from)) for pair_from, _ in covered]
+        waiting = get_pending_subscriptions(covered, boarding_times)
         seats = int(data.get("seats") or 0)
-        waiting = [(sub_id, pid, sreq) for sub_id, pid, sreq in waiting if sreq <= seats]
+        waiting = [(sub_id, pid, sreq, sub_from_city, bt) for sub_id, pid, sreq, sub_from_city, bt in waiting if sreq <= seats]
         if waiting:
             try:
                 driver_chat = await bot.get_chat(user_id)
@@ -186,11 +187,11 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
                 seats, seats,
                 data.get("arrival_time"), data.get("car_description")
             )
-            trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name)
-            for sub_id, passenger_id, _ in waiting:
+            for sub_id, passenger_id, _, sub_from_city, boarding_time in waiting:
                 if passenger_id == user_id:
                     continue
                 await asyncio.sleep(0.5)
+                trip_text = format_trip(trip_tuple, 0, 1, driver_name=driver_name, passenger_from_city=sub_from_city, board_time=boarding_time)
                 try:
                     await send_trip_message(
                         lambda text, **kw: bot.send_message(passenger_id, "🔔 Зʼявилась нова поїздка!\n\n" + text, **kw),
@@ -246,7 +247,8 @@ async def handle_time_input(message: types.Message, state: FSMContext, next_stat
     if response <= datetime.datetime.now(datetime.timezone.utc):
         await message.answer("❌ Час відправлення має бути у майбутньому. Введіть знову:")
         return
-    arrival = response + datetime.timedelta(minutes=30)
+    travel_minutes = get_travel_time_between(data.get("from_city", ""), data.get("to_city", ""))
+    arrival = response + datetime.timedelta(minutes=travel_minutes or 30)
     await state.update_data(datetime=response, arrival_time=arrival)
     await message.answer("Кількість місць:", reply_markup=ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=str(i))] for i in range(1, 5)] + [[KeyboardButton(text="⬅️ Назад")]],
@@ -255,44 +257,47 @@ async def handle_time_input(message: types.Message, state: FSMContext, next_stat
     ))
     await state.set_state(next_state)
 
-def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_points: str = None, to_points: str = None, show_date: bool = False) -> str:
+def format_basic_details(from_city: str, to_city: str, dep_dt, arrival_dt, from_points: str = None, to_points: str = None, passenger_from_city: str = None, board_time=None) -> str:
     local_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
     local_dt = dep_dt.astimezone(local_tz)
-    arrival_local = arrival_dt.astimezone(local_tz)
-    uk_day = uk_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
+    dep_day = eng_to_ukr_days.get(local_dt.strftime("%A"), local_dt.strftime("%A"))
     dep_time = local_dt.strftime("%H:%M")
-    arr_time = arrival_local.strftime("%H:%M")
-    date_str = local_dt.strftime("%d.%m.%Y")
-    from_str = f"<b>{from_city}</b> ({from_points})" if from_points else f"<b>{from_city}</b>"
     to_str = f"<b>{to_city}</b> ({to_points})" if to_points else f"<b>{to_city}</b>"
-    time_str = f"🕐 {dep_time}, {uk_day}, {date_str}" if show_date else f"🕐 {dep_time}, {uk_day}"
-    return f"{time_str}\n➡️ {from_str}\n🏁 {to_str}"
+    if passenger_from_city and passenger_from_city != from_city and board_time is not None:
+        board_local = board_time.astimezone(local_tz)
+        board_day = eng_to_ukr_days.get(board_local.strftime("%A"), board_local.strftime("%A"))
+        dep_day_str = f", {dep_day}" if dep_day != board_day else ""
+        board_day_str = f", {board_day}" if board_day != dep_day else ""
+        return (
+            f"📍 <b>{from_city}</b> — {dep_time}{dep_day_str}\n"
+            f"📍 <b>{passenger_from_city}</b> — {board_local.strftime('%H:%M')}{board_day_str}\n"
+            f"📍 {to_str}"
+        )
+    else:
+        time_str = f"🕐 {dep_time}"
+        from_str = f"<b>{from_city}</b> ({from_points})" if from_points else f"<b>{from_city}</b>"
+        return f"{time_str}\n📍 {from_str}\n📍 {to_str}"
     
 def mask_phone(phone):
     if not phone or len(phone) < 4:
         return phone
     return phone[:3] + '*' * (len(phone) - 4) + phone[-1]
 
-def format_trip(trip, index, total_cnt, driver_name=None, is_own=False):
+def format_trip(trip, index, total_cnt, driver_name=None, is_own=False, passenger_from_city=None, board_time=None):
     position_text = f"Поїздка № {index + 1}/{total_cnt}" if total_cnt > 1 else ""
     position_line = f"{position_text}\n\n" if position_text else ""
     name_str = driver_name or "Водій"
     if is_own:
         name_str += " (Ви)"
     driver_line = f"👤 {name_str}"
-    if trip[2]:
-        phone_line = f"📞 {mask_phone(trip[2])}"
-    else:
-        phone_line = "📞 Водій не вказав свій номер"
     car_line = f"🚘 {trip[12]}" if trip[12] else ""
+    route_str = format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6], passenger_from_city=passenger_from_city, board_time=board_time)
     return (
         f"{position_line}"
-        f"{format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6])}\n\n"
+        f"{route_str}\n\n"
         f"💰 {trip[8]} грн за місце | {trip[10]}/{trip[9]} вільні\n"
         f"{driver_line}\n"
         f"{car_line}\n"
-        # f"{phone_line}\n"
-        # f"👥 Вільних місць: {trip[10]}/{trip[9]}"
         )
 
 def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, index=0, all_times=None, subscription_id=None):
@@ -305,6 +310,8 @@ def trip_keyboard(trip_id, total_cnt=1, driver_id=None, driver_username=None, in
             InlineKeyboardButton(text="Наступна ➡️", callback_data="next"),
         ]
         if all_times:
+            _kyiv = zoneinfo.ZoneInfo("Europe/Kyiv")
+            all_times = [t.astimezone(_kyiv).strftime("%H:%M") for t in all_times]
             page_size = 8
             n = len(all_times)
             page = index // page_size
@@ -384,8 +391,8 @@ def format_notes_details_for_passenger(notes: str = None, pickup_at=None, bookin
         driver_notes_line = ""
     return f"{driver_notes_line}{notes_line}"
 
-def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None, car_description: str = None, booking_from_city: str = None, booking_to_city: str = None, driver_phone: str = None, price=None, driver_name: str = None, show_date: bool = False) -> str:
-    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points, show_date=show_date)
+def format_booking_description_for_passenger(from_city: str, to_city: str, dep_dt, notes: str = None, pickup_at=None, arrival_dt=None, seats: int = None, from_points: str = None, to_points: str = None, car_description: str = None, booking_from_city: str = None, booking_to_city: str = None, driver_phone: str = None, price=None, driver_name: str = None) -> str:
+    trip_desc = format_basic_details(from_city, to_city, dep_dt, arrival_dt, from_points, to_points, passenger_from_city=booking_from_city, board_time=pickup_at)
     seats_line = f"\n👥 Місць заброньовано: {seats}" if seats is not None else ""
     car_line = f"\n🚘 {car_description}" if car_description else ""
     phone_line = f"\n📞 {driver_phone}" if driver_phone else "\n📞 Водій не вказав свій номер"

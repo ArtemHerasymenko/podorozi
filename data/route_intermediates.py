@@ -3,6 +3,23 @@ TYPICAL_ROUTES = [
     ["Лутовинівка", "Козельщина", "Нова Галещина", "Солониця", "Горішні Плавні"],
 ]
 
+# Minutes to drive from the previous city to each city in the route (first is always 0).
+ROUTE_TIMES = [
+    [0, 5, 10, 5, 30],
+    [0, 5, 10, 5, 30],
+]
+
+
+def get_travel_time_between(from_city: str, to_city: str) -> int:
+    """Returns minutes to drive from from_city to to_city along a known route."""
+    for route, times in zip(TYPICAL_ROUTES, ROUTE_TIMES):
+        if from_city in route and to_city in route:
+            i, j = route.index(from_city), route.index(to_city)
+            if i < j:
+                return sum(times[i + 1:j + 1])
+            elif i > j:
+                return sum(times[j + 1:i + 1])
+    return 0
 
 def get_search_city_pairs(from_city: str, to_city: str) -> tuple[list[str], list[str]]:
     """
