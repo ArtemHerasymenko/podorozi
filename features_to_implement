@@ -1,4 +1,80 @@
-test and check logs, make sure no errors
+база скомпроментована, створити нові пароль і т.д
+
+do we have harmful text? E.g. when a bad actor types some command manually (they can get it from git),
+will theu delerte something, or book, creates someting. Or every GRUD action is under a button so we are fine?
+
+прогнати флов (забронювати, підтвердити і т.д) після вчорашнійх змін для прайвесі ексепшенів
+
+can we remove the "cancle trip" button once it is over, but driver still has tripcs
+view open?
+
+good idea to have a qucick menu/buttons for both, where driver just can see
+his passeners very quickly, like name+pickup time + place+phone(button?) + msg button. So if something if off, they both could quickly contact the other or just
+check pick up info.
+Maybe enough to just send reminder 30-15 mins before the trip, with those details?
+
+we have many enters, e.g. 15 people a day, but only 5 do search, and 3 create a ride, do others have problems? What do the do?
+
+часто люди шукаю по місцю? Лут-коз? Якось порадити одним і другим домовитись дешевше.
+
+use pop-up alert in templates or ther places where no data.
+
+if a driver created a trip - notify subscribers only 5 min later, maybe driver will change his mind and delete a trip.
+
+when user cancles anything - ask again if they are sure, idealy via pop up msg.
+What can we do ith pop ups at all? Can we use it as a booking view for P.
+
+ Не знайшлось? Введіть вручну - Якщо немає - введіть вручну.
+
+ do not show past subscriptions.
+
+ store only a single template per from-to pair, maybe just get that info from last ride, no need to temaplte table
+ just read info and then get info by ride id.
+ ALso on ui show ??? near seats, time and day
+
+ metrics
+ - time for driver to create a trip
+ - time for rider to do a search 
+
+- remove extra fields in msg from P to D on booking (car, phone). Maybe in othe msgs
+- also on trip search make a new line separation between trip details and driver 
+ details (time, from , to /n car, phone, name)
+
+-inside my subscription show seats even if only 1 is requested.
+
+- 
+Оберіть день зі списку. - Внизу?
+
+може кожний рядок в швидкому пошуку це окремий рядок
+Коз ->  Крем
+Сьогодні
+18:00
+1 місце
+
+do not receive notifications about own trip creation
+
+Повторити + такі ж стрілочки.
+Є більші стрілочки?
+
+Is it thread safe, e.g. when driver cancles trip -> booking, and passenger also cancels - what happens?
+
+other cards also need simplification.
+Маршрут водія коли пасажир бачить підтвердження?
+
+do UI simplification. On trip search no need to show car, phone, from_points. WE can show car + from_points
+on booking, phone - once approved. Seat - no need at all , if we found this ride - it has enough seat.
+Exception when from and to are both cities - then from_points are needed.
+Maybe keep as-is, just hide phone and seats.
+
+do not send subsciption notifications to yourself
+
+should we limit notification sending from 23:00 to 07:00?
+
+send all notification, including subscription, booking, cancel - only when user is at least 1 min inactive. And check if
+the subsctiption is still suitalbe. 
+
+when subscription is from koz -> krem, but a new trip is from lut -> krem, also need to send a notification.
+
 
 === Maybe in teh future ===
 
@@ -22,7 +98,19 @@ same for P
 
 ======= TO test ========
 
+
+
 ===== ANSWERED/DONE ======
+
+- Повторіть попередній пошук або почніть новий: -
+Повторити попередній пошук чи почати новий?
+Хочете повторити пошук чи почати новий?
+Оберіть 
+
+rremeber notes, only apply to same from_city
+
+ if during from-scratch ride creationg we recognisee we have a template for this, even non active - we can offer a time form it
+ delete template
 
 own trip
 

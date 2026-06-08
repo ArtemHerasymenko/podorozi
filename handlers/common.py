@@ -149,12 +149,10 @@ async def finish_trip_creation(user_id: int, data: dict, answer, state: FSMConte
     if template_id and data.get("datetime"):
         kyiv_time = data["datetime"].astimezone(ZoneInfo("Europe/Kyiv")).strftime("%H:%M")
         upsert_template_time(template_id, kyiv_time)
-    trip_id = save_trip_to_db(user_id, data)
-    if not trip_id:
-        await answer("❌ У вас вже є активна поїздка в цей час.", reply_markup=driver_menu_kb)
-        await state.clear()
-        return None
+    trip_id, has_overlap = save_trip_to_db(user_id, data)
     await answer("✅ Поїздка збережена!\nМожете переглянути її в меню\n\"📋 Заплановані поїздки\"", reply_markup=driver_menu_kb)
+    if has_overlap:
+        await answer("⚠️ Зверніть увагу: у вас є інша поїздка впритул до цієї.")
     intermediates = get_intermediates(data.get("from_city", ""), data.get("to_city", ""))
     if intermediates:
         names = [get_city_modified_name_2(c) or c for c in intermediates]

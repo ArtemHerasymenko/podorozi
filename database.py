@@ -327,7 +327,7 @@ cursor.execute("ALTER TABLE search_subscriptions ADD COLUMN IF NOT EXISTS is_act
 conn.commit()
 
 def save_trip_to_db(driver_id, data):
-    """Insert trip only if no active trip overlaps. Returns trip_id on success, None on overlap."""
+    """Insert trip and return (trip_id, has_overlap). has_overlap is informational and does not block creation."""
     cursor.execute("BEGIN")
     cursor.execute("""
         WITH overlap AS (
@@ -341,8 +341,7 @@ def save_trip_to_db(driver_id, data):
         ),
         inserted AS (
             INSERT INTO trips (driver_id, driver_phone, car_description, from_city, from_points, to_city, to_points, departure_datetime, price, seats, arrival_time)
-            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-            FROM overlap WHERE NOT has_overlap
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         )
         SELECT (SELECT has_overlap FROM overlap), (SELECT id FROM inserted)
@@ -357,7 +356,7 @@ def save_trip_to_db(driver_id, data):
     ))
     conn.commit()
     has_overlap, inserted_id = cursor.fetchone()
-    return inserted_id if not has_overlap else None
+    return inserted_id, bool(has_overlap)
 
 def get_cities():
     cursor.execute("SELECT name FROM cities WHERE approved = TRUE ORDER BY name")
