@@ -986,7 +986,7 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
     passenger_id = message.from_user.id
     passenger_name = message.from_user.full_name
 
-    success, booking_id = book_trip(trip_id, passenger_id, notes, seats_requested, phone, from_city=data.get("booking_from_city"), to_city=data.get("booking_to_city"))
+    success, booking_id, has_overlap = book_trip(trip_id, passenger_id, notes, seats_requested, phone, from_city=data.get("booking_from_city"), to_city=data.get("booking_to_city"))
 
     if not success:
         await message.answer(BOOK_ERRORS.get(booking_id, "❌ Не вдалося забронювати поїздку."), reply_markup=passenger_menu_kb(message.from_user.id))
@@ -997,6 +997,8 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
         "⏳ Ми відправили запит водієві, очікуйте підтвердження.",
         reply_markup=passenger_menu_kb(message.from_user.id)
     )
+    if has_overlap:
+        await message.answer("⚠️ Зверніть увагу: у вас вже є інше бронювання впритул до цього.")
 
     driver_id = get_driver_id(trip_id)
     trip_details = get_trip_details(trip_id)

@@ -447,6 +447,8 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
         WITH trip AS (
             SELECT
                 status,
+                departure_datetime,
+                arrival_time,
                 departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
                 seats::int - (
                     SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
@@ -472,25 +474,41 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             (SELECT not_departed            FROM trip),
             (SELECT has_seats               FROM trip),
             (SELECT existing_booking_status FROM trip),
-            (SELECT id                      FROM inserted)
+            (SELECT id                      FROM inserted),
+            (SELECT departure_datetime      FROM trip),
+            (SELECT arrival_time            FROM trip),
+            (SELECT from_city               FROM trip)
     """, (trip_id, seats_requested, trip_id, passenger_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone, from_city, to_city))
     conn.commit()
     row = cursor.fetchone()
 
     if not row or row[0] is None:
-        return False, "not_found"
-    status, not_departed, has_seats, existing_booking_status, inserted_id = row
+        return False, "not_found", False
+    status, not_departed, has_seats, existing_booking_status, inserted_id, dep_dt, arrival_time, trip_from_city = row
     if status != 'active':
-        return False, "cancelled"
+        return False, "cancelled", False
     if not not_departed:
-        return False, "departed"
+        return False, "departed", False
     if existing_booking_status == 'pending':
-        return False, "already_booked_pending"
+        return False, "already_booked_pending", False
     if existing_booking_status == 'confirmed':
-        return False, "already_booked_confirmed"
+        return False, "already_booked_confirmed", False
     if not has_seats:
-        return False, "no_seats"
-    return True, inserted_id
+        return False, "no_seats", False
+
+    new_boarding_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, from_city) if from_city else 0)
+    cursor.execute("""
+        SELECT t2.from_city, t2.departure_datetime, t2.arrival_time, b2.from_city
+        FROM bookings b2
+        JOIN trips t2 ON b2.trip_id = t2.id
+        WHERE b2.passenger_id = %s AND b2.status IN ('pending', 'confirmed') AND b2.trip_id != %s
+    """, (passenger_id, trip_id))
+    has_overlap = any(
+        (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_from_city or ""))) < arrival_time
+        and t2_arrival > new_boarding_dt
+        for t2_from_city, t2_dep_dt, t2_arrival, b2_from_city in cursor.fetchall()
+    )
+    return True, inserted_id, has_overlap
 
 def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuses: list[str]):
     cursor.execute("""
