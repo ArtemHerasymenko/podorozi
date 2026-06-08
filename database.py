@@ -933,6 +933,7 @@ def search_trips_ids(from_city, to_city, time_from, time_to, extra_from_cities: 
         if boarding_dt < time_from or boarding_dt > time_to:
             continue
         result.append((trip_id, free_seats, boarding_dt))
+    result.sort(key=lambda x: x[2])
     return result
 
 def get_trip_for_display(trip_id: int):
