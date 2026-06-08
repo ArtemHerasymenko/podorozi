@@ -418,22 +418,23 @@ def check_trip_bookable(trip_id: int, passenger_id: int, seats_requested: int = 
                 SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
                 WHERE b.trip_id = %s AND b.status IN ('pending', 'confirmed')
             ) >= %s AS has_seats,
-            EXISTS (
-                SELECT 1 FROM bookings
-                WHERE trip_id = %s AND passenger_id = %s AND status IN ('pending', 'confirmed')
-            ) AS already_booked
+            (SELECT status FROM bookings
+             WHERE trip_id = %s AND passenger_id = %s AND status IN ('pending', 'confirmed')
+             LIMIT 1) AS existing_booking_status
         FROM trips WHERE id = %s
     """, (trip_id, seats_requested, trip_id, passenger_id, trip_id))
     row = cursor.fetchone()
     if not row:
         return False, "not_found"
-    status, not_departed, has_seats, already_booked = row
+    status, not_departed, has_seats, existing_booking_status = row
     if status != 'active':
         return False, "cancelled"
     if not not_departed:
         return False, "departed"
-    if already_booked:
-        return False, "already_booked"
+    if existing_booking_status == 'pending':
+        return False, "already_booked_pending"
+    if existing_booking_status == 'confirmed':
+        return False, "already_booked_confirmed"
     if not has_seats:
         return False, "no_seats"
     return True, None
@@ -451,10 +452,9 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
                     SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
                     WHERE b.trip_id = %s AND b.status IN ('pending', 'confirmed')
                 ) >= %s AS has_seats,
-                EXISTS (
-                    SELECT 1 FROM bookings
-                    WHERE trip_id = %s AND passenger_id = %s AND status IN ('pending', 'confirmed')
-                ) AS already_booked
+                (SELECT status FROM bookings
+                 WHERE trip_id = %s AND passenger_id = %s AND status IN ('pending', 'confirmed')
+                 LIMIT 1) AS existing_booking_status
             FROM trips WHERE id = %s
         ),
         inserted AS (
@@ -464,28 +464,30 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             WHERE status = 'active'
               AND not_departed
               AND has_seats
-              AND NOT already_booked
+              AND existing_booking_status IS NULL
             RETURNING id
         )
         SELECT
-            (SELECT status         FROM trip),
-            (SELECT not_departed   FROM trip),
-            (SELECT has_seats      FROM trip),
-            (SELECT already_booked FROM trip),
-            (SELECT id             FROM inserted)
+            (SELECT status                  FROM trip),
+            (SELECT not_departed            FROM trip),
+            (SELECT has_seats               FROM trip),
+            (SELECT existing_booking_status FROM trip),
+            (SELECT id                      FROM inserted)
     """, (trip_id, seats_requested, trip_id, passenger_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone, from_city, to_city))
     conn.commit()
     row = cursor.fetchone()
 
     if not row or row[0] is None:
         return False, "not_found"
-    status, not_departed, has_seats, already_booked, inserted_id = row
+    status, not_departed, has_seats, existing_booking_status, inserted_id = row
     if status != 'active':
         return False, "cancelled"
     if not not_departed:
         return False, "departed"
-    if already_booked:
-        return False, "already_booked"
+    if existing_booking_status == 'pending':
+        return False, "already_booked_pending"
+    if existing_booking_status == 'confirmed':
+        return False, "already_booked_confirmed"
     if not has_seats:
         return False, "no_seats"
     return True, inserted_id
