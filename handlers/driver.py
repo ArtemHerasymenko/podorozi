@@ -10,7 +10,7 @@ from keyboards.city_kb import cities_keyboard
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from keyboards.booking_kb import booking_actions_kb, reject_booking_kb
-from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks, save_user_landmark
+from database import update_booking_status, get_passenger_id, get_driver_trips, get_latest_driver_past_trip, get_prev_driver_past_trip, get_next_driver_past_trip, get_driver_past_trip_position, get_driver_trip_by_id, get_trip_id_for_booking, cancel_trip, get_bookings_for_trip, get_trip_details, get_trip_details_by_booking, get_driver_phone_by_booking, set_booking_pickup_at, save_route_description, get_city_modified_name, get_city_modified_name_3, get_driver_recent_car_descriptions, save_or_update_driver_car_description, get_recent_phone_numbers, save_or_update_phone_number, get_city_landmarks, save_user_landmark, check_passenger_booking_overlap
 from aiogram import Bot
 import asyncio
 import datetime
@@ -619,6 +619,8 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
             )
         else:
             await bot.send_message(passenger_id, "✅ Водій підтвердив вашу бронь!\n\nВдалої поїздки!")
+        if check_passenger_booking_overlap(passenger_id, booking_id):
+            await bot.send_message(passenger_id, "⚠️ Зверніть увагу: у вас вже є інше бронювання впритул до цього.")
     elif prev_status == "confirmed":
         await message.answer("Ви вже підтвердили це бронювання раніше")
     elif prev_status == "rejected":

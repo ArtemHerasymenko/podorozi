@@ -511,6 +511,30 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
     )
     return True, inserted_id, has_overlap
 
+def check_passenger_booking_overlap(passenger_id: int, booking_id: int) -> bool:
+    """Returns True if the passenger has another active booking overlapping with the given booking."""
+    cursor.execute("""
+        SELECT t.from_city, t.departure_datetime, t.arrival_time, b.from_city
+        FROM bookings b JOIN trips t ON b.trip_id = t.id
+        WHERE b.id = %s
+    """, (booking_id,))
+    row = cursor.fetchone()
+    if not row:
+        return False
+    trip_from_city, dep_dt, arrival_time, booking_from_city = row
+    boarding_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, booking_from_city or ""))
+
+    cursor.execute("""
+        SELECT t2.from_city, t2.departure_datetime, t2.arrival_time, b2.from_city
+        FROM bookings b2 JOIN trips t2 ON b2.trip_id = t2.id
+        WHERE b2.passenger_id = %s AND b2.status IN ('pending', 'confirmed') AND b2.id != %s
+    """, (passenger_id, booking_id))
+    return any(
+        (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_from_city or ""))) < arrival_time
+        and t2_arrival > boarding_dt
+        for t2_from_city, t2_dep_dt, t2_arrival, b2_from_city in cursor.fetchall()
+    )
+
 def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuses: list[str]):
     cursor.execute("""
         WITH prev AS (
