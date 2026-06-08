@@ -447,6 +447,7 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
         WITH trip AS (
             SELECT
                 status,
+                from_city,
                 departure_datetime,
                 arrival_time,
                 departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
