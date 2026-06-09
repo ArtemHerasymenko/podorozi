@@ -498,43 +498,55 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
         return False, "no_seats", False
 
     new_boarding_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, from_city) if from_city else 0)
-    new_arrival_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, to_city) if to_city else 0) or arrival_time
+    _to_offset = get_travel_time_between(trip_from_city, to_city) if to_city else 0
+    new_arrival_dt = dep_dt + datetime.timedelta(minutes=_to_offset) if _to_offset else arrival_time
     cursor.execute("""
-        SELECT t2.from_city, t2.departure_datetime, b2.from_city, b2.to_city
+        SELECT t2.from_city, t2.departure_datetime, t2.arrival_time, b2.from_city, b2.to_city
         FROM bookings b2
         JOIN trips t2 ON b2.trip_id = t2.id
         WHERE b2.passenger_id = %s AND b2.status IN ('pending', 'confirmed') AND b2.trip_id != %s
     """, (passenger_id, trip_id))
+    def _boarding(t2_from, t2_dep, b2_from):
+        return t2_dep + datetime.timedelta(minutes=get_travel_time_between(t2_from, b2_from or ""))
+    def _arrival(t2_from, t2_dep, t2_arr, b2_to):
+        offset = get_travel_time_between(t2_from, b2_to or "")
+        return t2_dep + datetime.timedelta(minutes=offset) if offset else t2_arr
     has_overlap = any(
-        (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_from_city or ""))) < new_arrival_dt
-        and (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_to_city or ""))) > new_boarding_dt
-        for t2_from_city, t2_dep_dt, b2_from_city, b2_to_city in cursor.fetchall()
+        _boarding(t2_from_city, t2_dep_dt, b2_from_city) < new_arrival_dt
+        and _arrival(t2_from_city, t2_dep_dt, t2_arrival, b2_to_city) > new_boarding_dt
+        for t2_from_city, t2_dep_dt, t2_arrival, b2_from_city, b2_to_city in cursor.fetchall()
     )
     return True, inserted_id, has_overlap
 
 def check_passenger_booking_overlap(passenger_id: int, booking_id: int) -> bool:
     """Returns True if the passenger has another active booking overlapping with the given booking."""
     cursor.execute("""
-        SELECT t.from_city, t.departure_datetime, b.from_city, b.to_city
+        SELECT t.from_city, t.departure_datetime, t.arrival_time, b.from_city, b.to_city
         FROM bookings b JOIN trips t ON b.trip_id = t.id
         WHERE b.id = %s
     """, (booking_id,))
     row = cursor.fetchone()
     if not row:
         return False
-    trip_from_city, dep_dt, booking_from_city, booking_to_city = row
+    trip_from_city, dep_dt, raw_arrival_time, booking_from_city, booking_to_city = row
     boarding_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, booking_from_city or ""))
-    arrival_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, booking_to_city or ""))
+    _to_offset = get_travel_time_between(trip_from_city, booking_to_city or "")
+    arrival_dt = dep_dt + datetime.timedelta(minutes=_to_offset) if _to_offset else raw_arrival_time
 
     cursor.execute("""
-        SELECT t2.from_city, t2.departure_datetime, b2.from_city, b2.to_city
+        SELECT t2.from_city, t2.departure_datetime, t2.arrival_time, b2.from_city, b2.to_city
         FROM bookings b2 JOIN trips t2 ON b2.trip_id = t2.id
         WHERE b2.passenger_id = %s AND b2.status IN ('pending', 'confirmed') AND b2.id != %s
     """, (passenger_id, booking_id))
+    rows = cursor.fetchall()
+    def _b(t2_from, t2_dep, b2_from):
+        return t2_dep + datetime.timedelta(minutes=get_travel_time_between(t2_from, b2_from or ""))
+    def _a(t2_from, t2_dep, t2_arr, b2_to):
+        offset = get_travel_time_between(t2_from, b2_to or "")
+        return t2_dep + datetime.timedelta(minutes=offset) if offset else t2_arr
     return any(
-        (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_from_city or ""))) < arrival_dt
-        and (t2_dep_dt + datetime.timedelta(minutes=get_travel_time_between(t2_from_city, b2_to_city or ""))) > boarding_dt
-        for t2_from_city, t2_dep_dt, b2_from_city, b2_to_city in cursor.fetchall()
+        _b(t2_from, t2_dep, b2_from) < arrival_dt and _a(t2_from, t2_dep, t2_arr, b2_to) > boarding_dt
+        for t2_from, t2_dep, t2_arr, b2_from, b2_to in rows
     )
 
 def update_booking_status(booking_id: int, new_status: str, allowed_prev_statuses: list[str]):
