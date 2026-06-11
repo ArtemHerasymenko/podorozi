@@ -549,7 +549,7 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
     success, booking_ids = cancel_trip(trip_id, callback.from_user.id)
 
     if success:
-        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", parse_mode="HTML")
+        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", parse_mode="HTML", reply_markup=callback.message.reply_markup)
         await safe_answer(callback)
         for booking_id in booking_ids:
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])
