@@ -414,7 +414,7 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
     if first_line_parts:
         lines.append(", ".join(first_line_parts))
     if booking_from_city and booking_to_city:
-        lines.append(f"<b>{booking_from_city}</b> → <b>{booking_to_city}</b>")
+        lines.append(f"📍 <b>{booking_from_city}</b> → <b>{booking_to_city}</b>")
     if price is not None and seats is not None:
         lines.append(f"💰 {price} грн | 👥 {seats} {seats_word(seats)}")
     lines.append("")

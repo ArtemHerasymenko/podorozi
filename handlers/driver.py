@@ -435,7 +435,7 @@ async def show_driver_trip(callback: types.CallbackQuery, bot: Bot):
         await callback.message.answer("🚫 Цю поїздку вже скасовано.", reply_markup=back_only_kb)
         await safe_answer(callback)
         return
-    await callback.message.answer("Відкриваємо поїздку...\nНатисніть ✅ щоб підтвердити пасажира.", reply_markup=back_only_kb)
+    await callback.message.answer("Відкриваємо '📋 Заплановані поїздки'...\nНатисніть ✅ щоб підтвердити пасажира.", reply_markup=back_only_kb)
     await asyncio.sleep(2)
     active_trip_ids = [(tid, st) for tid, st in trip_ids if st != 'cancelled']
     text, kb = await _build_driver_trip_details_msg(trip, bot, trip_ids=active_trip_ids)
