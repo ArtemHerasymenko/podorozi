@@ -549,7 +549,16 @@ async def cancel_trip_callback(callback: types.CallbackQuery, bot: Bot):
     success, booking_ids = cancel_trip(trip_id, callback.from_user.id)
 
     if success:
-        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", parse_mode="HTML", reply_markup=callback.message.reply_markup)
+        existing_kb = callback.message.reply_markup
+        if existing_kb:
+            filtered_rows = [
+                row for row in existing_kb.inline_keyboard
+                if not any(btn.callback_data and btn.callback_data.startswith("cancel_trip:") for btn in row)
+            ]
+            new_kb = InlineKeyboardMarkup(inline_keyboard=filtered_rows) if filtered_rows else None
+        else:
+            new_kb = None
+        await callback.message.edit_text(callback.message.html_text + "\n\n🚫 Ви скасували цю поїздку", parse_mode="HTML", reply_markup=new_kb)
         await safe_answer(callback)
         for booking_id in booking_ids:
             prev_status, _ = update_booking_status(booking_id, "trip_cancelled", ["pending", "confirmed", "rejected", "cancelled_by_passenger", "trip_cancelled"])

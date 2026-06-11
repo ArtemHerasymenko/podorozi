@@ -1132,7 +1132,16 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
     if prev_status in ("pending", "confirmed"):
         new_text = callback.message.html_text + "\n\n" + STATUS_LABELS["cancelled_by_passenger"]
-        await callback.message.edit_text(new_text, parse_mode="HTML", reply_markup=callback.message.reply_markup)
+        existing_kb = callback.message.reply_markup
+        if existing_kb:
+            filtered_rows = [
+                row for row in existing_kb.inline_keyboard
+                if not any(btn.callback_data and btn.callback_data.startswith("cancel_booking:") for btn in row)
+            ]
+            new_kb = InlineKeyboardMarkup(inline_keyboard=filtered_rows) if filtered_rows else None
+        else:
+            new_kb = None
+        await callback.message.edit_text(new_text, parse_mode="HTML", reply_markup=new_kb)
         await safe_answer(callback, "🚫 Ви скасували ваше бронювання", show_alert=True)
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
