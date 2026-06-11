@@ -70,7 +70,6 @@ async def _build_driver_trip_details_msg(trip_row, bot, trip_ids=None):
             msg_url = f"https://t.me/{passenger_chat.username}" if (passenger_chat and passenger_chat.username) else f"tg://user?id={passenger_id}"
             rows.append([
                 InlineKeyboardButton(text=f"✅ {passenger_name}", callback_data=f"confirm_booking:{booking_id}"),
-                # InlineKeyboardButton(text=f"❌ {passenger_name}", callback_data=f"reject_booking:{booking_id}"),
                 InlineKeyboardButton(text="✉️", url=msg_url),
             ])
 

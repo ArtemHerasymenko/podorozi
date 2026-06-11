@@ -86,20 +86,11 @@ async def _build_passenger_booking_msg(booking_row, bot, booking_ids=None):
     except:
         driver_chat = None
         driver_name = "Водій"
-    if driver_phone and status == "confirmed":
-        display_phone = driver_phone
-    elif driver_phone:
-        display_phone = mask_phone(driver_phone)
-    else:
-        display_phone = None
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at if status != "pending" else None, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at if status != "pending" else None, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=driver_phone, price=price, driver_name=driver_name)
     text = f"{position_line}{status_label}\n\n{booking_desc}"
     rows = []
     driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
-    contact_row = [InlineKeyboardButton(text="✉️ Написати", url=driver_url)]
-    if driver_phone:
-        contact_row.append(InlineKeyboardButton(text="📞 Зателефонувати", url=f"tel:{driver_phone}"))
-    rows.append(contact_row)
+    rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
     if len(ids) > 1:
         rows.append([
             InlineKeyboardButton(text="⬅️ Попереднє", callback_data=f"pb_prev:{booking_id}"),
@@ -230,14 +221,8 @@ async def _build_past_passenger_booking_msg(booking_row, bot, passenger_id):
     except:
         driver_chat = None
         driver_name = "Водій"
-    if driver_phone and status == "confirmed":
-        display_phone = driver_phone
-    elif driver_phone:
-        display_phone = mask_phone(driver_phone)
-    else:
-        display_phone = None
     board_time = pickup_at or (dep_dt + datetime.timedelta(minutes=get_travel_time_between(from_city, booking_from_city)) if booking_from_city else None)
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, board_time, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, board_time, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=driver_phone, price=price, driver_name=driver_name)
     # passenger_phone_line = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
     text = f"{position_line}{status_label}\n\n{booking_desc}"
 
