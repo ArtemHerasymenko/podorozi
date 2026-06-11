@@ -129,7 +129,7 @@ async def show_passenger_booking(callback: types.CallbackQuery, bot: Bot):
         await callback.message.answer("🚫 Це бронювання вже скасовано водійєм.", reply_markup=back_only_kb)
         await safe_answer(callback)
         return
-    await callback.message.answer("Відкриваємо '📋 Поточні бронювання'...", reply_markup=back_only_kb)
+    await callback.message.answer("Відкриваємо '📋 Поточні бронювання' ...", reply_markup=back_only_kb)
     await asyncio.sleep(2)
     text, kb = await _build_passenger_booking_msg(booking, bot, booking_ids=active_booking_ids)
     await safe_send(callback.message.answer, text, kb)

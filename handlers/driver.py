@@ -684,7 +684,7 @@ async def confirm_booking_notes(message: types.Message, state: FSMContext, bot: 
         # else:
             # if no trip_id - we got here from the direct booking confirmation msg, so we just append the confirmation note to the existing message
             # await bot.edit_message_text(original_text + "\n\n✅ Ви підтвердили бронювання", chat_id=chat_id, message_id=msg_id, reply_markup=None, parse_mode="HTML")
-        # await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
+        await message.answer("✅ Бронювання підтверджено.", reply_markup=driver_menu_kb)
         passenger_id = get_passenger_id(booking_id)
         kb = InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text="Переглянути деталі ➡️", callback_data=f"show_passenger_booking:{booking_id}")
