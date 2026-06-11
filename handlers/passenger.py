@@ -5,7 +5,7 @@ from aiogram import Router, types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from states.passenger_states import PassengerStates
-from database import search_trips_ids, book_trip, check_trip_bookable, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription, get_subscription_cities
+from database import search_trips_ids, book_trip, check_trip_bookable, get_driver_id, get_driver_id_by_booking, get_trip_details, get_trip_details_by_booking, get_passenger_phone_by_booking, get_passenger_bookings, get_passenger_booking_ids, get_passenger_booking_by_id, get_latest_passenger_past_booking, get_prev_passenger_past_booking, get_next_passenger_past_booking, get_passenger_past_booking_position, update_booking_status, get_recent_phone_numbers, save_or_update_phone_number, save_recent_search, get_recent_search_times, get_city_modified_name, upsert_user_details, get_recent_booking_notes, get_recent_searches, save_search_subscription, get_active_subscriptions, deactivate_subscription, get_subscription_cities
 from database import create_trip_search_list, get_current_trip_from_search_list, increase_trip_search_list_index, decrease_trip_search_list_index, set_trip_search_list_index, get_search_list_times, get_trip_search_list_ids, get_trip_for_display
 from database import increment_city_popularity, add_city_if_missing
 from handlers.passenger_search import search_and_display
@@ -19,7 +19,7 @@ from aiogram import Bot
 import asyncio
 import datetime
 from zoneinfo import ZoneInfo
-from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message, driver_menu_kb
+from handlers.common import generate_quick_days, quick_day_kb, validate_time, validate_city_name, generate_datetime, format_basic_details, format_booking_description_for_driver, format_booking_description_for_passenger, back_only_kb, searching_kb, safe_answer, safe_send, seats_word, mask_phone, format_trip, trip_keyboard, send_trip_message, driver_menu_kb, to_local_day_and_time
 from data.route_intermediates import get_search_city_pairs, get_travel_time_between
 from config import ADMIN_CHAT_ID
 
@@ -72,52 +72,107 @@ async def passenger_menu(message: types.Message):
         reply_markup=passenger_menu_kb(message.from_user.id)
     )
 
+async def _build_passenger_booking_msg(booking_row, bot, booking_ids=None):
+    booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = booking_row
+    ids = [bid for bid, _ in booking_ids] if booking_ids else []
+    position_line = ""
+    if len(ids) > 1:
+        idx = ids.index(booking_id) if booking_id in ids else 0
+        position_line = f"#{idx + 1} з {len(ids)}\n"
+    status_label = STATUS_LABELS.get(status, status)
+    try:
+        driver_chat = await bot.get_chat(driver_id)
+        driver_name = driver_chat.full_name
+    except:
+        driver_chat = None
+        driver_name = "Водій"
+    if driver_phone and status == "confirmed":
+        display_phone = driver_phone
+    elif driver_phone:
+        display_phone = mask_phone(driver_phone)
+    else:
+        display_phone = None
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at if status != "pending" else None, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
+    text = f"{position_line}{status_label}\n\n{booking_desc}"
+    rows = []
+    driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
+    rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
+    if len(ids) > 1:
+        rows.append([
+            InlineKeyboardButton(text="⬅️ Попереднє", callback_data=f"pb_prev:{booking_id}"),
+            InlineKeyboardButton(text="Наступне ➡️", callback_data=f"pb_next:{booking_id}"),
+        ])
+    rows.append([InlineKeyboardButton(text="Скасувати бронювання ❌", callback_data=f"cancel_booking:{booking_id}")])
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 @router.message(lambda m: m.text == "📋 Поточні бронювання")
 async def my_trips(message: types.Message, state: FSMContext):
     await message.answer("Шукаємо...", reply_markup=back_only_kb)
     await state.set_state(PassengerStates.viewing_bookings)
-    # await asyncio.sleep(3)
-    trips = get_passenger_bookings(message.from_user.id)
-    if not trips:
-        await message.answer("У вас ще немає заброньованих поїздок.")
+    booking_ids = get_passenger_booking_ids(message.from_user.id)
+    active_booking_ids = [(bid, st) for bid, st in booking_ids if st in ("pending", "confirmed")]
+    first_id = active_booking_ids[0][0] if active_booking_ids else None
+    if first_id is None:
+        await message.answer("У вас ще немає заброньованих поїздок.", reply_markup=back_only_kb)
         return
+    booking = get_passenger_booking_by_id(first_id)
+    text, kb = await _build_passenger_booking_msg(booking, message.bot, booking_ids=active_booking_ids)
+    await safe_send(message.answer, text, kb)
 
-    ACTIVE_STATUSES = ("pending", "confirmed")
-    trips = sorted(trips, key=lambda t: t[7] not in ACTIVE_STATUSES)
+
+@router.callback_query(lambda c: c.data and c.data.startswith("show_passenger_booking:"))
+async def show_passenger_booking(callback: types.CallbackQuery, bot: Bot):
+    booking_id = int(callback.data.split(":")[1])
+    passenger_id = callback.from_user.id
+    booking_ids = get_passenger_booking_ids(passenger_id)
+    active_booking_ids = [(bid, st) for bid, st in booking_ids if st in ("pending", "confirmed")]
+    booking = get_passenger_booking_by_id(booking_id)
+    if not booking:
+        await safe_answer(callback)
+        return
+    if booking[7] != "confirmed":
+        await callback.message.answer("🚫 Це бронювання вже скасовано водійєм.", reply_markup=back_only_kb)
+        await safe_answer(callback)
+        return
+    await callback.message.answer("Відкриваємо бронювання...", reply_markup=back_only_kb)
+    await asyncio.sleep(2)
+    text, kb = await _build_passenger_booking_msg(booking, bot, booking_ids=active_booking_ids)
+    await safe_send(callback.message.answer, text, kb)
+    await safe_answer(callback)
 
 
-    total = len(trips)
-    for i, trip in enumerate(trips):
-        if i > 0:
-            await asyncio.sleep(2)
-        booking_id, trip_id, from_city, to_city, dep_dt, price, seats, status, driver_id, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, driver_phone, passenger_phone, car_description, booking_from_city, booking_to_city = trip
-        status_label = STATUS_LABELS.get(status, status)
-        position_line = f"🗓 Бронювання #{i + 1} з {total}\n" if total > 1 else ""
-        try:
-            driver_chat = await message.bot.get_chat(driver_id)
-            driver_name = driver_chat.full_name
-        except:
-            driver_chat = None
-            driver_name = "Водій"
-        if driver_phone and status == "confirmed":
-            display_phone = driver_phone
-        elif driver_phone:
-            display_phone = mask_phone(driver_phone)
-        else:
-            display_phone = None
-        board_time = pickup_at or (dep_dt + datetime.timedelta(minutes=get_travel_time_between(from_city, booking_from_city)) if booking_from_city else None)
-        booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, board_time, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=display_phone, price=price, driver_name=driver_name)
-        # passenger_phone_line: str = f"\n📱 Ваш телефон: {passenger_phone}" if passenger_phone else ""
-        text = f"{position_line}{status_label}\n\n{booking_desc}"
-        if status in ACTIVE_STATUSES:
-            driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)],
-                [InlineKeyboardButton(text="Скасувати бронювання ❌", callback_data=f"cancel_booking:{booking_id}")]
-            ])
-            await safe_send(message.answer, text, kb)
-        else:
-            await message.answer(text, parse_mode="HTML")
+@router.callback_query(lambda c: c.data and (c.data.startswith("pb_prev:") or c.data.startswith("pb_next:")))
+async def passenger_bookings_nav(callback: types.CallbackQuery, bot: Bot):
+    action, current_id_str = callback.data.split(":")
+    current_id = int(current_id_str)
+    passenger_id = callback.from_user.id
+    booking_ids = get_passenger_booking_ids(passenger_id)
+    active_booking_ids = [(bid, st) for bid, st in booking_ids if st in ("pending", "confirmed")]
+    active_ids = [bid for bid, _ in active_booking_ids]
+    if not active_ids:
+        await callback.message.edit_text("У вас ще немає заброньованих поїздок.", reply_markup=None)
+        await safe_answer(callback)
+        return
+    all_ids = [bid for bid, _ in booking_ids]
+    if current_id not in all_ids:
+        booking_id = active_ids[0]
+    elif action == "pb_prev":
+        cur_pos = all_ids.index(current_id)
+        booking_id = next(
+            (bid for bid, st in reversed(booking_ids[:cur_pos]) if st in ("pending", "confirmed")),
+            active_ids[0]
+        )
+    else:
+        cur_pos = all_ids.index(current_id)
+        booking_id = next(
+            (bid for bid, st in booking_ids[cur_pos + 1:] if st in ("pending", "confirmed")),
+            active_ids[-1]
+        )
+    booking = get_passenger_booking_by_id(booking_id)
+    text, kb = await _build_passenger_booking_msg(booking, bot, booking_ids=active_booking_ids)
+    await safe_send(callback.message.edit_text, text, kb)
+    await safe_answer(callback)
 
 @router.message(lambda m: m.text == "📜 Минулі бронювання")
 async def my_past_trips(message: types.Message, state: FSMContext):
@@ -456,7 +511,9 @@ def quick_time_kb(day_str: str, recent_times: list = None) -> ReplyKeyboardMarku
     return ReplyKeyboardMarkup(keyboard=options, resize_keyboard=True, one_time_keyboard=True)
 
 
-async def _run_search(message: types.Message, state: FSMContext, time_str: str):
+async def _run_search(message: types.Message, state: FSMContext, time_str: str, jump_to_trip_id: int = None, user_id: int = None):
+    if user_id is None:
+        user_id = message.from_user.id
     now_kyiv = datetime.datetime.now(ZoneInfo('Europe/Kyiv'))
     data = await state.get_data()
 
@@ -513,7 +570,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     total = len(all_trips)
     passenger_from_city = data["booking_from_city"]
     available = [(t_id, boarding_dt) for t_id, free_seats, boarding_dt in all_trips if free_seats >= seats]
-    save_recent_search(message.from_user.id, passenger_from_city, data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data.get("day"), [t_id for t_id, *_ in all_trips], seats_requested=seats)
+    save_recent_search(user_id, passenger_from_city, data["booking_to_city"], time_str if time_str != "Показати всі поїздки" else "show_all", data.get("day"), [t_id for t_id, *_ in all_trips], seats_requested=seats)
 
     def trip_word(n):
         last2, last1 = n % 100, n % 10
@@ -524,6 +581,11 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
         if 2 <= last1 <= 4:
             return "поїздки"
         return "поїздок"
+
+    if jump_to_trip_id and jump_to_trip_id not in [t_id for t_id, _ in available]:
+        await message.answer("На жаль, ця поїздка вже недоступна.", reply_markup=after_search_kb())
+        await state.set_state(PassengerStates.browsing_trips)
+        return
 
     if not available:
         if total == 0:
@@ -539,9 +601,11 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
         await message.answer(f"Знайдено {total} {trip_word(total)}, вільні місця є в {len(available)}", reply_markup=after_search_kb())
     trips_ids = [t_id for t_id, _ in available]
     boarding_dts = [boarding_dt for _, boarding_dt in available]
-    create_trip_search_list(message.from_user.id, trips_ids, boarding_dts, passenger_from_city)
+    create_trip_search_list(user_id, trips_ids, boarding_dts, passenger_from_city)
+    if jump_to_trip_id and jump_to_trip_id in trips_ids:
+        set_trip_search_list_index(user_id, trips_ids.index(jump_to_trip_id))
     # This can come as expired, very unlikely.
-    trip, index, total_cnt = get_current_trip_from_search_list(message.from_user.id)
+    trip, index, total_cnt = get_current_trip_from_search_list(user_id)
 
     driver_chat = None
     try:
@@ -550,7 +614,7 @@ async def _run_search(message: types.Message, state: FSMContext, time_str: str):
     except:
         driver_name = None
 
-    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == message.from_user.id), passenger_from_city=passenger_from_city, board_time=boarding_dts[index] if boarding_dts else None)
+    trip_text = format_trip(trip, index, total_cnt, driver_name, is_own=(trip[1] == user_id), passenger_from_city=passenger_from_city, board_time=boarding_dts[index] if boarding_dts else None)
     trip_message = await send_trip_message(message.answer, trip_text, trip[0], total_cnt, trip[1], driver_chat.username if driver_chat else None, index, all_times=boarding_dts)
 
     await state.set_state(PassengerStates.browsing_trips)
@@ -747,11 +811,20 @@ async def subscription_done_handler(callback: types.CallbackQuery, state: FSMCon
                 logging.exception("Failed to get driver chat for driver_id=%s", driver_id)
                 driver_name = "Водій"
                 driver_username = None
-            trip_text = format_trip(trip, 0, 1, driver_name=driver_name, passenger_from_city=from_city, board_time=matching_ids[trip_id])
-            await send_trip_message(
-                lambda text, **kw: callback.message.answer("🔔 Зʼявилась нова поїздка!\n\n" + text, **kw),
-                trip_text, trip_id, 1, driver_id, driver_username, 0, subscription_id=subscription_id
-            )
+            trip_dep_city = trip[3]
+            trip_to_city = trip[5]
+            dep_local, dep_day = to_local_day_and_time(trip[7])
+            boarding_time = matching_ids[trip_id]
+            route_lines = [f"📍 {trip_dep_city} - {dep_local.strftime('%H:%M')}, {dep_day}"]
+            if from_city and from_city != trip_dep_city:
+                board_local = boarding_time.astimezone(ZoneInfo("Europe/Kyiv"))
+                route_lines.append(f"📍 {from_city} - {board_local.strftime('%H:%M')}")
+            route_lines.append(f"📍 {trip_to_city}")
+            notification_text = "🔔 Зʼявилась нова поїздка!\n\n" + "\n".join(route_lines)
+            kb = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="Переглянути деталі ➡️", callback_data=f"view_trip_notification:{trip_id}:{subscription_id}")
+            ]])
+            await callback.message.answer(notification_text, parse_mode="HTML", reply_markup=kb)
 
 
 @router.message(PassengerStates.browsing_trips, lambda m: m.text == "⬅️ Назад")
@@ -1001,14 +1074,10 @@ async def booking_phone_handler(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Зверніть увагу: у вас вже є інше бронювання впритул до цього.")
 
     driver_id = get_driver_id(trip_id)
-    trip_details = get_trip_details(trip_id)
-    booking_desc = format_booking_description_for_driver(trip_details[0], trip_details[1], trip_details[2], notes=notes, arrival_dt=trip_details[3], seats=seats_requested, from_points=trip_details[4], to_points=trip_details[5], passenger_phone=phone, booking_from_city=data.get("booking_from_city"), booking_to_city=data.get("booking_to_city")) if trip_details else "N/A"
-
-    await safe_send(
-        lambda t, **kw: message.bot.send_message(driver_id, f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами:\n\n" + t, **kw),
-        booking_desc,
-        booking_actions_kb(booking_id, passenger_id, message.from_user.username)
-    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Переглянути деталі ➡️", callback_data=f"show_driver_trip:{trip_id}")
+    ]])
+    await message.bot.send_message(driver_id, f"🔔 Пасажир <b>{passenger_name}</b> хоче поїхати з вами.", parse_mode="HTML", reply_markup=kb)
 
 @router.callback_query(lambda c: c.data == "cancel_search")
 async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
@@ -1016,6 +1085,33 @@ async def cancel_search(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.answer("Пошук скасовано. Повернення в меню пасажира:", reply_markup=passenger_menu_kb(callback.from_user.id))
     await safe_answer(callback)
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("view_trip_notification:"))
+async def view_trip_notification_callback(callback: types.CallbackQuery, state: FSMContext):
+    parts = callback.data.split(":")
+    trip_id = int(parts[1])
+    subscription_id = int(parts[2]) if len(parts) > 2 else None
+
+    trip = get_trip_for_display(trip_id)
+    if not trip:
+        await safe_answer(callback, "Поїздку не знайдено або вона вже відбулась.", show_alert=True)
+        return
+
+    dep_datetime = trip[7]
+    if dep_datetime <= datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5):
+        await safe_answer(callback, "❌ Ця поїздка вже відправилась.", show_alert=True)
+        return
+
+    sub = get_subscription_cities(subscription_id) if subscription_id else None
+    search_from_city = sub[0] if sub else trip[3]
+    search_to_city = sub[1] if sub else trip[5]
+    seats = sub[2] if sub else 1
+    day_str = sub[3] if sub else dep_datetime.astimezone(ZoneInfo("Europe/Kyiv")).strftime("%Y-%m-%d")
+
+    await safe_answer(callback)
+    await state.update_data(booking_from_city=search_from_city, booking_to_city=search_to_city, day=day_str, seats_requested=seats)
+    await _run_search(callback.message, state, "Показати всі поїздки", jump_to_trip_id=trip_id, user_id=callback.from_user.id)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("cancel_booking:"))
@@ -1031,37 +1127,21 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
             return
 
     prev_status, _ = update_booking_status(booking_id, "cancelled_by_passenger", ["pending", "confirmed"])
-    lines = callback.message.text.rsplit("\n", 1)
     if prev_status in ("pending", "confirmed"):
-        new_text = lines[0] + "\n\n" + STATUS_LABELS["cancelled_by_passenger"]
-        await callback.message.edit_text(new_text, reply_markup=None)
-        await safe_answer(callback)
+        new_text = callback.message.html_text + "\n\n" + STATUS_LABELS["cancelled_by_passenger"]
+        await callback.message.edit_text(new_text, parse_mode="HTML")
+        await safe_answer(callback, "🚫 Ви скасували ваше бронювання", show_alert=True)
         driver_id = get_driver_id_by_booking(booking_id)
         passenger_name = callback.from_user.full_name
-        passenger_phone = get_passenger_phone_by_booking(booking_id)
-        booking_desc = (
-            format_booking_description_for_driver(
-                trip[0], trip[1], trip[2],
-                notes=trip[3], pickup_at=trip[4], arrival_dt=trip[5],
-                seats=trip[6], from_points=trip[7], to_points=trip[8],
-                passenger_phone=passenger_phone,
-                booking_from_city=trip[10], booking_to_city=trip[11],
-            ) if trip else ""
-        )
-        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.\n\n{booking_desc}", parse_mode="HTML", reply_markup=back_only_kb)
+        booking_from = trip[10] if trip else None
+        booking_to = trip[11] if trip else None
+        route_line = f"\n{booking_from} → {booking_to}" if booking_from and booking_to else ""
+        await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.{route_line}", parse_mode="HTML")
     elif prev_status == "cancelled_by_passenger":
-        new_text = lines[0] + "\n" + "🚫 Ви вже скасували цю бронь раніше"
-        await callback.message.edit_text(new_text, reply_markup=None)
-        await safe_answer(callback)
+        await safe_answer(callback, "🚫 Ви вже скасували цю бронь раніше", show_alert=True)
     elif prev_status == "rejected":
-        new_text = lines[0] + "\n" + "🚫 Водій вже відхилив вашу бронь раніше"
-        await callback.message.edit_text(new_text, reply_markup=None)
-        await safe_answer(callback)
+        await safe_answer(callback, "🚫 Водій вже відхилив вашу бронь раніше", show_alert=True)
     elif prev_status == "trip_cancelled":
-        new_text = lines[0] + "\n" + STATUS_LABELS["trip_cancelled"]
-        await callback.message.edit_text(new_text, reply_markup=None)
-        await safe_answer(callback)
+        await safe_answer(callback, STATUS_LABELS["trip_cancelled"], show_alert=True)
     else:
-        new_text = lines[0] + "\n" + "🚫 Не вдалося скасувати бронь. Виникла помилка, спробуйте ще."
-        await callback.message.edit_text(new_text, reply_markup=None)
-        await safe_answer(callback)
+        await safe_answer(callback, "🚫 Не вдалося скасувати бронь. Виникла помилка, спробуйте ще.", show_alert=True)

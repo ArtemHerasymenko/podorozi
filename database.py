@@ -440,6 +440,13 @@ def check_trip_bookable(trip_id: int, passenger_id: int, seats_requested: int = 
     return True, None
 
 def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requested: int = 1, passenger_phone: str = None, from_city: str = None, to_city: str = None):
+    cursor.execute("SELECT departure_datetime, arrival_time, from_city FROM trips WHERE id = %s", (trip_id,))
+    trip_row = cursor.fetchone()
+    if not trip_row:
+        return False, "not_found", False
+    dep_dt, arrival_time, trip_from_city = trip_row
+    pickup_at = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, from_city) if from_city else 0)
+
     cursor.execute("BEGIN")
     # Lock the trip row so concurrent bookings can't race past the seat check
     cursor.execute("SELECT id FROM trips WHERE id = %s FOR UPDATE", (trip_id,))
@@ -447,9 +454,6 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
         WITH trip AS (
             SELECT
                 status,
-                from_city,
-                departure_datetime,
-                arrival_time,
                 departure_datetime > CLOCK_TIMESTAMP() AS not_departed,
                 seats::int - (
                     SELECT COALESCE(SUM(b.seats), 0) FROM bookings b
@@ -461,8 +465,8 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             FROM trips WHERE id = %s
         ),
         inserted AS (
-            INSERT INTO bookings (trip_id, passenger_id, status, notes, seats, passenger_phone, from_city, to_city)
-            SELECT %s, %s, 'pending', %s, %s, %s, %s, %s
+            INSERT INTO bookings (trip_id, passenger_id, status, notes, seats, passenger_phone, from_city, to_city, pickup_at)
+            SELECT %s, %s, 'pending', %s, %s, %s, %s, %s, %s
             FROM trip
             WHERE status = 'active'
               AND not_departed
@@ -475,17 +479,14 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
             (SELECT not_departed            FROM trip),
             (SELECT has_seats               FROM trip),
             (SELECT existing_booking_status FROM trip),
-            (SELECT id                      FROM inserted),
-            (SELECT departure_datetime      FROM trip),
-            (SELECT arrival_time            FROM trip),
-            (SELECT from_city               FROM trip)
-    """, (trip_id, seats_requested, trip_id, passenger_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone, from_city, to_city))
+            (SELECT id                      FROM inserted)
+    """, (trip_id, seats_requested, trip_id, passenger_id, trip_id, trip_id, passenger_id, notes, seats_requested, passenger_phone, from_city, to_city, pickup_at))
     conn.commit()
     row = cursor.fetchone()
 
     if not row or row[0] is None:
         return False, "not_found", False
-    status, not_departed, has_seats, existing_booking_status, inserted_id, dep_dt, arrival_time, trip_from_city = row
+    status, not_departed, has_seats, existing_booking_status, inserted_id = row
     if status != 'active':
         return False, "cancelled", False
     if not not_departed:
@@ -497,7 +498,6 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
     if not has_seats:
         return False, "no_seats", False
 
-    new_boarding_dt = dep_dt + datetime.timedelta(minutes=get_travel_time_between(trip_from_city, from_city) if from_city else 0)
     _to_offset = get_travel_time_between(trip_from_city, to_city) if to_city else 0
     new_arrival_dt = dep_dt + datetime.timedelta(minutes=_to_offset) if _to_offset else arrival_time
     cursor.execute("""
@@ -513,7 +513,7 @@ def book_trip(trip_id: int, passenger_id: int, notes: str = None, seats_requeste
         return t2_dep + datetime.timedelta(minutes=offset) if offset else t2_arr
     has_overlap = any(
         _boarding(t2_from_city, t2_dep_dt, b2_from_city) < new_arrival_dt
-        and _arrival(t2_from_city, t2_dep_dt, t2_arrival, b2_to_city) > new_boarding_dt
+        and _arrival(t2_from_city, t2_dep_dt, t2_arrival, b2_to_city) > pickup_at
         for t2_from_city, t2_dep_dt, t2_arrival, b2_from_city, b2_to_city in cursor.fetchall()
     )
     return True, inserted_id, has_overlap
@@ -613,6 +613,15 @@ def get_driver_trips(driver_id: int):
     """, (driver_id,))
     return cursor.fetchall()
 
+def get_driver_trip_ids(driver_id: int):
+    cursor.execute("""
+        SELECT id, status FROM trips
+        WHERE driver_id = %s
+          AND arrival_time >= CLOCK_TIMESTAMP()
+        ORDER BY departure_datetime ASC, id ASC
+    """, (driver_id,))
+    return cursor.fetchall()
+
 def get_latest_driver_past_trip(driver_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
@@ -694,13 +703,9 @@ def get_driver_past_trip_position(driver_id: int, trip_id: int):
 def get_driver_trip_by_id(trip_id: int):
     cursor.execute("""
         SELECT t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, t.status,
-               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'confirmed'), 0) AS confirmed_count,
-               COALESCE(SUM(b.seats) FILTER (WHERE b.status = 'pending'), 0) AS pending_count,
                t.arrival_time, t.from_points, t.to_points, t.driver_phone, t.car_description
         FROM trips t
-        LEFT JOIN bookings b ON b.trip_id = t.id
         WHERE t.id = %s
-        GROUP BY t.id
     """, (trip_id,))
     return cursor.fetchone()
 
@@ -714,7 +719,7 @@ def get_bookings_for_trip(trip_id: int, status: str):
         SELECT id, passenger_id, notes, pickup_at, seats, passenger_phone, from_city, to_city
         FROM bookings
         WHERE trip_id = %s AND status = %s
-        ORDER BY CASE WHEN status = 'confirmed' THEN pickup_at ELSE booked_at END ASC NULLS LAST
+        ORDER BY pickup_at ASC NULLS LAST, booked_at ASC
     """, (trip_id, status))
     return cursor.fetchall()
 
@@ -762,6 +767,26 @@ def get_passenger_bookings(passenger_id: int):
         ORDER BY t.departure_datetime
     """, (passenger_id,))
     return cursor.fetchall()
+
+def get_passenger_booking_ids(passenger_id: int):
+    cursor.execute("""
+        SELECT b.id, b.status
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.passenger_id = %s
+          AND t.arrival_time >= CLOCK_TIMESTAMP()
+        ORDER BY t.departure_datetime ASC, b.id ASC
+    """, (passenger_id,))
+    return cursor.fetchall()
+
+def get_passenger_booking_by_id(booking_id: int):
+    cursor.execute("""
+        SELECT b.id, t.id, t.from_city, t.to_city, t.departure_datetime, t.price, t.seats, b.status, t.driver_id, b.notes, b.pickup_at, t.arrival_time, b.seats, t.from_points, t.to_points, t.driver_phone, b.passenger_phone, t.car_description, b.from_city, b.to_city
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.id
+        WHERE b.id = %s
+    """, (booking_id,))
+    return cursor.fetchone()
 
 def get_latest_passenger_past_booking(passenger_id: int):
     cursor.execute("""
@@ -1322,7 +1347,7 @@ def get_pending_subscriptions(pairs: list[tuple[str, str]], boarding_times: list
     return cursor.fetchall()
 
 def get_subscription_cities(subscription_id: int):
-    cursor.execute("SELECT from_city, to_city, seats_requested FROM search_subscriptions WHERE id = %s", (subscription_id,))
+    cursor.execute("SELECT from_city, to_city, seats_requested, search_for_day FROM search_subscriptions WHERE id = %s", (subscription_id,))
     return cursor.fetchone()
 
 def save_feedback(user_id: int, mode: str, feedback_text: str = None, file_id: str = None) -> int:
