@@ -169,6 +169,9 @@ async def passenger_bookings_nav(callback: types.CallbackQuery, bot: Bot):
             (bid for bid, st in booking_ids[cur_pos + 1:] if st in ("pending", "confirmed")),
             active_ids[-1]
         )
+    if booking_id == current_id:
+        await safe_answer(callback)
+        return
     booking = get_passenger_booking_by_id(booking_id)
     text, kb = await _build_passenger_booking_msg(booking, bot, booking_ids=active_booking_ids)
     await safe_send(callback.message.edit_text, text, kb)

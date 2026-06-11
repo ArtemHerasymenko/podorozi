@@ -412,6 +412,9 @@ async def driver_trips_nav(callback: types.CallbackQuery, bot: Bot):
             (tid for tid, st in trip_ids[cur_pos + 1:] if st != 'cancelled'),
             active_ids[-1]
         )
+    if trip_id == current_id:
+        await safe_answer(callback)
+        return
     trip = get_driver_trip_by_id(trip_id)
     active_trip_ids = [(tid, st) for tid, st in trip_ids if st != 'cancelled']
     text, kb = await _build_driver_trip_details_msg(trip, bot, trip_ids=active_trip_ids)
