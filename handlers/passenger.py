@@ -86,7 +86,7 @@ async def _build_passenger_booking_msg(booking_row, bot, booking_ids=None):
     except:
         driver_chat = None
         driver_name = "Водій"
-    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at if status != "pending" else None, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=driver_phone, price=price, driver_name=driver_name)
+    booking_desc = format_booking_description_for_passenger(from_city, to_city, dep_dt, notes, pickup_at, arrival_time, booked_seats, from_points, to_points, car_description, booking_from_city=booking_from_city, booking_to_city=booking_to_city, driver_phone=driver_phone, price=price, driver_name=driver_name)
     text = f"{position_line}{status_label}\n\n{booking_desc}"
     rows = []
     driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
@@ -1135,7 +1135,7 @@ async def cancel_booking_callback(callback: types.CallbackQuery, bot: Bot):
         passenger_name = callback.from_user.full_name
         booking_from = trip[10] if trip else None
         booking_to = trip[11] if trip else None
-        route_line = f"\n{booking_from} → {booking_to}" if booking_from and booking_to else ""
+        route_line = f"\n📍 {booking_from} → {booking_to}" if booking_from and booking_to else ""
         await bot.send_message(driver_id, f"🚫 Пасажир {passenger_name} скасував своє бронювання.{route_line}", parse_mode="HTML")
     elif prev_status == "cancelled_by_passenger":
         await safe_answer(callback, "🚫 Ви вже скасували цю бронь раніше", show_alert=True)
