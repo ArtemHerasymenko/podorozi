@@ -302,6 +302,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False, passenge
     if is_own:
         name_str += " (Ви)"
     driver_line = f"👤 {name_str}"
+    phone_line = f"📞 {trip[2]}" if trip[2] else "📞 не вказано"
     car_line = f"🚘 {trip[12]}" if trip[12] else ""
     route_str = format_basic_details(trip[3], trip[5], trip[7], trip[11], trip[4], trip[6], passenger_from_city=passenger_from_city, board_time=board_time)
     return (
@@ -309,6 +310,7 @@ def format_trip(trip, index, total_cnt, driver_name=None, is_own=False, passenge
         f"{route_str}\n\n"
         f"💰 {trip[8]} грн за місце | {trip[10]}/{trip[9]} вільні\n"
         f"{driver_line}\n"
+        f"{phone_line}\n"
         f"{car_line}\n"
         )
 
@@ -419,9 +421,9 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
         lines.append(f"💰 {price} грн | 👥 {seats} {seats_word(seats)}")
     lines.append("")
     lines.append(f"👤 {driver_name or 'Водій'}")
+    lines.append(f"📞 {driver_phone}" if driver_phone else "📞 Не вказано")
     if car_description:
         lines.append(f"🚘 {car_description}")
-    lines.append(f"📞 {driver_phone}" if driver_phone else "📞 Не вказано")
     if not booking_from_city or from_city == booking_from_city:
         lines.append(f"📍 {from_city}" + (f" ({from_points})" if from_points else ""))
         lines.append(f"📍 {to_city}" + (f" ({to_points})" if to_points else ""))
