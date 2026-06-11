@@ -96,7 +96,10 @@ async def _build_passenger_booking_msg(booking_row, bot, booking_ids=None):
     text = f"{position_line}{status_label}\n\n{booking_desc}"
     rows = []
     driver_url = f"https://t.me/{driver_chat.username}" if (driver_chat and driver_chat.username) else f"tg://user?id={driver_id}"
-    rows.append([InlineKeyboardButton(text="✉️ Написати водію", url=driver_url)])
+    contact_row = [InlineKeyboardButton(text="✉️ Написати", url=driver_url)]
+    if driver_phone:
+        contact_row.append(InlineKeyboardButton(text="📞 Зателефонувати", url=f"tel:{driver_phone}"))
+    rows.append(contact_row)
     if len(ids) > 1:
         rows.append([
             InlineKeyboardButton(text="⬅️ Попереднє", callback_data=f"pb_prev:{booking_id}"),

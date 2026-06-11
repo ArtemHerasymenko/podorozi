@@ -344,7 +344,7 @@ async def car_description(message: types.Message, state: FSMContext):
         one_time_keyboard=True,
     )
     await message.answer(
-        "Якщо хочете, поділіться номером телефону або напишіть вручну. Його бачитимуть лише пасажири, яких ви підтвердите.",
+        "Якщо хочете, поділіться номером телефону або напишіть вручну:",
         reply_markup=phone_kb,
     )
     await state.set_state(DriverStates.phone)

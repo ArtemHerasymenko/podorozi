@@ -407,10 +407,10 @@ def format_booking_description_for_passenger(from_city: str, to_city: str, dep_d
     lines = []
     pickup_str = pickup_at.astimezone(zoneinfo.ZoneInfo("Europe/Kyiv")).strftime("%H:%M") if pickup_at else None
     first_line_parts = []
-    if notes:
-        first_line_parts.append(notes)
     if pickup_str:
         first_line_parts.append(f"⏱ <b>{pickup_str}</b>")
+    if notes:
+        first_line_parts.append(notes)
     if first_line_parts:
         lines.append(", ".join(first_line_parts))
     if booking_from_city and booking_to_city:
